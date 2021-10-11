@@ -22,7 +22,7 @@ const Decrypt: React.FC<any> = (props) => {
   return (
     <div className="main">
       <div className="container">
-        <h1>Encrypt with Metamask</h1>
+        <h1>Decrypt with Metamask</h1>
         <br/>
         <div className="row">
           <div className="col-sm-12">
