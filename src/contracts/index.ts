@@ -1,1 +1,1 @@
-export { SimpleContract } from './SimpleContract';
+export { SVGNFT } from "./SVGNFT";
