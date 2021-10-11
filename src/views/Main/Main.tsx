@@ -1,6 +1,9 @@
 import Wallet from '../../components/Wallet';
 import { withGlobalState } from 'react-globally';
-import SimpleContract from '../../components/SimpleContract';
+import PublicKey from '../../components/PublicKey';
+import Encrypt from '../../components/Encrypt';
+import Decrypt from '../../components/Decrypt';
+import SVGNFT from '../../components/SVGNFT';
 import { useWallet } from '@binance-chain/bsc-use-wallet';
 
 const Main: React.FC<any> = (props) => {
@@ -9,7 +12,10 @@ const Main: React.FC<any> = (props) => {
   return (
     <div>
       <Wallet/>
-      { account && <SimpleContract/>}
+      { account && <PublicKey/>}
+      { account && <Encrypt/>}
+      { account && <Decrypt/>}
+      { account && <SVGNFT/>}
     </div>
   );
 };

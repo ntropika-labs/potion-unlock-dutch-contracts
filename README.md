@@ -39,4 +39,4 @@ $ yarn start
 
 # Author
 
-My name is Roberto Cano and you can find me at https://github.com/gabr1e11
+My name is Roberto Cano and you can find me at https://github.com/robercano
