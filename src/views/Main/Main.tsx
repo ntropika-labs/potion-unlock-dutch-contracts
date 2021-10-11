@@ -12,6 +12,7 @@ const Main: React.FC<any> = (props) => {
   return (
     <div>
       <Wallet/>
+      
       { account && <PublicKey/>}
       { account && <Encrypt/>}
       { account && <Decrypt/>}
