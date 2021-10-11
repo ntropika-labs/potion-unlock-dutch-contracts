@@ -1,35 +1,26 @@
 const hre = require("hardhat");
-const fs = require("fs");
-const { ethers } = require("hardhat");
 const { toBuffer } = require("ethereumjs-util");
+
 require("dotenv").config();
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const { getPublicKey, encryptSecret, buildMerkleTree } = require("./utils");
+const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, MESSAGE } = require("./config");
 
-// Config
-const NFT_NAME = "Potion NFT Game 1";
-const NFT_SYMBOL = "PNFT1";
-const NUM_NFTS = 5;
-const SECRET = "0x12345678901234567890";
-
-async function main() {
-    const wallet = new ethers.Wallet(PRIVATE_KEY);
-    const publicKeyECDSA = wallet.publicKey;
-    console.log(publicKeyECDSA);
-    const publicKeyBufferECDSA = toBuffer(publicKeyECDSA);
-
-    var publicKey = publicKeyBufferECDSA.slice(1);
-    console.log(publicKey);
-
+async function deployNFTContract(hre, secret) {
     // DEPLOY SECRET NFTs AND GET MERKLE TREE LEAFS
     const NFTFactory = await hre.ethers.getContractFactory("SVGNFT");
-    //NFTFactory.connect(nftDeployer)
-    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, SECRET);
+    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, Buffer.from(secret));
 
     await NFTContract.deployed();
     console.log("Potion NFT Contract deployed to:", NFTContract.address);
 
-    /*for (let i = 1; i <= NUM_NFTS; i++) {
+    return NFTContract;
+}
+
+async function testMinting(NFTContract) {
+    let publicKey = getPublicKey();
+
+    for (let i = 1; i <= NUM_NFTS; i++) {
         const svgURI = "https://ipfs.io/TESTCID-" + i;
 
         const tx = await NFTContract.mint(svgURI, publicKey);
@@ -45,12 +36,32 @@ async function main() {
         console.log(`Secret: ${await NFTContract.secret(i)}`);
     }
     console.log("--------------------------------------");
-    */
+}
+
+async function deployNFTValidator(hre, NFTContract, merkleTree) {
+    const merkleRoot = merkleTree.getHexRoot();
+
+    const NFTValidatorFactory = await hre.ethers.getContractFactory("NFTValidator");
+    let NFTValidator = await NFTValidatorFactory.deploy(NFTContract.address, merkleRoot, NUM_NFTS);
+
+    await NFTValidator.deployed();
+    console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
+    console.log(`Merkle Root: ${merkleRoot}`);
+
+    return NFTValidator;
+}
+
+async function main() {
+    let secret = encryptSecret(MESSAGE);
+    const merkleTree = buildMerkleTree(secret);
+
+    let NFTContract = await deployNFTContract(hre, secret);
+    await deployNFTValidator(hre, NFTContract, merkleTree);
 }
 
 main()
     .then(() => process.exit(0))
-    .catch((error) => {
+    .catch(error => {
         console.error(error);
         process.exit(1);
     });
