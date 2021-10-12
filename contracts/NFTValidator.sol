@@ -55,6 +55,8 @@ contract NFTValidator is Context {
         bytes1 decryptedSecret,
         bytes32[] memory proof
     ) external checkTokenId(tokenId) {
+        console.logBytes1(decryptedSecret);
+
         bytes32 leaf = keccak256(abi.encodePacked(tokenId, decryptedSecret));
         require(verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation
 

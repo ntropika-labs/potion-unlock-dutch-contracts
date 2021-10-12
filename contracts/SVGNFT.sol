@@ -17,7 +17,7 @@ contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
     uint256 public nextTokenId = 1;
     uint256 public maxNFT;
     bytes private fullSecret; // Although it is private, it is still visible from outside the contract
-    mapping (uint256 => bytes32) private encryptionKeys;
+    mapping(uint256 => string) private encryptionKeys;
 
     /**
         Events
@@ -27,14 +27,12 @@ contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
     /**
         Modifiers
     */
-    modifier validatePublicKey(bytes calldata publicKey)
-    {
+    modifier validatePublicKey(bytes calldata publicKey) {
         require(address(uint160(uint256(keccak256(publicKey)))) == _msgSender(), "BPK"); // Bad Public Key
         _;
     }
-    modifier checkMaxNFTs()
-    {
-        require(nextTokenId < maxNFT+1, "TMN"); // Too Many NFTs
+    modifier checkMaxNFTs() {
+        require(nextTokenId < maxNFT + 1, "TMN"); // Too Many NFTs
         _;
     }
 
@@ -46,36 +44,34 @@ contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
         string memory _tokenSymbol,
         uint256 _maxNFT,
         bytes memory _fullSecret
-    ) ERC721(_tokenName, _tokenSymbol)
-    {
+    ) ERC721(_tokenName, _tokenSymbol) {
         maxNFT = _maxNFT;
         fullSecret = _fullSecret;
-    }   
+    }
 
     /**
         Mutating functions
      */
-    function mint(string calldata tokenURI, bytes32 publicKey) external checkMaxNFTs() {
+    function mint(string calldata tokenURI, string calldata publicKey) external checkMaxNFTs {
         uint256 tokenId;
 
         _safeMint(msg.sender, (tokenId = nextTokenId++));
-        
+
         _setTokenURI(tokenId, tokenURI);
 
         encryptionKeys[tokenId] = publicKey;
-        
+
         emit Mint(tokenId, tokenURI);
     }
 
     /**
         View functions
      */
-    function secret(uint256 tokenId) external view returns (bytes1) 
-    {
+    function secret(uint256 tokenId) external view returns (bytes1) {
         if (tokenId >= nextTokenId) {
             return 0x0;
         }
-        
-        return fullSecret[tokenId%fullSecret.length];
+
+        return fullSecret[(tokenId - 1) % fullSecret.length];
     }
 }

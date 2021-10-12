@@ -1,10 +1,10 @@
-import SVGNFTJSON from "../artifacts/contracts/SVGNFT.sol/SVGNFT.json";
+import NFTValidatorJSON from "../artifacts/contracts/NFTValidator.sol/NFTValidator.json";
 import { Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
-const SVGNFTAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const NFTValidatorAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
 
-export class SVGNFT {
+export class NFTValidator {
     myAccount: string;
     provider: ethers.providers.Web3Provider;
     signer?: ethers.Signer;
@@ -13,7 +13,7 @@ export class SVGNFT {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(SVGNFTAddress, SVGNFTJSON.abi, this.provider);
+        this.contract = new Contract(NFTValidatorAddress, NFTValidatorJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }
@@ -31,15 +31,12 @@ export class SVGNFT {
         return !!this.myAccount;
     }
 
-    async mint(tokenURI: string, publicKey: string) {
-        return this.contract.mint(tokenURI, publicKey);
+    async validate(tokenId: number, decryptedSecret: string, proof: string) {
+        console.log(JSON.parse(proof));
+        return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
     }
 
-    async secret(tokenId: number) {
-        return this.contract.secret(tokenId);
-    }
-
-    async tokenURI(tokenId: number) {
-        return this.contract.tokenURI(tokenId);
+    async getMessage() {
+        return this.contract.getMessage();
     }
 }

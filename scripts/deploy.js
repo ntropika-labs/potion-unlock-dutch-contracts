@@ -1,13 +1,11 @@
 const hre = require("hardhat");
-const { toBuffer } = require("ethereumjs-util");
 
 require("dotenv").config();
 
-const { getPublicKey, encryptSecret, buildMerkleTree } = require("./utils");
+const { getMetamaskPublicKey, encryptSecret, buildMerkleTree } = require("./utils");
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, MESSAGE } = require("./config");
 
 async function deployNFTContract(hre, secret) {
-    // DEPLOY SECRET NFTs AND GET MERKLE TREE LEAFS
     const NFTFactory = await hre.ethers.getContractFactory("SVGNFT");
     let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, Buffer.from(secret));
 
@@ -18,7 +16,7 @@ async function deployNFTContract(hre, secret) {
 }
 
 async function testMinting(NFTContract) {
-    let publicKey = getPublicKey();
+    let publicKey = getMetamaskPublicKey();
 
     for (let i = 1; i <= NUM_NFTS; i++) {
         const svgURI = "https://ipfs.io/TESTCID-" + i;
@@ -53,10 +51,12 @@ async function deployNFTValidator(hre, NFTContract, merkleTree) {
 
 async function main() {
     let secret = encryptSecret(MESSAGE);
-    const merkleTree = buildMerkleTree(secret);
+    const merkleTree = buildMerkleTree(MESSAGE);
 
     let NFTContract = await deployNFTContract(hre, secret);
     await deployNFTValidator(hre, NFTContract, merkleTree);
+
+    await testMinting(NFTContract);
 }
 
 main()

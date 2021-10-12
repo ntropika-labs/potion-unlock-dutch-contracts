@@ -1,7 +1,7 @@
 const { MESSAGE } = require("./config");
+
 const yargs = require("yargs");
-const keccak256 = require("keccak256");
-const { buildMerkleTree, encryptSecret, getSecretLeaves } = require("./utils");
+const { buildMerkleTree, getMerkleLeaves } = require("./utils");
 
 async function main() {
     const argv = await yargs
@@ -14,15 +14,12 @@ async function main() {
         .help()
         .alias("help", "h").argv;
 
-    let secret = encryptSecret(MESSAGE);
-
-    const merkleTree = buildMerkleTree(secret);
+    const merkleTree = buildMerkleTree(MESSAGE);
     const tokenId = argv.tokenId;
 
-    let leaves = getSecretLeaves(secret);
-    const encryptedLeaves = leaves.map(x => keccak256(x));
+    let leaves = getMerkleLeaves(MESSAGE);
 
-    const proofHex = merkleTree.getHexProof(encryptedLeaves[tokenId - 1]);
+    const proofHex = merkleTree.getHexProof(leaves[tokenId - 1]);
 
     const proofSolidity = '["' + proofHex.join('", "') + '"]';
 
