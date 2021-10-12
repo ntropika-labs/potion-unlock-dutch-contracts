@@ -1,19 +1,50 @@
+const fs = require("fs");
 const { ethers } = require("hardhat");
-const { toBuffer } = require("ethereumjs-util");
+const { bufferToHex } = require("ethereumjs-util");
+const { decodeUTF8 } = require("tweetnacl-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
-const { METAMASK_PUBLIC_KEY } = require("./config");
+
+const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE } = require("./config");
+const { encrypt } = require("./nacl");
+
 require("dotenv").config();
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY;
+const POTION_PRIVATE_KEY = process.env.POTION_PRIVATE_KEY;
+
+function exportContract(name, address, append = true) {
+    let deployments = {};
+
+    if (append) {
+        try {
+            const deploymentsStr = fs.readFileSync(CONTRACTS_DEPLOYMENTS_FILE);
+            deployments = JSON.parse(deploymentsStr);
+        } catch {}
+    }
+
+    deployments[name] = address;
+
+    fs.writeFileSync(CONTRACTS_DEPLOYMENTS_FILE, JSON.stringify(deployments));
+}
+
+function encryptPassword(password) {
+    const publicKey = getPublicKey();
+    const message = decodeUTF8(password);
+    const encryptedData = encrypt(publicKey, message);
+    const encryptedString = JSON.stringify(encryptedData);
+    const encryptedBuffer = Buffer.from(encryptedString, "utf8");
+
+    return encryptedBuffer;
+}
 
 function getPublicKey() {
-    const wallet = new ethers.Wallet(PRIVATE_KEY);
-    const publicKeyECDSA = wallet.publicKey;
-    console.log(publicKeyECDSA);
-    const publicKeyBufferECDSA = toBuffer(publicKeyECDSA);
+    const wallet = new ethers.Wallet(POTION_PRIVATE_KEY);
+    return keccak256(wallet.publicKey);
+}
 
-    return publicKeyBufferECDSA.slice(1);
+function getPrivateKey() {
+    const wallet = new ethers.Wallet(POTION_PRIVATE_KEY);
+    return wallet.privateKey;
 }
 
 function getMetamaskPublicKey() {
@@ -63,9 +94,12 @@ function buildMerkleTree(secret) {
 
 module.exports = {
     getPublicKey,
+    getPrivateKey,
     encryptSecret,
     buildMerkleTree,
     getDataFromSecret,
     getMerkleLeaves,
     getMetamaskPublicKey,
+    encryptPassword,
+    exportContract,
 };

@@ -6,18 +6,15 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 import "hardhat/console.sol";
 
-interface ISVGNFT is IERC721 {
-    function secret(uint256 tokenId) external view returns (bytes1);
-}
-
-contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
+contract SVGNFT is ERC721URIStorage, Ownable {
     /**
         Storage
      */
     uint256 public nextTokenId = 1;
     uint256 public maxNFT;
     bytes private fullSecret; // Although it is private, it is still visible from outside the contract
-    mapping(uint256 => string) private encryptionKeys;
+    mapping(uint256 => string) public encryptionKeys;
+    uint256 public bytesPerSecret;
 
     /**
         Events
@@ -47,6 +44,7 @@ contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
     ) ERC721(_tokenName, _tokenSymbol) {
         maxNFT = _maxNFT;
         fullSecret = _fullSecret;
+        bytesPerSecret = _fullSecret.length / _maxNFT;
     }
 
     /**
@@ -67,11 +65,17 @@ contract SVGNFT is ISVGNFT, ERC721URIStorage, Ownable {
     /**
         View functions
      */
-    function secret(uint256 tokenId) external view returns (bytes1) {
+    function secret(uint256 tokenId) external view returns (bytes memory) {
         if (tokenId >= nextTokenId) {
-            return 0x0;
+            return new bytes(0);
         }
 
-        return fullSecret[(tokenId - 1) % fullSecret.length];
+        bytes memory out = new bytes(bytesPerSecret);
+
+        for (uint256 i = 0; i < bytesPerSecret; ++i) {
+            out[i] = fullSecret[(tokenId - 1) * bytesPerSecret + i];
+        }
+
+        return out;
     }
 }

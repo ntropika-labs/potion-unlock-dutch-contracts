@@ -4,8 +4,7 @@ pragma solidity 0.8.9;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/utils/Context.sol";
-
-import { ISVGNFT } from "./SVGNFT.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract NFTValidator is Context {
     /**
@@ -13,7 +12,7 @@ contract NFTValidator is Context {
      */
     bytes32 public merkleRoot;
     uint256 public maxSecretNFTs;
-    ISVGNFT public NFTContract;
+    IERC721 public NFTContract;
     mapping(uint256 => bool) public isValidated;
 
     bytes public finalMessage;
@@ -22,15 +21,6 @@ contract NFTValidator is Context {
         Events
      */
     event NFTValidated(address owner, uint256 tokenId);
-
-    /**
-        Modifiers
-     */
-    modifier checkTokenId(uint256 tokenId) {
-        require(tokenId <= maxSecretNFTs, "ITID"); // Invalid Token ID
-        require(!isValidated[tokenId], "TAV"); // Token Already Validated
-        _;
-    }
 
     /**
         Constructor
@@ -42,7 +32,7 @@ contract NFTValidator is Context {
     ) {
         merkleRoot = _merkleRoot;
         maxSecretNFTs = _maxSecretNFTs;
-        NFTContract = ISVGNFT(_NFTContract);
+        NFTContract = IERC721(_NFTContract);
 
         finalMessage = new bytes(_maxSecretNFTs); // NOTE: This can be expensive when we go for the MVP
     }
@@ -54,8 +44,10 @@ contract NFTValidator is Context {
         uint256 tokenId,
         bytes1 decryptedSecret,
         bytes32[] memory proof
-    ) external checkTokenId(tokenId) {
-        console.logBytes1(decryptedSecret);
+    ) external {
+        require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid T Owner
+        require(tokenId <= maxSecretNFTs, "ITID"); // Invalid Token ID
+        require(!isValidated[tokenId], "TAV"); // Token Already Validated
 
         bytes32 leaf = keccak256(abi.encodePacked(tokenId, decryptedSecret));
         require(verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation

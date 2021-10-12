@@ -2,15 +2,17 @@ const hre = require("hardhat");
 
 require("dotenv").config();
 
-const { getMetamaskPublicKey, encryptSecret, buildMerkleTree } = require("./utils");
-const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, MESSAGE } = require("./config");
+const { getMetamaskPublicKey, encryptPassword, exportContract } = require("./utils");
+const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD } = require("./config");
 
 async function deployNFTContract(hre, secret) {
     const NFTFactory = await hre.ethers.getContractFactory("SVGNFT");
-    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, Buffer.from(secret));
+    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, secret);
 
     await NFTContract.deployed();
     console.log("Potion NFT Contract deployed to:", NFTContract.address);
+
+    exportContract("NFTContract", NFTContract.address);
 
     return NFTContract;
 }
@@ -36,26 +38,11 @@ async function testMinting(NFTContract) {
     console.log("--------------------------------------");
 }
 
-async function deployNFTValidator(hre, NFTContract, merkleTree) {
-    const merkleRoot = merkleTree.getHexRoot();
-
-    const NFTValidatorFactory = await hre.ethers.getContractFactory("NFTValidator");
-    let NFTValidator = await NFTValidatorFactory.deploy(NFTContract.address, merkleRoot, NUM_NFTS);
-
-    await NFTValidator.deployed();
-    console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
-    console.log(`Merkle Root: ${merkleRoot}`);
-
-    return NFTValidator;
-}
-
 async function main() {
-    let secret = encryptSecret(MESSAGE);
-    const merkleTree = buildMerkleTree(MESSAGE);
-
-    let NFTContract = await deployNFTContract(hre, secret);
-    await deployNFTValidator(hre, NFTContract, merkleTree);
-
+    const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
+    console.log(encryptedPassword);
+    const NFTContract = await deployNFTContract(hre, encryptedPassword);
+    console.log(encryptedPassword.length);
     await testMinting(NFTContract);
 }
 

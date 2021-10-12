@@ -2,7 +2,7 @@ import SVGNFTJSON from "../artifacts/contracts/SVGNFT.sol/SVGNFT.json";
 import { Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
-const SVGNFTAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
+const Deployments = require("../deployments.json");
 
 export class SVGNFT {
     myAccount: string;
@@ -13,7 +13,7 @@ export class SVGNFT {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(SVGNFTAddress, SVGNFTJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.NFTContract, SVGNFTJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }
@@ -37,6 +37,14 @@ export class SVGNFT {
 
     async secret(tokenId: number) {
         return this.contract.secret(tokenId);
+    }
+
+    async nextTokenId() {
+        return this.contract.nextTokenId();
+    }
+
+    async encryptionKeys(tokenId: number) {
+        return this.contract.encryptionKeys(tokenId);
     }
 
     async tokenURI(tokenId: number) {
