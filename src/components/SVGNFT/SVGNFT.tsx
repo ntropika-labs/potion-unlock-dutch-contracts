@@ -22,8 +22,8 @@ const SVGNFT: React.FC<any> = props => {
 
     const [publicKey, setPublicKey] = useState<string>();
     const handleMinting = useCallback(() => {
-        onMinting(publicKey);
-    }, [publicKey, onMinting]);
+        onMinting();
+    }, [onMinting]);
 
     const handlePublicKeyChange = useCallback(
         event => {
@@ -44,22 +44,13 @@ const SVGNFT: React.FC<any> = props => {
                 <h1>SVGNFT</h1>
                 <div className="row">
                     <div className="col-sm-12">
-                        <div className="form-group">
-                            <label htmlFor="publicKey">Public Key</label>
-                            <input
-                                type="string"
-                                className="form-control"
-                                id="publicKey"
-                                onChange={handlePublicKeyChange}
-                            />
-                        </div>
                         <button type="button" className="btn btn-primary" onClick={handleMinting}>
                             Mint
                         </button>
                     </div>
                     <div className="row">
                         <div className="col-sm-12">
-                            <h2>Public Keys</h2>
+                            <h2>Collected Public Keys</h2>
                             <pre style={{ whiteSpace: "pre-wrap" }}>{publicKeys}</pre>
                         </div>
                     </div>

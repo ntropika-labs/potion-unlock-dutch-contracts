@@ -15,6 +15,7 @@ const useMetamaskEncrypt = (props: any) => {
             });
 
             setPublicKey(key);
+            return key;
         }
     }, [account]);
 
