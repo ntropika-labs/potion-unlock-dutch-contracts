@@ -75,18 +75,21 @@ const SVGNFT: React.FC<any> = props => {
                             <pre style={{ whiteSpace: "pre-wrap" }}>{publicKeys}</pre>
                         </div>
                     </div>
-                    <div className="col-sm-12">
-                        <h2>Minted NFTs</h2>
-                        <p>TokenURI: {tokenURI}</p>
-                        <p>Secret: {secret}</p>
-                        <div className="form-group">
-                            <label htmlFor="tokenId">Token ID</label>
-                            <input type="string" className="form-control" id="tokenId" onChange={handleTokenIdChange} />
-                        </div>
-                        <button type="button" className="btn btn-primary" onClick={handleGetData}>
-                            Get NFT Data
-                        </button>
+                </div>
+                <div>
+                    <h2>Minted NFTs</h2>
+                    <p>Artwork</p>
+                    <br />
+                    <img src={tokenURI} alt="artwork" width="400" />
+                    <p>TokenURI: {tokenURI}</p>
+                    <p>Secret: {secret}</p>
+                    <div className="form-group">
+                        <label htmlFor="tokenId">Token ID</label>
+                        <input type="string" className="form-control" id="tokenId" onChange={handleTokenIdChange} />
                     </div>
+                    <button type="button" className="btn btn-primary" onClick={handleGetData}>
+                        Get NFT Data
+                    </button>
                 </div>
             </div>
         </div>

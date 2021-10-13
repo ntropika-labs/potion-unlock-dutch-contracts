@@ -48,6 +48,8 @@ export class SVGNFT {
     }
 
     async tokenURI(tokenId: number) {
-        return this.contract.tokenURI(tokenId);
+        const tokenURI = await this.contract.tokenURI(tokenId);
+        console.log(tokenURI);
+        return tokenURI;
     }
 }

@@ -3,11 +3,11 @@ const hre = require("hardhat");
 require("dotenv").config();
 
 const { getMetamaskPublicKey, encryptPassword, exportContract } = require("./utils");
-const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD } = require("./config");
+const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 
 async function deployNFTContract(hre, secret) {
     const NFTFactory = await hre.ethers.getContractFactory("SVGNFT");
-    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, NUM_NFTS, secret);
+    let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX, NUM_NFTS, secret);
 
     await NFTContract.deployed();
     console.log("Potion NFT Contract deployed to:", NFTContract.address);
@@ -21,9 +21,7 @@ async function testMinting(NFTContract) {
     let publicKey = getMetamaskPublicKey();
 
     for (let i = 1; i <= NUM_NFTS; i++) {
-        const svgURI = "https://ipfs.io/TESTCID-" + i;
-
-        const tx = await NFTContract.mint(svgURI, publicKey);
+        const tx = await NFTContract.mint(publicKey);
         await tx.wait();
     }
 

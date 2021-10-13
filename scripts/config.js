@@ -5,6 +5,8 @@ const NUM_NFTS = 10;
 const SOURCE_CODE_PASSWORD = "Qi@uMw.H_h9DzvRwnTn4";
 const METAMASK_PUBLIC_KEY = "mtrHp1WHZM9rxF2Ilot9Hie5XmQcKCf7oDQ1DpGkTSI=";
 const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
+const IPFS_PREFIX = "http://ipfs.io/ipfs/QmR6316ZX1uigpkbWryeUi8y7vsCLfMNNgPCfrrWKM51dp/";
+const IPFS_SUFFIX = ".svg";
 
 module.exports = {
     NFT_NAME,
@@ -13,4 +15,6 @@ module.exports = {
     SOURCE_CODE_PASSWORD,
     METAMASK_PUBLIC_KEY,
     CONTRACTS_DEPLOYMENTS_FILE,
+    IPFS_PREFIX,
+    IPFS_SUFFIX,
 };
