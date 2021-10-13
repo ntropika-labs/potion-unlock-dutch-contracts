@@ -1,16 +1,12 @@
 const fs = require("fs");
-const { ethers } = require("hardhat");
+const { decodeUTF8, encodeUTF8, decodeBase64, encodeBase64 } = require("tweetnacl-util");
 const { bufferToHex } = require("ethereumjs-util");
-const { decodeUTF8 } = require("tweetnacl-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 
-const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE } = require("./config");
-const { encrypt } = require("./nacl");
-
-require("dotenv").config();
-
-const POTION_PRIVATE_KEY = process.env.POTION_PRIVATE_KEY;
+const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, POTION_SECRET } = require("./config");
+const { encrypt, decrypt, getPublicKey, getPrivateKey } = require("./nacl");
+const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
 
 function exportContract(name, address, append = true) {
     let deployments = {};
@@ -28,27 +24,60 @@ function exportContract(name, address, append = true) {
 }
 
 function encryptPassword(password) {
-    const publicKey = getPublicKey();
-    const message = decodeUTF8(password);
-    const encryptedData = encrypt(publicKey, message);
-    const encryptedString = JSON.stringify(encryptedData);
-    const encryptedBuffer = Buffer.from(encryptedString, "utf8");
-
-    return encryptedBuffer;
+    const encryptedMessage = signPotionMessage(password);
+    return bufferToHex(decodeBase64(encryptedMessage));
 }
 
-function getPublicKey() {
-    const wallet = new ethers.Wallet(POTION_PRIVATE_KEY);
-    return keccak256(wallet.publicKey);
+function decryptPassword(encryptedPassword, privateKey) {
+    //console.log(encryptedPassword);
+    //console.log(privateKey);
+
+    const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
+    const key = decodeBase64(privateKey);
+
+    const encryptedMessage = encodeBase64(encryptedData);
+
+    const decryptedData = decrypt(encryptedMessage, key);
+    return encodeUTF8(decryptedData);
 }
 
-function getPrivateKey() {
-    const wallet = new ethers.Wallet(POTION_PRIVATE_KEY);
-    return wallet.privateKey;
+/**
+ * Potion public/private key utils
+ */
+function signPotionMessage(message) {
+    const potionPublicKey = getPotionPublicKey();
+    const messageUintArray = decodeUTF8(message);
+    const encryptedData = encrypt(potionPublicKey, messageUintArray);
+    return encryptedData;
 }
 
+function decryptPotionMessage(encryptedMessage) {
+    const potionPrivateKey = getPotionPrivateKey();
+    const decryptedData = decrypt(encryptedMessage, potionPrivateKey);
+    return encodeUTF8(decryptedData);
+}
+
+function getPotionPrivateKey() {
+    return getPrivateKey(POTION_SECRET);
+}
+
+function getPotionPublicKey() {
+    return getPublicKey(POTION_SECRET);
+}
+
+/**
+ * Metamask Encryption
+ */
 function getMetamaskPublicKey() {
     return METAMASK_PUBLIC_KEY;
+}
+
+function signMetamaskMessage(publicKey, data) {
+    const message = bufferToHex(data);
+    const encryptedData = encryptMetamask({ publicKey, data: message, version: "x25519-xsalsa20-poly1305" });
+    const encryptedString = JSON.stringify(encryptedData);
+    const encryptedBuffer = Buffer.from(encryptedString, "utf8");
+    return bufferToHex(encryptedBuffer);
 }
 
 function encryptSecret(secret) {
@@ -93,13 +122,17 @@ function buildMerkleTree(secret) {
 }
 
 module.exports = {
-    getPublicKey,
-    getPrivateKey,
+    signPotionMessage,
+    decryptPotionMessage,
+    getPotionPublicKey,
+    getPotionPrivateKey,
+    signMetamaskMessage,
     encryptSecret,
     buildMerkleTree,
     getDataFromSecret,
     getMerkleLeaves,
     getMetamaskPublicKey,
     encryptPassword,
+    decryptPassword,
     exportContract,
 };

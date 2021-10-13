@@ -4,6 +4,7 @@ import { withGlobalState } from "react-globally";
 import useSVGNFTMinting from "../../hooks/useSVGNFTMinting";
 import useSVGNFTData from "../../hooks/useSVGNFTData";
 import useSVGNFTPublicKeys from "../../hooks/useSVGNFTPublicKeys";
+import useSVGNFTFullSecret from "../../hooks/useSVGNFTFullSecret";
 
 const SVGNFT: React.FC<any> = props => {
     const [tokenId, setTokenId] = useState<number>();
@@ -42,11 +43,12 @@ const SVGNFT: React.FC<any> = props => {
         onGetData(tokenId);
     }, [onGetData, tokenId]);
 
+    const { fullSecret, onGetFullSecret } = useSVGNFTFullSecret();
+
     return (
         <div className="main">
             <div className="container">
                 <h1>SVGNFT</h1>
-                <br />
                 <div className="row">
                     <div className="col-sm-12">
                         <div className="form-group">
@@ -79,8 +81,7 @@ const SVGNFT: React.FC<any> = props => {
                 <div>
                     <h2>Minted NFTs</h2>
                     <p>Artwork</p>
-                    <br />
-                    <img src={tokenURI} alt="artwork" width="400" />
+                    <img src={tokenURI} alt="artwork" width="200" />
                     <p>TokenURI: {tokenURI}</p>
                     <p>Secret: {secret}</p>
                     <div className="form-group">
@@ -88,6 +89,13 @@ const SVGNFT: React.FC<any> = props => {
                         <input type="string" className="form-control" id="tokenId" onChange={handleTokenIdChange} />
                     </div>
                     <button type="button" className="btn btn-primary" onClick={handleGetData}>
+                        Get NFT Data
+                    </button>
+                </div>
+                <div>
+                    <h2>NFT Original Secret</h2>
+                    <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{fullSecret}</pre>
+                    <button type="button" className="btn btn-primary" onClick={onGetFullSecret}>
                         Get NFT Data
                     </button>
                 </div>

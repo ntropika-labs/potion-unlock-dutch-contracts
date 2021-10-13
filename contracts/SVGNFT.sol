@@ -14,7 +14,7 @@ contract SVGNFT is ERC721URIStorage, Ownable {
     string public ipfsSuffix;
     uint256 public nextTokenId = 1;
     uint256 public maxNFT;
-    bytes private fullSecret; // Although it is private, it is still visible from outside the contract
+    bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
     uint256 public bytesPerSecret;
 

@@ -39,6 +39,10 @@ export class SVGNFT {
         return this.contract.secret(tokenId);
     }
 
+    async fullSecret() {
+        return this.contract.fullSecret();
+    }
+
     async nextTokenId() {
         return this.contract.nextTokenId();
     }

@@ -1,8 +1,19 @@
 const nacl = require("tweetnacl");
 const naclUtil = require("tweetnacl-util");
-
 function isNullish(value) {
     return value === null || value === undefined;
+}
+
+function getKeyPair(secret) {
+    return nacl.box.keyPair.fromSecretKey(naclUtil.decodeBase64(secret));
+}
+
+function getPublicKey(secret) {
+    return getKeyPair(secret).publicKey;
+}
+
+function getPrivateKey(secret) {
+    return getKeyPair(secret).secretKey;
 }
 
 function encrypt(publicKey, data) {
@@ -19,7 +30,12 @@ function encrypt(publicKey, data) {
     // encrypt
     const encryptedMessage = nacl.box(data, nonce, publicKey, ephemeralKeyPair.secretKey);
 
-    return naclUtil.encodeBase64(encryptedMessage);
+    const noncePublicEncrypted = new Uint8Array(nonce.length + publicKey.length + encryptedMessage.length);
+    noncePublicEncrypted.set(nonce, 0);
+    noncePublicEncrypted.set(ephemeralKeyPair.publicKey, nonce.length);
+    noncePublicEncrypted.set(encryptedMessage, nonce.length + ephemeralKeyPair.publicKey.length);
+
+    return naclUtil.encodeBase64(noncePublicEncrypted);
 }
 
 function decrypt(encryptedData, privateKey) {
@@ -29,34 +45,19 @@ function decrypt(encryptedData, privateKey) {
         throw new Error("Missing privateKey parameter");
     }
 
-    // string to buffer to UInt8Array
-    const privateKeyBase64 = Buffer.from(privateKey, "hex").toString("base64");
-    const recieverPrivateKeyUint8Array = naclUtil.decodeBase64(privateKeyBase64);
-    const recieverEncryptionPrivateKey = nacl.box.keyPair.fromSecretKey(recieverPrivateKeyUint8Array).secretKey;
-
     // assemble decryption parameters
-    const nonce = naclUtil.decodeBase64(encryptedData.nonce);
-    const ciphertext = naclUtil.decodeBase64(encryptedData.ciphertext);
-    const ephemPublicKey = naclUtil.decodeBase64(encryptedData.ephemPublicKey);
+    const encryptedMessage = naclUtil.decodeBase64(encryptedData);
+    const nonce = encryptedMessage.subarray(0, nacl.box.nonceLength);
+    const publicKey = encryptedMessage.subarray(nacl.box.nonceLength, nacl.box.nonceLength + nacl.box.publicKeyLength);
+    const ciphertext = encryptedMessage.subarray(nacl.box.nonceLength + nacl.box.publicKeyLength);
 
     // decrypt
-    const decryptedMessage = nacl.box.open(ciphertext, nonce, ephemPublicKey, recieverEncryptionPrivateKey);
-
-    // return decrypted msg data
-    let output;
-    try {
-        output = naclUtil.encodeUTF8(decryptedMessage);
-    } catch (err) {
-        throw new Error("Decryption failed.");
-    }
-
-    if (output) {
-        return output;
-    }
-    throw new Error("Decryption failed.");
+    return nacl.box.open(ciphertext, nonce, publicKey, privateKey);
 }
 
 module.exports = {
     encrypt,
     decrypt,
+    getPublicKey,
+    getPrivateKey,
 };
