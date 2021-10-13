@@ -10,6 +10,8 @@ contract SVGNFT is ERC721URIStorage, Ownable {
     /**
         Storage
      */
+    string public ipfsPrefix;
+    string public ipfsSuffix;
     uint256 public nextTokenId = 1;
     uint256 public maxNFT;
     bytes private fullSecret; // Although it is private, it is still visible from outside the contract
@@ -39,9 +41,13 @@ contract SVGNFT is ERC721URIStorage, Ownable {
     constructor(
         string memory _tokenName,
         string memory _tokenSymbol,
+        string memory _ipfsPrefix,
+        string memory _ipfsSuffix,
         uint256 _maxNFT,
         bytes memory _fullSecret
     ) ERC721(_tokenName, _tokenSymbol) {
+        ipfsPrefix = _ipfsPrefix;
+        ipfsSuffix = _ipfsSuffix;
         maxNFT = _maxNFT;
         fullSecret = _fullSecret;
         bytesPerSecret = _fullSecret.length / _maxNFT;
@@ -50,10 +56,13 @@ contract SVGNFT is ERC721URIStorage, Ownable {
     /**
         Mutating functions
      */
-    function mint(string calldata tokenURI, string calldata publicKey) external checkMaxNFTs {
+    function mint(string calldata publicKey) external checkMaxNFTs {
         uint256 tokenId;
 
         _safeMint(msg.sender, (tokenId = nextTokenId++));
+
+        string memory tokenIdStr = uint2str(tokenId);
+        string memory tokenURI = string(abi.encodePacked(ipfsPrefix, tokenIdStr, ipfsSuffix));
 
         _setTokenURI(tokenId, tokenURI);
 
@@ -77,5 +86,26 @@ contract SVGNFT is ERC721URIStorage, Ownable {
         }
 
         return out;
+    }
+
+    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
+        if (_i == 0) {
+            return "0";
+        }
+        uint256 j = _i;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len - 1;
+        while (_i != 0) {
+            unchecked {
+                bstr[k--] = bytes1(uint8(48 + (_i % 10)));
+            }
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }
