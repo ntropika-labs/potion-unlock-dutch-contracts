@@ -7,10 +7,10 @@ const useSVGNFTMinting = (props: any) => {
     const svgnft = useSVGNFTContract();
 
     const handleMinting = useCallback(
-        async (tokenURI: string, publicKey: string) => {
-            handleTransaction(svgnft.mint(tokenURI, publicKey));
+        async (publicKey: string) => {
+            handleTransaction(svgnft.mint(publicKey));
         },
-        [svgnft, handleTransaction]
+        [svgnft, handleTransaction],
     );
     return { onMinting: handleMinting };
 };

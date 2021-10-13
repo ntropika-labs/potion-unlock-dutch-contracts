@@ -6,7 +6,7 @@ const { getMetamaskPublicKey, encryptPassword, exportContract } = require("./uti
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 
 async function deployNFTContract(hre, secret) {
-    console.log(secret);
+    console.log("Secret: " + secret);
     const NFTFactory = await hre.ethers.getContractFactory("SVGNFT");
     let NFTContract = await NFTFactory.deploy(NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX, NUM_NFTS, secret);
 
@@ -39,9 +39,8 @@ async function testMinting(NFTContract) {
 
 async function main() {
     const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
-    console.log(encryptedPassword);
     const NFTContract = await deployNFTContract(hre, encryptedPassword);
-    await testMinting(NFTContract);
+    //await testMinting(NFTContract);
 }
 
 main()

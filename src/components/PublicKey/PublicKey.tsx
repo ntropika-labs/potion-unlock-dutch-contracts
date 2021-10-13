@@ -11,6 +11,7 @@ const PublicKey: React.FC<any> = props => {
                 <div className="row">
                     <div className="col-sm-12">
                         Key: {publicKey}
+                        <br />
                         <button type="button" className="btn btn-primary" onClick={onGetPublicKey}>
                             Get Key
                         </button>

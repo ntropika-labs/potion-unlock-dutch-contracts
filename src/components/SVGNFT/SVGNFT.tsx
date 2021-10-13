@@ -20,18 +20,11 @@ const SVGNFT: React.FC<any> = props => {
         [setTokenId],
     );
 
-    const [inTokenURI, setInTokenURI] = useState<string>();
     const [publicKey, setPublicKey] = useState<string>();
     const handleMinting = useCallback(() => {
-        onMinting(inTokenURI, publicKey);
-    }, [inTokenURI, publicKey, onMinting]);
+        onMinting(publicKey);
+    }, [publicKey, onMinting]);
 
-    const handleTokenURIChange = useCallback(
-        event => {
-            setInTokenURI(event.target.value);
-        },
-        [setInTokenURI],
-    );
     const handlePublicKeyChange = useCallback(
         event => {
             setPublicKey(event.target.value);
@@ -52,13 +45,6 @@ const SVGNFT: React.FC<any> = props => {
                 <div className="row">
                     <div className="col-sm-12">
                         <div className="form-group">
-                            <label htmlFor="tokenURI">Token URI</label>
-                            <input
-                                type="string"
-                                className="form-control"
-                                id="tokenURI"
-                                onChange={handleTokenURIChange}
-                            />
                             <label htmlFor="publicKey">Public Key</label>
                             <input
                                 type="string"
@@ -96,7 +82,7 @@ const SVGNFT: React.FC<any> = props => {
                     <h2>NFT Original Secret</h2>
                     <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{fullSecret}</pre>
                     <button type="button" className="btn btn-primary" onClick={onGetFullSecret}>
-                        Get NFT Data
+                        Get NFT Secret
                     </button>
                 </div>
             </div>

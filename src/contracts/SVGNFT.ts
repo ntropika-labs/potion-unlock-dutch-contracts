@@ -31,8 +31,8 @@ export class SVGNFT {
         return !!this.myAccount;
     }
 
-    async mint(tokenURI: string, publicKey: string) {
-        return this.contract.mint(tokenURI, publicKey);
+    async mint(publicKey: string) {
+        return this.contract.mint(publicKey);
     }
 
     async secret(tokenId: number) {

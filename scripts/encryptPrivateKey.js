@@ -18,7 +18,6 @@ async function main() {
 
     const publicKeysJSON = fs.readFileSync(argv.keysFile);
     const publicKeys = JSON.parse(publicKeysJSON);
-    console.log(privateKey);
 
     let secrets = [];
     const subkeyLength = privateKey.length / publicKeys.length;
