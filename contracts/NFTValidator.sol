@@ -14,7 +14,7 @@ contract NFTValidator is Context {
     uint256 public maxSecretNFTs;
     IERC721 public NFTContract;
     mapping(uint256 => bool) public isValidated;
-
+    uint256 public partialSecretSize;
     bytes public finalMessage;
 
     /**
@@ -28,13 +28,15 @@ contract NFTValidator is Context {
     constructor(
         address _NFTContract,
         bytes32 _merkleRoot,
-        uint256 _maxSecretNFTs
+        uint256 _maxSecretNFTs,
+        uint256 _partialSecretSize
     ) {
         merkleRoot = _merkleRoot;
         maxSecretNFTs = _maxSecretNFTs;
         NFTContract = IERC721(_NFTContract);
+        partialSecretSize = _partialSecretSize;
 
-        finalMessage = new bytes(_maxSecretNFTs); // NOTE: This can be expensive when we go for the MVP
+        finalMessage = new bytes(_partialSecretSize * _maxSecretNFTs);
     }
 
     /**
@@ -42,19 +44,31 @@ contract NFTValidator is Context {
      */
     function validate(
         uint256 tokenId,
-        bytes1 decryptedSecret,
+        bytes memory decryptedSecret,
         bytes32[] memory proof
     ) external {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid T Owner
         require(tokenId <= maxSecretNFTs, "ITID"); // Invalid Token ID
         require(!isValidated[tokenId], "TAV"); // Token Already Validated
 
-        bytes32 leaf = keccak256(abi.encodePacked(tokenId, decryptedSecret));
+        bytes memory data = abi.encodePacked(tokenId, decryptedSecret);
+        bytes32 leaf = keccak256(data);
+        console.log("Data");
+        console.logBytes(data);
+        console.log("Leaf");
+        console.logBytes32(leaf);
+
         require(verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation
 
-        finalMessage[tokenId - 1] = decryptedSecret;
+        copyDecryptedSecret(tokenId, decryptedSecret);
 
         emit NFTValidated(_msgSender(), tokenId);
+    }
+
+    function copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
+        for (uint256 i = 0; i < decryptedSecret.length; ++i) {
+            finalMessage[partialSecretSize * (tokenId - 1) + i] = decryptedSecret[i];
+        }
     }
 
     /**
@@ -91,9 +105,5 @@ contract NFTValidator is Context {
         console.logBytes32(computedHash);
         console.logBytes32(root);
         return computedHash == root;
-    }
-
-    function getMessage() external view returns (string memory) {
-        return string(finalMessage);
     }
 }

@@ -1,7 +1,7 @@
-const { MESSAGE } = require("./config");
+const { NUM_NFTS } = require("./config");
 
 const yargs = require("yargs");
-const { buildMerkleTree, getMerkleLeaves } = require("./utils");
+const { buildMerkleTree, getMerkleLeaves, getPotionPrivateKey } = require("./utils");
 
 async function main() {
     const argv = await yargs
@@ -14,16 +14,18 @@ async function main() {
         .help()
         .alias("help", "h").argv;
 
-    const merkleTree = buildMerkleTree(MESSAGE);
+    const potionPrivateKey = getPotionPrivateKey();
+    const merkleTree = buildMerkleTree(potionPrivateKey, NUM_NFTS);
+
     const tokenId = argv.tokenId;
 
-    let leaves = getMerkleLeaves(MESSAGE);
+    const leaves = getMerkleLeaves(potionPrivateKey, NUM_NFTS);
 
     const proofHex = merkleTree.getHexProof(leaves[tokenId - 1]);
 
     const proofSolidity = '["' + proofHex.join('", "') + '"]';
 
-    console.log(`Decrypted Secret: 0x${Number(MESSAGE.charCodeAt(tokenId - 1)).toString(16)}`);
+    console.log(merkleTree.getHexRoot());
     console.log(`Proof: ${proofSolidity}`);
 }
 

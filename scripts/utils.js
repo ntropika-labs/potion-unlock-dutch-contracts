@@ -89,10 +89,9 @@ function encryptSecret(secret) {
 }
 
 function getDataFromSecret(secret, tokenId, encrypted = true) {
-    let data =
-        "0x00000000000000000000000000000000000000000000000000000000000000" +
-        Number(tokenId).toString(16) +
-        Number(secret.charCodeAt(tokenId - 1)).toString(16);
+    const tokenIdData = Buffer.from(String.fromCharCode(tokenId));
+    const padding = Buffer.from("00000000000000000000000000000000000000000000000000000000000000", "hex");
+    const data = Buffer.concat([padding, tokenIdData, secret]);
 
     if (encrypted) {
         return keccak256(data);
@@ -101,18 +100,22 @@ function getDataFromSecret(secret, tokenId, encrypted = true) {
     }
 }
 
-function getMerkleLeaves(secret, encrypted = true) {
+function getMerkleLeaves(secret, numNFTs, encrypted = true) {
     let leaves = [];
 
-    for (let i = 1; i <= secret.length; ++i) {
-        leaves.push(getDataFromSecret(secret, i, encrypted));
+    const partialSecretLength = secret.length / numNFTs;
+
+    for (let i = 0; i < numNFTs; ++i) {
+        const partialSecret = secret.subarray(i * partialSecretLength, (i + 1) * partialSecretLength);
+        const tokenID = i + 1;
+        leaves.push(getDataFromSecret(partialSecret, tokenID, encrypted));
     }
 
     return leaves;
 }
 
-function buildMerkleTree(secret) {
-    let leaves = getMerkleLeaves(secret);
+function buildMerkleTree(secret, numNFTs) {
+    let leaves = getMerkleLeaves(secret, numNFTs);
 
     const merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
     return merkleTree;

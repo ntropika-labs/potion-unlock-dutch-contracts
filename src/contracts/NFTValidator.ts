@@ -37,6 +37,6 @@ export class NFTValidator {
     }
 
     async getMessage() {
-        return this.contract.getMessage();
+        return this.contract.finalMessage();
     }
 }

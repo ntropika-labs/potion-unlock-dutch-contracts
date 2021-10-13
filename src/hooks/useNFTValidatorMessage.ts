@@ -7,7 +7,9 @@ const useNFTValidatorMessage = () => {
     const nftValidator = useNFTValidatorContract();
 
     const fetchMessage = useCallback(async () => {
-        setMessage(await nftValidator.getMessage());
+        try {
+            setMessage(await nftValidator.getMessage());
+        } catch {}
     }, [nftValidator, setMessage]);
 
     useEffect(() => {

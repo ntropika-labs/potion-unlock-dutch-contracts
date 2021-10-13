@@ -16,7 +16,7 @@ const Main: React.FC<any> = props => {
             {account && <PublicKey />}
             {account && <Decrypt />}
             {account && <SVGNFT />}
-            {/* {account && <NFTValidator />} */}
+            {account && <NFTValidator />}
         </div>
     );
 };
