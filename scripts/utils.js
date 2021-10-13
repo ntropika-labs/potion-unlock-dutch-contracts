@@ -29,11 +29,8 @@ function encryptPassword(password) {
 }
 
 function decryptPassword(encryptedPassword, privateKey) {
-    //console.log(encryptedPassword);
-    //console.log(privateKey);
-
     const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
-    const key = decodeBase64(privateKey);
+    const key = Buffer.from(privateKey.slice(2), "hex");
 
     const encryptedMessage = encodeBase64(encryptedData);
 
