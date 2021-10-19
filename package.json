@@ -31,6 +31,7 @@
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.4.1",
         "hardhat": "^2.4.3",
+        "js-crypto-rsa": "^1.0.2",
         "prettier": "^2.4.1",
         "prettier-plugin-solidity": "^1.0.0-beta.18",
         "react": "^17.0.2",
