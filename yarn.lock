@@ -15458,6 +15458,11 @@ solidity-comments-extractor@^0.0.7:
   resolved "https://registry.yarnpkg.com/solidity-comments-extractor/-/solidity-comments-extractor-0.0.7.tgz#99d8f1361438f84019795d928b931f4e5c39ca19"
   integrity sha512-wciNMLg/Irp8OKGrh3S2tfvZiZ0NEyILfcRCXCD4mp7SgK/i9gzLfhY2hY7VMCQJ3kH9UB9BzNdibIVMchzyYw==
 
+solidity-linked-list@^5.0.0:
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/solidity-linked-list/-/solidity-linked-list-5.0.0.tgz#cf3f5aa60b9f266f286fb63a67fac796660b3716"
+  integrity sha512-TqEYdQQ4LF36Ht6AZO0tL3lT7oFa9H3x+T5mKvtprlEdIyNREMhnz7tVtI5IaZ5p6mHjWo2CzR+sAB5NxJrIFA==
+
 sort-keys@^1.0.0:
   version "1.1.2"
   resolved "https://registry.yarnpkg.com/sort-keys/-/sort-keys-1.1.2.tgz#441b6d4d346798f1b4e49e8920adfba0e543f9ad"

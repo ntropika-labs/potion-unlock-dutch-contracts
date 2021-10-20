@@ -6,6 +6,8 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 import "hardhat/console.sol";
 
+interface ISVGNFT {}
+
 contract SVGNFT is ERC721URIStorage, Ownable {
     /**
         Storage
