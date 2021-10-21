@@ -80,16 +80,16 @@ contract NFTAuction is Context, IStructureInterface {
         // Whitelisting
         uint256 numAssignedTokens = 0;
         while (node != 0) {
-            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = decodeBid(node);
+            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
 
             if (numAssignedTokens + numTokens > currentBatch.numTokensAuctioned) {
                 uint256 assignedTokens = currentBatch.numTokensAuctioned - numAssignedTokens;
 
-                whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
-                refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
+                _whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
+                _refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
                 break;
             } else {
-                whitelistBidder(bidderId, numTokens, currentBatch.startTokenId + numAssignedTokens);
+                _whitelistBidder(bidderId, numTokens, currentBatch.startTokenId + numAssignedTokens);
                 numAssignedTokens += numTokens;
             }
             (, node) = bidders.getPreviousNode(node);
@@ -98,8 +98,8 @@ contract NFTAuction is Context, IStructureInterface {
         // Refunds
         while (node != 0) {
             (, node) = bidders.getPreviousNode(node);
-            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = decodeBid(node);
-            refundBidder(bidderId, pricePerToken * numTokens);
+            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
+            _refundBidder(bidderId, pricePerToken * numTokens);
         }
 
         delete bidders;
@@ -113,41 +113,19 @@ contract NFTAuction is Context, IStructureInterface {
 
         currentBatch.highestBid = pricePerToken;
 
-        // Get previous bid info, in case the bidder already bid
-        uint256 prevPaidAmount;
-        (uint64 bidderId, uint64 prevNumTokens, uint128 prevPricePerToken) = getBidInfo(_msgSender());
-        if (prevPricePerToken != 0) {
-            prevPaidAmount = prevPricePerToken * prevNumTokens;
-            bidders.remove(biddersAddressBid[_msgSender()]);
-        }
+        // Cancel previous bid. If there was no previous bid, the _cancelBid
+        // will return a new bidderId
+        uint64 bidderId = _cancelBid();
 
         // Add the new bid
-        uint256 node = encodeBid(bidderId, numTokens, pricePerToken);
-        require(!bidders.nodeExists(node), "PANIC!! This should not happen!");
-
-        uint256 position = bidders.getSortedSpot(address(this), getValue(node));
-        bidders.insertBefore(position, node);
-        biddersAddressBid[_msgSender()] = node;
+        _addBid(bidderId, numTokens, pricePerToken);
 
         // Charge or refund the bidder
-        uint256 amountToPay = pricePerToken * numTokens;
-        if (amountToPay > prevPaidAmount) {
-            biddingToken.safeTransferFrom(_msgSender(), address(this), amountToPay - prevPaidAmount);
-        } else {
-            refunds[_msgSender()] += (prevPaidAmount - amountToPay);
-        }
+        _chargeBidder(_msgSender(), pricePerToken * numTokens);
     }
 
     function cancelBid() external checkAuctionActive {
-        require(biddersAddressBid[_msgSender()] != 0, "Bidder has no active bids");
-
-        (, uint64 prevNumTokens, uint128 prevPricePerToken) = getBidInfo(_msgSender());
-
-        uint256 prevPaidAmount = prevPricePerToken * prevNumTokens;
-        bidders.remove(biddersAddressBid[_msgSender()]);
-        biddersAddressBid[_msgSender()] = 0;
-
-        refundBidder(_msgSender(), prevPaidAmount);
+        _cancelBid();
     }
 
     /**
@@ -165,7 +143,7 @@ contract NFTAuction is Context, IStructureInterface {
     /**
         Internals
      */
-    function encodeBid(
+    function _encodeBid(
         uint64 bidderId,
         uint64 numTokens,
         uint128 pricePerToken
@@ -173,7 +151,7 @@ contract NFTAuction is Context, IStructureInterface {
         return (uint256(pricePerToken) << 128) + (uint256(numTokens) << 64) + uint256(bidderId);
     }
 
-    function decodeBid(uint256 node)
+    function _decodeBid(uint256 node)
         internal
         pure
         returns (
@@ -187,7 +165,36 @@ contract NFTAuction is Context, IStructureInterface {
         pricePerToken = uint128(node >> 128);
     }
 
-    function getBidInfo(address bidder)
+    function _addBid(
+        uint64 bidderId,
+        uint64 numTokens,
+        uint128 pricePerToken
+    ) internal {
+        uint256 node = _encodeBid(bidderId, numTokens, pricePerToken);
+        require(!bidders.nodeExists(node), "PANIC!! This should not happen!");
+
+        uint256 position = bidders.getSortedSpot(address(this), getValue(node));
+        bidders.insertBefore(position, node);
+        biddersAddressBid[_msgSender()] = node;
+    }
+
+    function _cancelBid() internal returns (uint64) {
+        (uint64 bidderId, uint64 prevNumTokens, uint128 prevPricePerToken) = _getBidInfo(_msgSender());
+
+        if (prevPricePerToken != 0) {
+            _removeBid(_msgSender());
+            _refundBidder(_msgSender(), prevPricePerToken * prevNumTokens);
+        }
+
+        return bidderId;
+    }
+
+    function _removeBid(address bidder) internal {
+        bidders.remove(biddersAddressBid[bidder]);
+        biddersAddressBid[bidder] = 0;
+    }
+
+    function _getBidInfo(address bidder)
         internal
         returns (
             uint64 bidderId,
@@ -200,11 +207,11 @@ contract NFTAuction is Context, IStructureInterface {
             bidderId = ++currentBatch.numBidders;
             biddersIdAddress[bidderId] = bidder;
         } else {
-            (bidderId, numTokens, pricePerToken) = decodeBid(bid);
+            (bidderId, numTokens, pricePerToken) = _decodeBid(bid);
         }
     }
 
-    function whitelistBidder(
+    function _whitelistBidder(
         uint64 bidderId,
         uint256 numTokens,
         uint256 firstTokenId
@@ -218,14 +225,27 @@ contract NFTAuction is Context, IStructureInterface {
         whitelist[bidderAddress].push(whitelistData);
     }
 
-    function refundBidder(uint64 bidderId, uint256 amount) internal {
-        refundBidder(biddersIdAddress[bidderId], amount);
+    function _refundBidder(uint64 bidderId, uint256 amount) internal {
+        _refundBidder(biddersIdAddress[bidderId], amount);
     }
 
-    function refundBidder(address bidder, uint256 amount) internal {
+    function _refundBidder(address bidder, uint256 amount) internal {
         refunds[bidder] += amount;
     }
 
+    function _chargeBidder(address bidder, uint256 amount) internal {
+        uint256 credit = refunds[bidder];
+        if (credit >= amount) {
+            refunds[bidder] -= amount;
+        } else {
+            refunds[bidder] = 0;
+            biddingToken.safeTransferFrom(_msgSender(), address(this), amount - credit);
+        }
+    }
+
+    /**
+        Linked list utility function
+     */
     function getValue(uint256 id) public pure returns (uint256) {
         return id >> 128;
     }
@@ -234,7 +254,7 @@ contract NFTAuction is Context, IStructureInterface {
         (bool exist, uint256 node) = bidders.getPreviousNode(0);
 
         while (node != 0) {
-            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = decodeBid(node);
+            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
             console.log("Bidder Id: ", uint256(bidderId));
             console.log("Num Tokens: ", uint256(numTokens));
             console.log("Price: ", uint256(pricePerToken));
