@@ -6,6 +6,7 @@
         "migrate": "npx hardhat run scripts/deploy.js --network localhost",
         "deployNFT": "npx hardhat run scripts/deploySVGNFT.js --network localhost",
         "deployValidator": "npx hardhat run scripts/deployNFTValidator.js --network localhost",
+        "deployNFTAuction": "npx hardhat run scripts/deployAuction.js --network localhost",
         "start": "react-scripts start",
         "build": "react-scripts build",
         "test": "react-scripts test",
