@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import useNFTAuction from "./useNFTAuction";
-import { BatchData } from "../contracts/NFTAuction";
 import { BigNumber } from "@ethersproject/bignumber";
 
 const useNFTAuctionCurrentBatch = () => {
@@ -17,9 +16,7 @@ const useNFTAuctionCurrentBatch = () => {
 
     const fetchCurrentBatch = useCallback(async () => {
         try {
-            console.log(auction);
             const batchValues = await auction.currentBatch();
-            const batch = new BatchData(batchValues);
             setCurrentBatch(batchValues);
         } catch {}
     }, [auction, setCurrentBatch]);

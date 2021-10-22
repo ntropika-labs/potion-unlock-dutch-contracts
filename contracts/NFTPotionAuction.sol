@@ -79,6 +79,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         currentBatch.numTokensAuctioned = endTokenId - startTokenId + 1;
         currentBatch.minimumPricePerToken = minimumPricePerToken;
         currentBatch.auctionEndDate = auctionEndDate;
+
+        currentBatch.highestBid = 0;
+        currentBatch.numBidders = 0;
     }
 
     function endBatch() external {
