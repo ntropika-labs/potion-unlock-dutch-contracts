@@ -1,9 +1,9 @@
 import React, { createContext, useEffect, useState } from "react";
-import { NFTValidator } from "../contracts";
+import { NFTPotionValidator } from "../contracts";
 import { useWallet } from "@binance-chain/bsc-use-wallet";
 
 export interface NFTValidatorContext {
-    NFTValidatorContract?: NFTValidator;
+    NFTValidatorContract?: NFTPotionValidator;
     lastError: string;
 }
 
@@ -11,13 +11,13 @@ export const Context = createContext<NFTValidatorContext>({ NFTValidatorContract
 
 export const NFTValidatorContractProvider: React.FC = ({ children }) => {
     const { ethereum, account } = useWallet();
-    const [NFTValidatorContract, setNFTValidatorContract] = useState<NFTValidator>();
+    const [NFTValidatorContract, setNFTValidatorContract] = useState<NFTPotionValidator>();
 
     useEffect(() => {
         let NFTValidatorContractInstance;
 
         if (!NFTValidatorContract) {
-            NFTValidatorContractInstance = new NFTValidator();
+            NFTValidatorContractInstance = new NFTPotionValidator();
             setNFTValidatorContract(NFTValidatorContractInstance);
         } else {
             NFTValidatorContractInstance = NFTValidatorContract;

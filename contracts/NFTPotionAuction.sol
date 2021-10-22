@@ -1,14 +1,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
-
-import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 
 import "hardhat/console.sol";
 
-contract NFTAuction is Context, IStructureInterface {
+interface INFTPotionWhitelist {
+    struct WhitelistData {
+        uint256 firstId;
+        uint256 lastId;
+    }
+
+    function getWhitelistRanges(address buyer) external returns (WhitelistData[] memory);
+}
+
+contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
     using StructuredLinkedList for StructuredLinkedList.List;
 
@@ -23,18 +31,16 @@ contract NFTAuction is Context, IStructureInterface {
         uint256 highestBid;
         uint64 numBidders;
     }
-    StructuredLinkedList.List public bidders;
     BatchData public currentBatch;
+
+    // Bidders info
+    StructuredLinkedList.List public bidders;
     mapping(address => uint256) public biddersAddressBid;
     mapping(uint64 => address) public biddersIdAddress;
-
-    // Minting whitelist
-    struct WhitelistData {
-        uint256 firstId;
-        uint256 lastId;
-    }
-    mapping(address => WhitelistData[]) public whitelist;
     mapping(address => uint256) public refunds;
+
+    // Whitelist
+    mapping(address => WhitelistData[]) public whitelist;
 
     /**
         Modifiers
@@ -49,6 +55,13 @@ contract NFTAuction is Context, IStructureInterface {
      */
     constructor(IERC20 _biddingToken) {
         biddingToken = _biddingToken;
+    }
+
+    /** 
+    Getters
+    */
+    function getWhitelistRanges(address buyer) external view returns (WhitelistData[] memory) {
+        return whitelist[buyer];
     }
 
     /**
@@ -138,6 +151,14 @@ contract NFTAuction is Context, IStructureInterface {
         refunds[_msgSender()] = 0;
 
         biddingToken.safeTransfer(_msgSender(), amountToRefund);
+    }
+
+    /**
+        Owner methods
+     */
+    function transferFunds(address recipient) external onlyOwner {
+        uint256 currentFunds = biddingToken.balanceOf(address(this));
+        biddingToken.safeTransfer(recipient, currentFunds);
     }
 
     /**

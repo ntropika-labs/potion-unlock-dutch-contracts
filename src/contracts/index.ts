@@ -1,2 +1,3 @@
-export { SVGNFT } from "./SVGNFT";
-export { NFTValidator } from "./NFTValidator";
+export { NFTPotion } from "./NFTPotion";
+export { NFTPotionValidator } from "./NFTValidator";
+export { NFTAuction } from "./NFTAuction";

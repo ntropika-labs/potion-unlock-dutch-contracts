@@ -1,10 +1,10 @@
-import NFTValidatorJSON from "../artifacts/contracts/NFTValidator.sol/NFTValidator.json";
+import NFTValidatorJSON from "../artifacts/contracts/NFTPotionValidator.sol/NFTPotionValidator.json";
 import { Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
 const Deployments = require("../deployments.json");
 
-export class NFTValidator {
+export class NFTPotionValidator {
     myAccount: string;
     provider: ethers.providers.Web3Provider;
     signer?: ethers.Signer;
