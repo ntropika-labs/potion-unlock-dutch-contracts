@@ -74,7 +74,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 endTokenId,
         uint256 minimumPricePerToken,
         uint256 auctionEndDate
-    ) public {
+    ) external onlyOwner {
         require(auctionEndDate > block.timestamp, "Auction not active");
 
         currentBatch.startTokenId = startTokenId;
@@ -90,37 +90,37 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         //
         // TODO!! reenable the check
         //
-
         //require(block.timestamp > currentBatch.auctionEndDate, "Auction cannot be ended yet");
-        uint256 node = bidders.popBack();
 
         // Whitelisting
         uint256 numAssignedTokens = 0;
-        while (node != 0) {
+        uint256 numBidders = bidders.size;
+        uint256 bidderIndex;
+        for (; bidderIndex < numBidders; ++bidderIndex) {
+            uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
 
+            // TODO: Refactor this piece of code
             if (numAssignedTokens + numTokens > currentBatch.numTokensAuctioned) {
                 uint256 assignedTokens = currentBatch.numTokensAuctioned - numAssignedTokens;
 
                 _whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
                 _refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
+                _cleanBidderInfo(bidderId);
                 break;
             } else {
                 _whitelistBidder(bidderId, numTokens, currentBatch.startTokenId + numAssignedTokens);
                 numAssignedTokens += numTokens;
+                _cleanBidderInfo(bidderId);
             }
-
-            // Cleanup bidder data
-            _cleanBidderInfo(bidderId);
-
-            node = bidders.popBack();
         }
 
         // Refunds
-        while (node != 0) {
-            node = bidders.popBack();
+        for (; bidderIndex < numBidders; ++bidderIndex) {
+            uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
             _refundBidder(bidderId, pricePerToken * numTokens);
+            _cleanBidderInfo(bidderId);
         }
 
         claimableFunds += currentBatch.claimableFunds;
