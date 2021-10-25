@@ -8,7 +8,12 @@ import useNFTAuctionCancelBid from "../../hooks/useNFTAuctionCancelBid";
 import useNFTAuctionClaimRefund from "../../hooks/useNFTAuctionClaimRefund";
 import useNFTAuctionCurrentBatch from "../../hooks/useNFTAuctionCurrentBatch";
 import useNFTAuctionListBidders from "../../hooks/useNFTAuctionListBidders";
+import useNFTAuctionGetLatestBid from "../../hooks/useNFTAuctionGetLatestBid";
+import useNFTAuctionGetWhitelistRanges from "../../hooks/useNFTAuctionGetWhitelistRanges";
+import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds";
+import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
+import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
 import { formatUnits } from "ethers/lib/utils";
 import Deployments from "../../deployments.json";
 import { BigNumber } from "@ethersproject/bignumber";
@@ -21,6 +26,20 @@ const NFTAuction: React.FC<any> = props => {
     const { onListBidders } = useNFTAuctionListBidders(props);
     const currentBatchEndDateMs = Number(formatUnits(currentBatch[0], "wei")) * 1000;
     const currentBatchEndDate = new Date(currentBatchEndDateMs);
+    const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTAuction);
+    const claimableFunds = useNFTAuctionClaimableFunds(props);
+    const { onTransferFunds } = useNFTAuctionTransferFunds(props);
+
+    const [recipient, setRecipient] = useState<string>();
+    const handleRecipientChange = useCallback(
+        event => {
+            setRecipient(event.target.value);
+        },
+        [setRecipient],
+    );
+    const handleTransferFunds = useCallback(() => {
+        onTransferFunds(recipient);
+    }, [recipient, onTransferFunds]);
 
     /**
      * Start batch
@@ -70,6 +89,7 @@ const NFTAuction: React.FC<any> = props => {
     const { onSetBid } = useNFTAuctionSetBid(props);
     const { onCancelBid } = useNFTAuctionCancelBid(props);
     const { onIncreaseAllowance } = useMockWETHIncreaseAllowance(props);
+    const { numTokens, pricePerToken } = useNFTAuctionGetLatestBid(props);
 
     const [bid, setBid] = useState<string>();
     const [bidNumTokens, setBidNumTokens] = useState<string>();
@@ -99,6 +119,12 @@ const NFTAuction: React.FC<any> = props => {
      * Refunds management
      */
     const { onClaimRefund } = useNFTAuctionClaimRefund(props);
+    const totalRefundsPending = lockedFunds.sub(claimableFunds).sub(currentBatch[5]);
+
+    /**
+     * Token whitelisting
+     */
+    const tokenIdRanges = useNFTAuctionGetWhitelistRanges(props);
 
     return (
         <div className="main">
@@ -117,13 +143,28 @@ const NFTAuction: React.FC<any> = props => {
                         <br />
                         Highest Bid: {formatUnits(currentBatch[4])}
                         <br />
-                        Num. Bidders: {formatUnits(currentBatch[5], "wei")}
+                        Batch Claimable Funds: {formatUnits(currentBatch[5])}
+                        <br />
+                        Num. Bidders: {formatUnits(currentBatch[6], "wei")}
                         <br />
                         <br />
                         <button type="button" className="btn btn-primary" onClick={onListBidders}>
                             List Bidders
                         </button>
                         <br />
+                        <h2>Funds</h2>
+                        Current Locked Funds: {formatUnits(lockedFunds)}
+                        <br />
+                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[5]))}
+                        <br />
+                        Total Refunds Pending: {formatUnits(totalRefundsPending)}
+                        <br />
+                        <label htmlFor="recipient">Recipient</label>
+                        <input type="string" className="form-control" id="recipient" onChange={handleRecipientChange} />
+                        <br />
+                        <button type="button" className="btn btn-primary" onClick={handleTransferFunds}>
+                            Transfer Funds
+                        </button>
                     </div>
                 </div>
                 <div className="row">
@@ -170,30 +211,43 @@ const NFTAuction: React.FC<any> = props => {
                 <div className="row">
                     <div className="col-sm-12">
                         <h2>Manage Bids</h2>
-                        <div className="form-group">
-                            <label htmlFor="bid">Bid per Token</label>
-                            <input type="string" className="form-control" id="bid" onChange={handleBidChange} />
-                            <br />
-                            <label htmlFor="bidNumTokens">Number of Tokens</label>
-                            <input
-                                type="string"
-                                className="form-control"
-                                id="bidNumTokens"
-                                onChange={handleBidNumTokenChange}
-                            />
-                            <br />
-                            <br />
-                            <button type="button" className="btn btn-primary" onClick={handleIncreaseAllowance}>
-                                Approve
-                            </button>
-                            <br />
-                            <button type="button" className="btn btn-primary" onClick={handleSetBid}>
-                                Set Bid
-                            </button>
-                            <br />
-                            <button type="button" className="btn btn-primary" onClick={onCancelBid}>
-                                Cancel Bid
-                            </button>
+                        <div className="row">
+                            <div className="col-sm-12">
+                                <h3>Latest Bid</h3>
+                                Num. Tokens: {formatUnits(numTokens, "wei")}
+                                <br />
+                                Price per Token: {formatUnits(pricePerToken)}
+                            </div>
+                        </div>
+                        <div className="row">
+                            <div className="col-sm-12">
+                                <h3>New Bid</h3>
+                                <div className="form-group">
+                                    <label htmlFor="bid">Bid per Token</label>
+                                    <input type="string" className="form-control" id="bid" onChange={handleBidChange} />
+                                    <br />
+                                    <label htmlFor="bidNumTokens">Number of Tokens</label>
+                                    <input
+                                        type="string"
+                                        className="form-control"
+                                        id="bidNumTokens"
+                                        onChange={handleBidNumTokenChange}
+                                    />
+                                    <br />
+                                    <br />
+                                    <button type="button" className="btn btn-primary" onClick={handleIncreaseAllowance}>
+                                        Approve
+                                    </button>
+                                    <br />
+                                    <button type="button" className="btn btn-primary" onClick={handleSetBid}>
+                                        Set Bid
+                                    </button>
+                                    <br />
+                                    <button type="button" className="btn btn-primary" onClick={onCancelBid}>
+                                        Cancel Bid
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -203,6 +257,16 @@ const NFTAuction: React.FC<any> = props => {
                         <button type="button" className="btn btn-primary" onClick={onClaimRefund}>
                             Claim Refund
                         </button>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-sm-12">
+                        <h2>Assigned Token IDs</h2>
+                        {tokenIdRanges?.length === 0
+                            ? "None"
+                            : tokenIdRanges?.map(item => {
+                                  return `[${formatUnits(item.firstId, "wei")}, ${formatUnits(item.lastId, "wei")}]`;
+                              })}
                     </div>
                 </div>
             </div>

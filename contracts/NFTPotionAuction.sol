@@ -29,15 +29,17 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 startTokenId; // Included
         uint256 numTokensAuctioned;
         uint256 highestBid;
-        uint64 numBidders;
+        uint256 claimableFunds;
+        uint64 nextBidderId;
     }
     BatchData public currentBatch;
 
     // Bidders info
     StructuredLinkedList.List public bidders;
-    mapping(address => uint256) public biddersAddressBid;
-    mapping(uint64 => address) public biddersIdAddress;
+    mapping(address => uint256) public bidByBidder; // bidder -> bid
+    mapping(uint64 => address) public bidderById;
     mapping(address => uint256) public refunds;
+    uint256 public claimableFunds;
 
     // Whitelist
     mapping(address => WhitelistData[]) public whitelist;
@@ -81,7 +83,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         currentBatch.auctionEndDate = auctionEndDate;
 
         currentBatch.highestBid = 0;
-        currentBatch.numBidders = 0;
+        currentBatch.claimableFunds = 0;
     }
 
     function endBatch() external {
@@ -118,7 +120,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             _refundBidder(bidderId, pricePerToken * numTokens);
         }
 
+        claimableFunds += currentBatch.claimableFunds;
+
         delete bidders;
+        //delete bidByBidder; // TODO
+        //delete bidderById; // TODO
+        delete currentBatch;
     }
 
     /**
@@ -157,11 +164,17 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     /**
+        View functions
+    */
+    function getLatestBid(address bidder) external view returns (uint64 numTokens, uint128 pricePerToken) {
+        (, numTokens, pricePerToken) = _decodeBid(bidByBidder[bidder]);
+    }
+
+    /**
         Owner methods
      */
     function transferFunds(address recipient) external onlyOwner {
-        uint256 currentFunds = biddingToken.balanceOf(address(this));
-        biddingToken.safeTransfer(recipient, currentFunds);
+        biddingToken.safeTransfer(recipient, claimableFunds);
     }
 
     /**
@@ -199,7 +212,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         uint256 position = bidders.getSortedSpot(address(this), getValue(node));
         bidders.insertBefore(position, node);
-        biddersAddressBid[_msgSender()] = node;
+        bidByBidder[_msgSender()] = node; // bidder -> bid
     }
 
     function _cancelBid() internal returns (uint64) {
@@ -214,8 +227,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function _removeBid(address bidder) internal {
-        bidders.remove(biddersAddressBid[bidder]);
-        biddersAddressBid[bidder] = 0;
+        bidders.remove(bidByBidder[bidder]); // bidder -> bid
+        bidByBidder[bidder] = 0; // bidder -> bid
     }
 
     function _getBidInfo(address bidder)
@@ -226,10 +239,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             uint128 pricePerToken
         )
     {
-        uint256 bid = biddersAddressBid[bidder];
+        uint256 bid = bidByBidder[bidder]; // bidder -> bid
         if (bid == 0) {
-            bidderId = ++currentBatch.numBidders;
-            biddersIdAddress[bidderId] = bidder;
+            bidderId = ++currentBatch.nextBidderId;
+            bidderById[bidderId] = bidder;
         } else {
             (bidderId, numTokens, pricePerToken) = _decodeBid(bid);
         }
@@ -245,16 +258,17 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         whitelistData.firstId = firstTokenId;
         whitelistData.lastId = firstTokenId + numTokens - 1;
 
-        address bidderAddress = biddersIdAddress[bidderId];
+        address bidderAddress = bidderById[bidderId];
         whitelist[bidderAddress].push(whitelistData);
     }
 
     function _refundBidder(uint64 bidderId, uint256 amount) internal {
-        _refundBidder(biddersIdAddress[bidderId], amount);
+        _refundBidder(bidderById[bidderId], amount);
     }
 
     function _refundBidder(address bidder, uint256 amount) internal {
         refunds[bidder] += amount;
+        currentBatch.claimableFunds -= amount;
     }
 
     function _chargeBidder(address bidder, uint256 amount) internal {
@@ -265,6 +279,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             refunds[bidder] = 0;
             biddingToken.safeTransferFrom(_msgSender(), address(this), amount - credit);
         }
+        currentBatch.claimableFunds += amount;
     }
 
     /**

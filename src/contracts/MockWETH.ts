@@ -34,4 +34,8 @@ export class MockWETH {
     async increaseAllowance(spender: string, addedValue: BigNumber) {
         return this.contract.increaseAllowance(spender, addedValue);
     }
+
+    async balanceOf(address: string) {
+        return this.contract.balanceOf(address);
+    }
 }

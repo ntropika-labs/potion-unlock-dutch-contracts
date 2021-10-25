@@ -98,4 +98,20 @@ export class NFTAuction {
     async currentBatch() {
         return this.contract.currentBatch();
     }
+
+    async getLatestBid() {
+        return this.contract.getLatestBid(this.myAccount);
+    }
+
+    async getWhitelistRanges() {
+        return this.contract.getWhitelistRanges(this.myAccount);
+    }
+
+    async claimableFunds() {
+        return this.contract.claimableFunds();
+    }
+
+    async transferFunds(recipient: string) {
+        return this.contract.transferFunds(recipient);
+    }
 }
