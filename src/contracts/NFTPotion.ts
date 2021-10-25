@@ -1,10 +1,10 @@
-import SVGNFTJSON from "../artifacts/contracts/SVGNFT.sol/SVGNFT.json";
+import NFTpotionJSON from "../artifacts/contracts/NFTPotion.sol/NFTPotion.json";
 import { Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
 const Deployments = require("../deployments.json");
 
-export class SVGNFT {
+export class NFTPotion {
     myAccount: string;
     provider: ethers.providers.Web3Provider;
     signer?: ethers.Signer;
@@ -13,7 +13,7 @@ export class SVGNFT {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(Deployments.NFTContract, SVGNFTJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.NFTContract, NFTpotionJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }

@@ -4,19 +4,22 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
+import "./NFTPotionAuction.sol";
+
 import "hardhat/console.sol";
 
-contract SVGNFT is ERC721URIStorage, Ownable {
+contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         Storage
      */
     string public ipfsPrefix;
     string public ipfsSuffix;
-    uint256 public nextTokenId = 1;
-    uint256 public maxNFT;
+    uint256 public numMintedTokens = 0;
+    uint256 public maxMintedTokens;
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
     uint256 public bytesPerSecret;
+    INFTPotionWhitelist whitelist;
 
     /**
         Events
@@ -31,7 +34,16 @@ contract SVGNFT is ERC721URIStorage, Ownable {
         _;
     }
     modifier checkMaxNFTs() {
-        require(nextTokenId < maxNFT + 1, "TMN"); // Too Many NFTs
+        require(numMintedTokens < maxMintedTokens, "TMN"); // Too Many NFTs
+        _;
+    }
+
+    modifier checkWhitelist(uint256 tokenId) {
+        INFTPotionWhitelist.WhitelistData[] memory ranges = whitelist.getWhitelistRanges(_msgSender());
+
+        for (uint256 i = 0; i < ranges.length; ++i) {
+            require(tokenId >= ranges[i].firstId && tokenId <= ranges[i].lastId, "Not whitelisted for token ID");
+        }
         _;
     }
 
@@ -43,23 +55,23 @@ contract SVGNFT is ERC721URIStorage, Ownable {
         string memory _tokenSymbol,
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
-        uint256 _maxNFT,
-        bytes memory _fullSecret
+        uint256 _maxMintedTokens,
+        bytes memory _fullSecret,
+        address _whitelist
     ) ERC721(_tokenName, _tokenSymbol) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
-        maxNFT = _maxNFT;
+        maxMintedTokens = _maxMintedTokens;
         fullSecret = _fullSecret;
-        bytesPerSecret = _fullSecret.length / _maxNFT;
+        bytesPerSecret = _fullSecret.length / _maxMintedTokens;
+        whitelist = INFTPotionWhitelist(_whitelist);
     }
 
     /**
         Mutating functions
      */
-    function mint(string calldata publicKey) external checkMaxNFTs {
-        uint256 tokenId;
-
-        _safeMint(msg.sender, (tokenId = nextTokenId++));
+    function mint(uint256 tokenId, string calldata publicKey) external checkMaxNFTs checkWhitelist(tokenId) {
+        _safeMint(msg.sender, tokenId);
 
         string memory tokenIdStr = uint2str(tokenId);
         string memory tokenURI = string(abi.encodePacked(ipfsPrefix, tokenIdStr, ipfsSuffix));
@@ -75,7 +87,7 @@ contract SVGNFT is ERC721URIStorage, Ownable {
         View functions
      */
     function secret(uint256 tokenId) external view returns (bytes memory) {
-        if (tokenId >= nextTokenId) {
+        if (ownerOf(tokenId) == address(0)) {
             return new bytes(0);
         }
 

@@ -4,7 +4,7 @@
     "scripts": {
         "startnode": "npx hardhat node",
         "migrate": "npx hardhat run scripts/deploy.js --network localhost",
-        "deployNFT": "npx hardhat run scripts/deploySVGNFT.js --network localhost",
+        "deployNFTPotion": "npx hardhat run scripts/deployNFTPotion.js --network localhost",
         "deployValidator": "npx hardhat run scripts/deployNFTValidator.js --network localhost",
         "start": "react-scripts start",
         "build": "react-scripts build",
@@ -31,12 +31,14 @@
         "ethereum-waffle": "^3.4.0",
         "ethers": "^5.4.1",
         "hardhat": "^2.4.3",
+        "js-crypto-rsa": "^1.0.2",
         "prettier": "^2.4.1",
         "prettier-plugin-solidity": "^1.0.0-beta.18",
         "react": "^17.0.2",
         "react-dom": "^17.0.2",
         "react-globally": "^1.1.0",
         "react-scripts": "4.0.3",
+        "solidity-linked-list": "^5.0.0",
         "typescript": "^4.3.5",
         "web-vitals": "^1.0.1",
         "web3": "^1.4.0"

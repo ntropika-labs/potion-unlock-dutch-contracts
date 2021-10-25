@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
-import useSVGNFTContract from "./useSVGNFT";
+import useNFTContract from "./useNFTContract";
 
-const useSVGNFTPublicKeys = () => {
-    const svgnft = useSVGNFTContract();
+const useNFTPublicKeys = () => {
+    const nft = useNFTContract();
     const [publicKeys, setPublicKeys] = useState<string>();
 
     const fetchPublicKeys = useCallback(async () => {
-        const nextTokenId = await svgnft.nextTokenId();
+        const nextTokenId = await nft.nextTokenId();
 
         let publicKeys = [];
         for (let i = 1; i < nextTokenId; ++i) {
-            publicKeys.push(await svgnft.encryptionKeys(i));
+            publicKeys.push(await nft.encryptionKeys(i));
         }
         setPublicKeys(JSON.stringify(publicKeys, null, " "));
-    }, [svgnft, setPublicKeys]);
+    }, [nft, setPublicKeys]);
 
     useEffect(() => {
         fetchPublicKeys().catch(err => console.error(`Failed to fetch NFT validation message: ${err.stack}`));
@@ -24,4 +24,4 @@ const useSVGNFTPublicKeys = () => {
     return publicKeys;
 };
 
-export default useSVGNFTPublicKeys;
+export default useNFTPublicKeys;

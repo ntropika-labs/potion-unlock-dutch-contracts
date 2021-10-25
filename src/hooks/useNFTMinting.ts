@@ -1,18 +1,18 @@
 import { useCallback } from "react";
-import useSVGNFTContract from "./useSVGNFT";
+import useNFTContract from "./useNFTContract";
 import useHandleTransaction from "./useHandleTransaction";
 import useMetamaskPublicKey from "./useMetamaskPublicKey";
 
-const useSVGNFTMinting = (props: any) => {
+const useNFTMinting = (props: any) => {
     const handleTransaction = useHandleTransaction(props);
-    const svgnft = useSVGNFTContract();
+    const nft = useNFTContract();
     const { publicKey, onGetPublicKey } = useMetamaskPublicKey(props);
 
     const handleMinting = useCallback(async () => {
         const publicKey = await onGetPublicKey();
-        handleTransaction(svgnft.mint(publicKey));
-    }, [svgnft, handleTransaction, onGetPublicKey]);
+        handleTransaction(nft.mint(publicKey));
+    }, [nft, handleTransaction, onGetPublicKey]);
     return { onMinting: handleMinting };
 };
 
-export default useSVGNFTMinting;
+export default useNFTMinting;

@@ -1,17 +1,17 @@
 import { useCallback, useState } from "react";
 
 import { withGlobalState } from "react-globally";
-import useSVGNFTMinting from "../../hooks/useSVGNFTMinting";
-import useSVGNFTData from "../../hooks/useSVGNFTData";
-import useSVGNFTPublicKeys from "../../hooks/useSVGNFTPublicKeys";
-import useSVGNFTFullSecret from "../../hooks/useSVGNFTFullSecret";
+import useNFTMinting from "../../hooks/useNFTMinting";
+import useNFTData from "../../hooks/useNFTData";
+import useNFTPublicKeys from "../../hooks/useNFTPublicKeys";
+import useNFTFullSecret from "../../hooks/useNFTFullSecret";
 
-const SVGNFT: React.FC<any> = props => {
+const NFTContract: React.FC<any> = props => {
     const [tokenId, setTokenId] = useState<number>();
 
-    const { secret, tokenURI, onGetData } = useSVGNFTData();
-    const publicKeys = useSVGNFTPublicKeys();
-    const { onMinting } = useSVGNFTMinting(props);
+    const { secret, tokenURI, onGetData } = useNFTData();
+    const publicKeys = useNFTPublicKeys();
+    const { onMinting } = useNFTMinting(props);
 
     const handleTokenIdChange = useCallback(
         event => {
@@ -20,28 +20,20 @@ const SVGNFT: React.FC<any> = props => {
         [setTokenId],
     );
 
-    const [publicKey, setPublicKey] = useState<string>();
     const handleMinting = useCallback(() => {
         onMinting();
     }, [onMinting]);
-
-    const handlePublicKeyChange = useCallback(
-        event => {
-            setPublicKey(event.target.value);
-        },
-        [setPublicKey],
-    );
 
     const handleGetData = useCallback(() => {
         onGetData(tokenId);
     }, [onGetData, tokenId]);
 
-    const { fullSecret, onGetFullSecret } = useSVGNFTFullSecret();
+    const { fullSecret, onGetFullSecret } = useNFTFullSecret();
 
     return (
         <div className="main">
             <div className="container">
-                <h1>SVGNFT</h1>
+                <h1>NFT Contract</h1>
                 <div className="row">
                     <div className="col-sm-12">
                         <button type="button" className="btn btn-primary" onClick={handleMinting}>
@@ -81,4 +73,4 @@ const SVGNFT: React.FC<any> = props => {
     );
 };
 
-export default withGlobalState(SVGNFT);
+export default withGlobalState(NFTContract);

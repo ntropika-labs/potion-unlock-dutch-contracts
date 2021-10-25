@@ -1,10 +1,10 @@
-import NFTValidatorJSON from "../artifacts/contracts/NFTPotionValidator.sol/NFTPotionValidator.json";
-import { Contract, ethers } from "ethers";
+import MockWETHJSON from "../artifacts/contracts/mock/MockWETH.sol/MockWETH.json";
+import { Contract, ethers, BigNumber } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
 const Deployments = require("../deployments.json");
 
-export class NFTPotionValidator {
+export class MockWETH {
     myAccount: string;
     provider: ethers.providers.Web3Provider;
     signer?: ethers.Signer;
@@ -13,7 +13,7 @@ export class NFTPotionValidator {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(Deployments.NFTValidator, NFTValidatorJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.MockWETH, MockWETHJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }
@@ -31,12 +31,7 @@ export class NFTPotionValidator {
         return !!this.myAccount;
     }
 
-    async validate(tokenId: number, decryptedSecret: string, proof: string) {
-        console.log(JSON.parse(proof));
-        return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
-    }
-
-    async getMessage() {
-        return this.contract.finalMessage();
+    async increaseAllowance(spender: string, addedValue: BigNumber) {
+        return this.contract.increaseAllowance(spender, addedValue);
     }
 }

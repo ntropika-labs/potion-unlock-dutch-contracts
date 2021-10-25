@@ -6,7 +6,7 @@ import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
-contract NFTValidator is Context {
+contract NFTPotionValidator is Context {
     /**
         Storage
      */
