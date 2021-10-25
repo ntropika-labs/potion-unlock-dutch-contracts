@@ -14,7 +14,7 @@ const Main: React.FC<any> = props => {
         <div>
             <Wallet />
 
-            {account && <PublicKey />}
+            {/* {account && <PublicKey />} */}
             {account && <NFTAuction />}
             {/* {account && <Decrypt />}
             {account && <NFTContract />}

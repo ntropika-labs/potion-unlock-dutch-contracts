@@ -91,6 +91,10 @@ export class NFTAuction {
         return this.contract.claimRefund();
     }
 
+    async refundAmount() {
+        return this.contract.refunds(this.myAccount);
+    }
+
     async listBidders() {
         return this.contract.listBidders();
     }

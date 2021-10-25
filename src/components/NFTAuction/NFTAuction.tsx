@@ -12,6 +12,7 @@ import useNFTAuctionGetLatestBid from "../../hooks/useNFTAuctionGetLatestBid";
 import useNFTAuctionGetWhitelistRanges from "../../hooks/useNFTAuctionGetWhitelistRanges";
 import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds";
 import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
+import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
 import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
 import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
 import { formatUnits } from "ethers/lib/utils";
@@ -119,6 +120,8 @@ const NFTAuction: React.FC<any> = props => {
      * Refunds management
      */
     const { onClaimRefund } = useNFTAuctionClaimRefund(props);
+    const refundAmount = useNFTAuctionRefundAmount(props);
+
     const totalRefundsPending = lockedFunds.sub(claimableFunds).sub(currentBatch[5]);
 
     /**
@@ -129,7 +132,7 @@ const NFTAuction: React.FC<any> = props => {
     return (
         <div className="main">
             <div className="container">
-                <h1>NFT Auction</h1>
+                <h1>NFT Auction management</h1>
                 <div className="row">
                     <div className="col-sm-12">
                         <h2>Current Batch</h2>
@@ -152,19 +155,6 @@ const NFTAuction: React.FC<any> = props => {
                             List Bidders
                         </button>
                         <br />
-                        <h2>Funds</h2>
-                        Current Locked Funds: {formatUnits(lockedFunds)}
-                        <br />
-                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[5]))}
-                        <br />
-                        Total Refunds Pending: {formatUnits(totalRefundsPending)}
-                        <br />
-                        <label htmlFor="recipient">Recipient</label>
-                        <input type="string" className="form-control" id="recipient" onChange={handleRecipientChange} />
-                        <br />
-                        <button type="button" className="btn btn-primary" onClick={handleTransferFunds}>
-                            Transfer Funds
-                        </button>
                     </div>
                 </div>
                 <div className="row">
@@ -208,6 +198,24 @@ const NFTAuction: React.FC<any> = props => {
                         </div>
                     </div>
                 </div>
+                <div className="row">
+                    <div className="col-sm-12">
+                        <h2>Funds</h2>
+                        Current Locked Funds: {formatUnits(lockedFunds)}
+                        <br />
+                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[5]))}
+                        <br />
+                        Total Refunds Pending: {formatUnits(totalRefundsPending)}
+                        <br />
+                        <label htmlFor="recipient">Recipient</label>
+                        <input type="string" className="form-control" id="recipient" onChange={handleRecipientChange} />
+                        <br />
+                        <button type="button" className="btn btn-primary" onClick={handleTransferFunds}>
+                            Transfer Funds
+                        </button>
+                    </div>
+                </div>
+                <h1>NFT User Actions</h1>
                 <div className="row">
                     <div className="col-sm-12">
                         <h2>Manage Bids</h2>
@@ -254,6 +262,8 @@ const NFTAuction: React.FC<any> = props => {
                 <div className="row">
                     <div className="col-sm-12">
                         <h2>Claim Refund</h2>
+                        Amount: {formatUnits(refundAmount)}
+                        <br />
                         <button type="button" className="btn btn-primary" onClick={onClaimRefund}>
                             Claim Refund
                         </button>
