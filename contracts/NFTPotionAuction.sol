@@ -75,7 +75,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 minimumPricePerToken,
         uint256 auctionEndDate
     ) external onlyOwner {
-        require(auctionEndDate > block.timestamp, "Auction not active");
+        require(auctionEndDate > block.timestamp, "Auction is in the past");
 
         currentBatch.startTokenId = startTokenId;
         currentBatch.numTokensAuctioned = endTokenId - startTokenId + 1;
@@ -94,29 +94,37 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         // Whitelisting
         uint256 numAssignedTokens = 0;
-        uint256 numBidders = bidders.size;
-        uint256 bidderIndex;
-        for (; bidderIndex < numBidders; ++bidderIndex) {
+        while (bidders.size > 0 && numAssignedTokens < currentBatch.numTokensAuctioned) {
             uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
 
-            // TODO: Refactor this piece of code
+            uint256 assignedTokens;
             if (numAssignedTokens + numTokens > currentBatch.numTokensAuctioned) {
-                uint256 assignedTokens = currentBatch.numTokensAuctioned - numAssignedTokens;
-
-                _whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
-                _refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
-                _cleanBidderInfo(bidderId);
-                break;
+                assignedTokens = currentBatch.numTokensAuctioned - numAssignedTokens;
+                console.log("Assign+Refund tokens");
             } else {
-                _whitelistBidder(bidderId, numTokens, currentBatch.startTokenId + numAssignedTokens);
-                numAssignedTokens += numTokens;
-                _cleanBidderInfo(bidderId);
+                assignedTokens = numTokens;
+                console.log("Assign tokens");
             }
+
+            console.log("Bidder Id: ", uint256(bidderId));
+            console.log("Num Tokens: ", uint256(numTokens));
+            console.log("Price: ", uint256(pricePerToken));
+
+            _whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
+            numAssignedTokens += assignedTokens;
+
+            if (assignedTokens != numTokens) {
+                console.log("[REFUND]");
+                _refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
+            }
+
+            _cleanBidderInfo(bidderId);
         }
 
         // Refunds
-        for (; bidderIndex < numBidders; ++bidderIndex) {
+        console.log("Only refund: ", uint256(bidders.size));
+        while (bidders.size > 0) {
             uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
             _refundBidder(bidderId, pricePerToken * numTokens);
@@ -137,15 +145,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         currentBatch.highestBid = pricePerToken;
 
-        // Cancel previous bid. If there was no previous bid, the _cancelBid
-        // will return a new bidderId
         uint64 bidderId = _cancelBid();
+        if (bidderId == 0) {
+            bidderId = ++currentBatch.nextBidderId;
+            bidderById[bidderId] = _msgSender();
+        }
 
-        // Add the new bid
         _addBid(bidderId, numTokens, pricePerToken);
-
-        // Charge or refund the bidder
-        _chargeBidder(_msgSender(), pricePerToken * numTokens);
+        _chargeBidder(pricePerToken * numTokens);
     }
 
     function cancelBid() external checkAuctionActive {
@@ -176,6 +183,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      */
     function transferFunds(address recipient) external onlyOwner {
         biddingToken.safeTransfer(recipient, claimableFunds);
+        claimableFunds = 0;
     }
 
     /**
@@ -219,9 +227,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function _cancelBid() internal returns (uint64) {
         (uint64 bidderId, uint64 prevNumTokens, uint128 prevPricePerToken, uint256 node) = _getBidInfo(_msgSender());
 
-        if (prevPricePerToken != 0) {
+        if (node != 0) {
             bidders.remove(node);
-            _cleanBidderInfo(bidderId);
+            delete bidByBidder[_msgSender()];
             _refundBidder(_msgSender(), prevPricePerToken * prevNumTokens);
         }
 
@@ -230,12 +238,13 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     function _cleanBidderInfo(uint64 bidderId) internal {
         address bidder = bidderById[bidderId];
-        delete bidderById[bidderId];
         delete bidByBidder[bidder];
+        delete bidderById[bidderId];
     }
 
     function _getBidInfo(address bidder)
         internal
+        view
         returns (
             uint64 bidderId,
             uint64 numTokens,
@@ -244,10 +253,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         )
     {
         node = bidByBidder[bidder]; // bidder -> bid
-        if (node == 0) {
-            bidderId = ++currentBatch.nextBidderId;
-            bidderById[bidderId] = bidder;
-        } else {
+        if (node != 0) {
             (bidderId, numTokens, pricePerToken) = _decodeBid(node);
         }
     }
@@ -275,12 +281,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         currentBatch.claimableFunds -= amount;
     }
 
-    function _chargeBidder(address bidder, uint256 amount) internal {
-        uint256 credit = refunds[bidder];
+    function _chargeBidder(uint256 amount) internal {
+        uint256 credit = refunds[_msgSender()];
         if (credit >= amount) {
-            refunds[bidder] -= amount;
+            refunds[_msgSender()] -= amount;
         } else {
-            refunds[bidder] = 0;
+            refunds[_msgSender()] = 0;
             biddingToken.safeTransferFrom(_msgSender(), address(this), amount - credit);
         }
         currentBatch.claimableFunds += amount;
