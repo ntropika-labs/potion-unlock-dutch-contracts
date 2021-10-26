@@ -28,7 +28,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 minimumPricePerToken;
         uint256 startTokenId; // Included
         uint256 numTokensAuctioned;
-        uint256 highestBid;
         uint256 claimableFunds;
         uint64 nextBidderId;
     }
@@ -88,7 +87,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         currentBatch.minimumPricePerToken = minimumPricePerToken;
         currentBatch.auctionEndDate = auctionEndDate;
 
-        currentBatch.highestBid = 0;
         currentBatch.claimableFunds = 0;
     }
 
@@ -107,21 +105,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             uint256 assignedTokens;
             if (numAssignedTokens + numTokens > currentBatch.numTokensAuctioned) {
                 assignedTokens = currentBatch.numTokensAuctioned - numAssignedTokens;
-                console.log("Assign+Refund tokens");
             } else {
                 assignedTokens = numTokens;
-                console.log("Assign tokens");
             }
-
-            console.log("Bidder Id: ", uint256(bidderId));
-            console.log("Num Tokens: ", uint256(numTokens));
-            console.log("Price: ", uint256(pricePerToken));
 
             _whitelistBidder(bidderId, assignedTokens, currentBatch.startTokenId + numAssignedTokens);
             numAssignedTokens += assignedTokens;
 
             if (assignedTokens != numTokens) {
-                console.log("[REFUND]");
                 _refundBidder(bidderId, pricePerToken * (numTokens - assignedTokens));
             }
 
@@ -129,7 +120,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
 
         // Refunds
-        console.log("Only refund: ", uint256(bidders.size));
         while (bidders.sizeOf() > 0) {
             uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
@@ -147,9 +137,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      */
     function setBid(uint64 numTokens, uint128 pricePerToken) external checkAuctionActive {
         require(pricePerToken >= currentBatch.minimumPricePerToken, "Bid must reach minimum amount");
-        require(pricePerToken > currentBatch.highestBid, "Bid must be higher");
-
-        currentBatch.highestBid = pricePerToken;
 
         uint64 bidderId = _cancelBid();
         if (bidderId == 0) {
