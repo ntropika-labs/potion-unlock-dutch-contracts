@@ -7,7 +7,7 @@ const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
 const IPFS_SUFFIX = ".svg";
 
 // Demo Config
-const NUM_NFTS = 4;
+const NUM_NFTS = 32;
 const SOURCE_CODE_PASSWORD = "Qi@uMw.H_h9DzvRwnTn4";
 const POTION_SECRET = "08k1bKDRj9VUw4c5dIfYdvMJ0cIifvnlA2dRODW5sF0=";
 const IPFS_PREFIX = "http://ipfs.io/ipfs/QmR6316ZX1uigpkbWryeUi8y7vsCLfMNNgPCfrrWKM51dp/";

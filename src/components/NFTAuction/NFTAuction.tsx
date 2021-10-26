@@ -12,9 +12,10 @@ import useNFTAuctionGetWhitelistRanges from "../../hooks/useNFTAuctionGetWhiteli
 import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds";
 import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
-import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
 import useNFTAuctionGetAllBids from "../../hooks/useNFTAuctionGetAllBids";
+import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
 import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
+import useNFTMintingList from "../../hooks/useNFTMintingList";
 import { formatUnits } from "ethers/lib/utils";
 import Deployments from "../../deployments.json";
 import { BigNumber } from "@ethersproject/bignumber";
@@ -134,6 +135,14 @@ const NFTAuction: React.FC<any> = props => {
     const handleShowBids = useCallback(() => {
         setShowBids(!showBids);
     }, [showBids, setShowBids]);
+
+    /**
+     * Token minting
+     */
+    const { onMintingList } = useNFTMintingList(props);
+    const handleMintingList = useCallback(() => {
+        onMintingList(tokenIdRanges);
+    }, [tokenIdRanges, onMintingList]);
 
     return (
         <div className="main">
@@ -288,6 +297,9 @@ const NFTAuction: React.FC<any> = props => {
                                   return `[${formatUnits(item.firstId, "wei")}, ${formatUnits(item.lastId, "wei")}]`;
                               })}
                     </div>
+                    <button type="button" className="btn btn-primary" onClick={handleMintingList}>
+                        Mint Tokens
+                    </button>
                 </div>
             </div>
         </div>

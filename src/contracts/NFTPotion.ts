@@ -1,5 +1,5 @@
 import NFTpotionJSON from "../artifacts/contracts/NFTPotion.sol/NFTPotion.json";
-import { Contract, ethers } from "ethers";
+import { BigNumber, Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
 const Deployments = require("../deployments.json");
@@ -31,10 +31,12 @@ export class NFTPotion {
         return !!this.myAccount;
     }
 
-    async mint(publicKey: string) {
+    async mint(tokenId: BigNumber, publicKey: string) {
         return this.contract.mint(publicKey);
     }
-
+    async mintList(tokenIds: BigNumber[], publicKey: string) {
+        return this.contract.mintList(tokenIds, publicKey);
+    }
     async secret(tokenId: number) {
         return this.contract.secret(tokenId);
     }

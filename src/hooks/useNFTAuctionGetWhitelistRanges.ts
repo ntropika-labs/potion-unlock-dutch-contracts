@@ -6,6 +6,7 @@ interface Range {
     firstId: BigNumber;
     lastId: BigNumber;
 }
+
 const useNFTAuctionGetWhitelistRanges = (props: any) => {
     const [tokenIdRanges, setTokenIdRanges] = useState<Range[]>();
     const auction = useNFTAuction();

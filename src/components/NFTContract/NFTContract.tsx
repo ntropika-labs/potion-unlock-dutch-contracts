@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 
 import { withGlobalState } from "react-globally";
-import useNFTMinting from "../../hooks/useNFTMinting";
 import useNFTData from "../../hooks/useNFTData";
 import useNFTPublicKeys from "../../hooks/useNFTPublicKeys";
 import useNFTFullSecret from "../../hooks/useNFTFullSecret";
@@ -11,7 +10,6 @@ const NFTContract: React.FC<any> = props => {
 
     const { secret, tokenURI, onGetData } = useNFTData();
     const publicKeys = useNFTPublicKeys();
-    const { onMinting } = useNFTMinting(props);
 
     const handleTokenIdChange = useCallback(
         event => {
@@ -19,10 +17,6 @@ const NFTContract: React.FC<any> = props => {
         },
         [setTokenId],
     );
-
-    const handleMinting = useCallback(() => {
-        onMinting();
-    }, [onMinting]);
 
     const handleGetData = useCallback(() => {
         onGetData(tokenId);
@@ -35,11 +29,6 @@ const NFTContract: React.FC<any> = props => {
             <div className="container">
                 <h1>NFT Contract</h1>
                 <div className="row">
-                    <div className="col-sm-12">
-                        <button type="button" className="btn btn-primary" onClick={handleMinting}>
-                            Mint
-                        </button>
-                    </div>
                     <div className="row">
                         <div className="col-sm-12">
                             <h2>Collected Public Keys</h2>
