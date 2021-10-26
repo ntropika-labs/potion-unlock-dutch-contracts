@@ -13,7 +13,7 @@ export class NFTPotionValidator {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(Deployments.NFTValidator, NFTValidatorJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.NFTPotionValidator, NFTValidatorJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }

@@ -26,7 +26,7 @@ const NFTAuction: React.FC<any> = props => {
     const currentBatch = useNFTAuctionCurrentBatch();
     const currentBatchEndDateMs = Number(formatUnits(currentBatch[0], "wei")) * 1000;
     const currentBatchEndDate = new Date(currentBatchEndDateMs);
-    const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTAuction);
+    const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTPotionAuction);
     const claimableFunds = useNFTAuctionClaimableFunds(props);
     const { onTransferFunds } = useNFTAuctionTransferFunds(props);
 
@@ -114,7 +114,7 @@ const NFTAuction: React.FC<any> = props => {
 
     const handleIncreaseAllowance = useCallback(() => {
         const allowance = BigNumber.from(bid).mul(BigNumber.from(bidNumTokens));
-        onIncreaseAllowance(Deployments.NFTAuction, allowance);
+        onIncreaseAllowance(Deployments.NFTPotionAuction, allowance);
     }, [bid, bidNumTokens, onIncreaseAllowance]);
 
     /**

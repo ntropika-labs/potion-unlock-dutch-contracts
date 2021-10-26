@@ -6,10 +6,10 @@ const useNFTPublicKeys = () => {
     const [publicKeys, setPublicKeys] = useState<string>();
 
     const fetchPublicKeys = useCallback(async () => {
-        const nextTokenId = await nft.nextTokenId();
+        const numMintedTokens = await nft.numMintedTokens();
 
         let publicKeys = [];
-        for (let i = 1; i < nextTokenId; ++i) {
+        for (let i = 1; i <= numMintedTokens; ++i) {
             publicKeys.push(await nft.encryptionKeys(i));
         }
         setPublicKeys(JSON.stringify(publicKeys, null, " "));

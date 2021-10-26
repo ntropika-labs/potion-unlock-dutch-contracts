@@ -3,11 +3,11 @@ import { NFTPotion } from "../contracts";
 import { useWallet } from "@binance-chain/bsc-use-wallet";
 
 export interface NFTPotionContext {
-    NFTAuctionContract?: NFTPotion;
+    NFTPotionContract?: NFTPotion;
     lastError: string;
 }
 
-export const Context = createContext<NFTPotionContext>({ NFTAuctionContract: null, lastError: "" });
+export const Context = createContext<NFTPotionContext>({ NFTPotionContract: null, lastError: "" });
 
 export const NFTPotionContractProvider: React.FC = ({ children }) => {
     const { ethereum, account } = useWallet();
@@ -29,5 +29,5 @@ export const NFTPotionContractProvider: React.FC = ({ children }) => {
         }
     }, [account, NFTPotionContract, ethereum]);
 
-    return <Context.Provider value={{ NFTAuctionContract: NFTPotionContract, lastError: "" }}>{children}</Context.Provider>;
+    return <Context.Provider value={{ NFTPotionContract, lastError: "" }}>{children}</Context.Provider>;
 };

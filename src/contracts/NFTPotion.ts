@@ -13,7 +13,7 @@ export class NFTPotion {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(Deployments.NFTContract, NFTpotionJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.NFTPotion, NFTpotionJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }
@@ -43,8 +43,8 @@ export class NFTPotion {
         return this.contract.fullSecret();
     }
 
-    async nextTokenId() {
-        return this.contract.nextTokenId();
+    async numMintedTokens() {
+        return this.contract.numMintedTokens();
     }
 
     async encryptionKeys(tokenId: number) {

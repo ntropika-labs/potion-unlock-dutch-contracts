@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
 import useNFTAuction from "./useNFTAuction";
-import { BigNumber } from "@ethersproject/bignumber";
 import { formatUnits } from "@ethersproject/units";
 
 const useNFTAuctionGetAllBids = (props: any) => {

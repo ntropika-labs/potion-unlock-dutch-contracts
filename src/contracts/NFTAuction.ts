@@ -49,7 +49,7 @@ export class NFTAuction {
 
     constructor() {
         this.provider = getDefaultProvider();
-        this.contract = new Contract(Deployments.NFTAuction, NFTAuctionJSON.abi, this.provider);
+        this.contract = new Contract(Deployments.NFTPotionAuction, NFTAuctionJSON.abi, this.provider);
         this.myAccount = "";
         this.signed = false;
     }

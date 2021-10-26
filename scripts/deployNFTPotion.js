@@ -2,7 +2,13 @@ const hre = require("hardhat");
 
 require("dotenv").config();
 
-const { getMetamaskPublicKey, encryptPassword, exportContract } = require("./utils");
+const {
+    getMetamaskPublicKey,
+    encryptPassword,
+    buildMerkleTree,
+    getPotionPrivateKey,
+    exportContract,
+} = require("./utils");
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 
 async function deployAuction(hre, biddingTokenAddress) {
@@ -12,7 +18,7 @@ async function deployAuction(hre, biddingTokenAddress) {
     await NFTAuction.deployed();
     console.log(`Auction Contract deployed to: ${NFTAuction.address}`);
 
-    exportContract("NFTAuction", NFTAuction.address);
+    exportContract("NFTPotionAuction", NFTAuction.address);
 
     return NFTAuction;
 }
@@ -55,23 +61,19 @@ async function deployNFTContract(hre, NFTAuctionContract, secret) {
     return NFTPotion;
 }
 
-async function testMinting(NFTPotion) {
-    let publicKey = getMetamaskPublicKey();
+async function deployNFTValidator(hre, NFTContractAddress, merkleTree, partialSecretSize) {
+    const merkleRoot = merkleTree.getHexRoot();
 
-    for (let i = 1; i <= NUM_NFTS; i++) {
-        const tx = await NFTPotion.mint(publicKey);
-        await tx.wait();
-    }
+    const NFTValidatorFactory = await hre.ethers.getContractFactory("NFTPotionValidator");
+    let NFTValidator = await NFTValidatorFactory.deploy(NFTContractAddress, merkleRoot, NUM_NFTS, partialSecretSize);
 
-    const totalDeployedTokens = (await NFTPotion.nextTokenId()) - 1;
-    console.log(`Total Deployed NFTS: ${totalDeployedTokens}`);
-    for (let i = 1; i <= totalDeployedTokens; i++) {
-        console.log("--------------------------------------");
-        console.log(`Token ID: ${i}`);
-        console.log(`URI: ${await NFTPotion.tokenURI(i)}`);
-        console.log(`Secret: ${await NFTPotion.secret(i)}`);
-    }
-    console.log("--------------------------------------");
+    await NFTValidator.deployed();
+    console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
+    console.log(`Merkle Root: ${merkleRoot}`);
+
+    exportContract("NFTPotionValidator", NFTValidator.address);
+
+    return NFTValidator;
 }
 
 async function main() {
@@ -79,9 +81,17 @@ async function main() {
     const mockWETH = await deployWETH(hre);
     const NFTAuction = await deployAuction(hre, mockWETH.address);
 
+    // NFT contract
     const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
     const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword);
-    //await testMinting(NFTPotion);
+
+    const potionPrivateKey = getPotionPrivateKey();
+    const merkleTree = buildMerkleTree(potionPrivateKey, NUM_NFTS);
+
+    const partialSecretSize = potionPrivateKey.length / NUM_NFTS;
+
+    // Validator contract
+    await deployNFTValidator(hre, NFTPotion.address, merkleTree, partialSecretSize);
 }
 
 main()
