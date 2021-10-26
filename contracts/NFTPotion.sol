@@ -14,7 +14,7 @@ contract NFTPotion is ERC721URIStorage, Ownable {
      */
     string public ipfsPrefix;
     string public ipfsSuffix;
-    uint256 public numMintedTokens = 0;
+    uint256 public numMintedTokens;
     uint256 public maxMintedTokens;
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
@@ -70,7 +70,7 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         Mutating functions
      */
-    function mint(uint256 tokenId, string calldata publicKey) external checkMaxNFTs checkWhitelist(tokenId) {
+    function mint(uint256 tokenId, string calldata publicKey) public checkMaxNFTs checkWhitelist(tokenId) {
         _safeMint(msg.sender, tokenId);
 
         string memory tokenIdStr = uint2str(tokenId);
@@ -80,7 +80,15 @@ contract NFTPotion is ERC721URIStorage, Ownable {
 
         encryptionKeys[tokenId] = publicKey;
 
+        numMintedTokens++;
+
         emit Mint(tokenId, tokenURI);
+    }
+
+    function mintList(uint256[] calldata tokenIds, string calldata publicKey) external {
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            mint(tokenIds[i], publicKey);
+        }
     }
 
     /**
