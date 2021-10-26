@@ -11,6 +11,7 @@ const useNFTAuctionCurrentBatch = () => {
         BigNumber.from(0),
         BigNumber.from(0),
         BigNumber.from(0),
+        BigNumber.from(0),
     ]);
 
     const auction = useNFTAuction();

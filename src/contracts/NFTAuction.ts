@@ -71,8 +71,20 @@ export class NFTAuction {
         return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
     }
 
-    async startBatch(startTokenId: number, endTokenId: number, minimumPricePerToken: string, auctionEndDate: number) {
-        return this.contract.startBatch(startTokenId, endTokenId, BigNumber.from(minimumPricePerToken), auctionEndDate);
+    async startBatch(
+        startTokenId: number,
+        endTokenId: number,
+        minimumPricePerToken: string,
+        purchasePrice: string,
+        auctionEndDate: number,
+    ) {
+        return this.contract.startBatch(
+            startTokenId,
+            endTokenId,
+            BigNumber.from(minimumPricePerToken),
+            BigNumber.from(purchasePrice),
+            auctionEndDate,
+        );
     }
 
     async endBatch() {
@@ -85,6 +97,10 @@ export class NFTAuction {
 
     async cancelBid() {
         return this.contract.cancelBid();
+    }
+
+    async purchase(numTokens: string) {
+        return this.contract.purchase(BigNumber.from(numTokens));
     }
 
     async claimRefund() {

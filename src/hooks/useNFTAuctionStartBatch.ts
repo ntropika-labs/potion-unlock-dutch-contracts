@@ -7,8 +7,16 @@ const useNFTAuctionStartBatch = (props: any) => {
     const auction = useNFTAuction();
 
     const handleStartBatch = useCallback(
-        async (startTokenId: number, endTokenId: number, minimumPricePerToken: string, auctionEndDate: number) => {
-            handleTransaction(auction.startBatch(startTokenId, endTokenId, minimumPricePerToken, auctionEndDate));
+        async (
+            startTokenId: number,
+            endTokenId: number,
+            minimumPricePerToken: string,
+            purchasePrice: string,
+            auctionEndDate: number,
+        ) => {
+            handleTransaction(
+                auction.startBatch(startTokenId, endTokenId, minimumPricePerToken, purchasePrice, auctionEndDate),
+            );
         },
         [auction, handleTransaction],
     );
