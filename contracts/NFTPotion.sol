@@ -41,9 +41,14 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     modifier checkWhitelist(uint256 tokenId) {
         INFTPotionWhitelist.WhitelistData[] memory ranges = whitelist.getWhitelistRanges(_msgSender());
 
+        bool isWhitelisted;
         for (uint256 i = 0; i < ranges.length; ++i) {
-            require(tokenId >= ranges[i].firstId && tokenId <= ranges[i].lastId, "Not whitelisted for token ID");
+            if (tokenId >= ranges[i].firstId && tokenId <= ranges[i].lastId) {
+                isWhitelisted = true;
+                break;
+            }
         }
+        require(isWhitelisted, "Not whitelisted for token ID");
         _;
     }
 
