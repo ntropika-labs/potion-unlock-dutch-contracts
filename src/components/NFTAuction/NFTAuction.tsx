@@ -123,7 +123,7 @@ const NFTAuction: React.FC<any> = props => {
     const { onClaimRefund } = useNFTAuctionClaimRefund(props);
     const refundAmount = useNFTAuctionRefundAmount(props);
 
-    const totalRefundsPending = lockedFunds.sub(claimableFunds).sub(currentBatch[5]);
+    const totalRefundsPending = lockedFunds.sub(claimableFunds).sub(currentBatch[4]);
 
     /**
      * Token whitelisting
@@ -150,11 +150,9 @@ const NFTAuction: React.FC<any> = props => {
                         <br />
                         Num. Tokens Auctioned: {formatUnits(currentBatch[3], "wei")}
                         <br />
-                        Highest Bid: {formatUnits(currentBatch[4])}
+                        Batch Claimable Funds: {formatUnits(currentBatch[4])}
                         <br />
-                        Batch Claimable Funds: {formatUnits(currentBatch[5])}
-                        <br />
-                        Num. Bidders: {formatUnits(currentBatch[6], "wei")}
+                        Num. Bidders: {formatUnits(currentBatch[5], "wei")}
                         <br />
                         <br />
                         Current Bids:
@@ -215,7 +213,7 @@ const NFTAuction: React.FC<any> = props => {
                         <h2>Funds</h2>
                         Current Locked Funds: {formatUnits(lockedFunds)}
                         <br />
-                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[5]))}
+                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[4]))}
                         <br />
                         Total Refunds Pending: {formatUnits(totalRefundsPending)}
                         <br />
