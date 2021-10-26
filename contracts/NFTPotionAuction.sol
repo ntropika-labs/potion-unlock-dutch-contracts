@@ -32,6 +32,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 nextBidderId;
     }
     BatchData public currentBatch;
+
+    uint256 lastAuctionedTokenId;
     struct BidData {
         uint64 bidderId;
         address bidderAddress;
@@ -81,6 +83,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 auctionEndDate
     ) external onlyOwner {
         require(auctionEndDate > block.timestamp, "Auction is in the past");
+        require(startTokenId == lastAuctionedTokenId + 1, "Wrong start token ID");
 
         currentBatch.startTokenId = startTokenId;
         currentBatch.numTokensAuctioned = endTokenId - startTokenId + 1;
@@ -128,6 +131,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
 
         claimableFunds += currentBatch.claimableFunds;
+        lastAuctionedTokenId += numAssignedTokens;
 
         delete currentBatch;
     }
