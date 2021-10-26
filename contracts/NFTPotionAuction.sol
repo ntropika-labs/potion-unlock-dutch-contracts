@@ -33,6 +33,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 nextBidderId;
     }
     BatchData public currentBatch;
+    struct BidData {
+        uint64 bidderId;
+        address bidderAddress;
+        uint64 numTokens;
+        uint128 pricePerToken;
+    }
 
     // Bidders info
     StructuredLinkedList.List public bidders;
@@ -94,7 +100,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         // Whitelisting
         uint256 numAssignedTokens = 0;
-        while (bidders.size > 0 && numAssignedTokens < currentBatch.numTokensAuctioned) {
+        while (bidders.sizeOf() > 0 && numAssignedTokens < currentBatch.numTokensAuctioned) {
             uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
 
@@ -124,7 +130,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         // Refunds
         console.log("Only refund: ", uint256(bidders.size));
-        while (bidders.size > 0) {
+        while (bidders.sizeOf() > 0) {
             uint256 node = bidders.popBack();
             (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
             _refundBidder(bidderId, pricePerToken * numTokens);
@@ -176,6 +182,18 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     */
     function getLatestBid(address bidder) external view returns (uint64 numTokens, uint128 pricePerToken) {
         (, numTokens, pricePerToken) = _decodeBid(bidByBidder[bidder]);
+    }
+
+    function getAllBids() external view returns (BidData[] memory bids) {
+        bids = new BidData[](bidders.sizeOf());
+
+        (, uint256 node) = bidders.getPreviousNode(0);
+        for (uint256 i = 0; i < bidders.sizeOf(); ++i) {
+            (bids[i].bidderId, bids[i].numTokens, bids[i].pricePerToken) = _decodeBid(node);
+            bids[i].bidderAddress = bidderById[bids[i].bidderId];
+
+            (, node) = bidders.getPreviousNode(node);
+        }
     }
 
     /**
@@ -297,17 +315,5 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      */
     function getValue(uint256 id) public pure returns (uint256) {
         return id >> 128;
-    }
-
-    function listBidders() external view {
-        (bool exist, uint256 node) = bidders.getPreviousNode(0);
-
-        while (node != 0) {
-            (uint64 bidderId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(node);
-            console.log("Bidder Id: ", uint256(bidderId));
-            console.log("Num Tokens: ", uint256(numTokens));
-            console.log("Price: ", uint256(pricePerToken));
-            (exist, node) = bidders.getPreviousNode(node);
-        }
     }
 }

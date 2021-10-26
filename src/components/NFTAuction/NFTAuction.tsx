@@ -7,13 +7,13 @@ import useNFTAuctionSetBid from "../../hooks/useNFTAuctionSetBid";
 import useNFTAuctionCancelBid from "../../hooks/useNFTAuctionCancelBid";
 import useNFTAuctionClaimRefund from "../../hooks/useNFTAuctionClaimRefund";
 import useNFTAuctionCurrentBatch from "../../hooks/useNFTAuctionCurrentBatch";
-import useNFTAuctionListBidders from "../../hooks/useNFTAuctionListBidders";
 import useNFTAuctionGetLatestBid from "../../hooks/useNFTAuctionGetLatestBid";
 import useNFTAuctionGetWhitelistRanges from "../../hooks/useNFTAuctionGetWhitelistRanges";
 import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds";
 import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
 import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
+import useNFTAuctionGetAllBids from "../../hooks/useNFTAuctionGetAllBids";
 import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
 import { formatUnits } from "ethers/lib/utils";
 import Deployments from "../../deployments.json";
@@ -24,7 +24,6 @@ const NFTAuction: React.FC<any> = props => {
      * Current Batch Info
      */
     const currentBatch = useNFTAuctionCurrentBatch();
-    const { onListBidders } = useNFTAuctionListBidders(props);
     const currentBatchEndDateMs = Number(formatUnits(currentBatch[0], "wei")) * 1000;
     const currentBatchEndDate = new Date(currentBatchEndDateMs);
     const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTAuction);
@@ -41,6 +40,8 @@ const NFTAuction: React.FC<any> = props => {
     const handleTransferFunds = useCallback(() => {
         onTransferFunds(recipient);
     }, [recipient, onTransferFunds]);
+
+    const bids = useNFTAuctionGetAllBids(props);
 
     /**
      * Start batch
@@ -129,6 +130,11 @@ const NFTAuction: React.FC<any> = props => {
      */
     const tokenIdRanges = useNFTAuctionGetWhitelistRanges(props);
 
+    const [showBids, setShowBids] = useState<boolean>(false);
+    const handleShowBids = useCallback(() => {
+        setShowBids(!showBids);
+    }, [showBids, setShowBids]);
+
     return (
         <div className="main">
             <div className="container">
@@ -151,9 +157,15 @@ const NFTAuction: React.FC<any> = props => {
                         Num. Bidders: {formatUnits(currentBatch[6], "wei")}
                         <br />
                         <br />
-                        <button type="button" className="btn btn-primary" onClick={onListBidders}>
-                            List Bidders
+                        Current Bids:
+                        <button type="button" className="btn btn-primary" onClick={handleShowBids}>
+                            Show Bids
                         </button>
+                        {showBids && (
+                            <pre>
+                                <code>{bids}</code>
+                            </pre>
+                        )}
                         <br />
                     </div>
                 </div>

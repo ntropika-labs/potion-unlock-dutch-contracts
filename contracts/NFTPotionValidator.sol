@@ -47,7 +47,7 @@ contract NFTPotionValidator is Context {
         bytes memory decryptedSecret,
         bytes32[] memory proof
     ) external {
-        require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid T Owner
+        require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
         require(tokenId <= maxSecretNFTs, "ITID"); // Invalid Token ID
         require(!isValidated[tokenId], "TAV"); // Token Already Validated
 
