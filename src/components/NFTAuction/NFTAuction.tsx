@@ -152,8 +152,28 @@ const NFTAuction: React.FC<any> = props => {
     /**
      * Token minting
      */
+    const [mintStartID, setMintStartID] = useState<number>();
+    const handleMintStartID = useCallback(
+        event => {
+            setMintStartID(event.target.value);
+        },
+        [setMintStartID],
+    );
+
+    const [mintEndID, setMintEndID] = useState<number>();
+    const handleMintEndID = useCallback(
+        event => {
+            setMintEndID(event.target.value);
+        },
+        [setMintEndID],
+    );
+
     const { onMintingList } = useNFTMintingList(props);
     const handleMintingList = useCallback(() => {
+        onMintingList([{ firstId: BigNumber.from(mintStartID), lastId: BigNumber.from(mintEndID) }]);
+    }, [mintStartID, mintEndID, onMintingList]);
+
+    const handleMintingAll = useCallback(() => {
         onMintingList(tokenIdRanges);
     }, [tokenIdRanges, onMintingList]);
 
@@ -322,10 +342,23 @@ const NFTAuction: React.FC<any> = props => {
                             : tokenIdRanges?.map(item => {
                                   return `[${formatUnits(item.firstId, "wei")}, ${formatUnits(item.lastId, "wei")}]`;
                               })}
+                        <br />
+                        <button type="button" className="btn btn-primary" onClick={handleMintingAll}>
+                            Mint All Tokens
+                        </button>
                     </div>
-                    <button type="button" className="btn btn-primary" onClick={handleMintingList}>
-                        Mint Tokens
-                    </button>
+                    <br />
+                    <div className="col-sm-12">
+                        <label htmlFor="startTokenId">Start Token ID:</label>
+                        <input type="number" className="form-control" id="startTokenId" onChange={handleMintStartID} />
+                        <br />
+                        <label htmlFor="endTokenId">End Token ID:</label>
+                        <input type="number" className="form-control" id="endTokenId" onChange={handleMintEndID} />
+                        <br />
+                        <button type="button" className="btn btn-primary" onClick={handleMintingList}>
+                            Mint Token Range
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

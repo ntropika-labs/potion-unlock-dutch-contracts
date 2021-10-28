@@ -32,8 +32,12 @@ export class NFTPotionValidator {
     }
 
     async validate(tokenId: number, decryptedSecret: string, proof: string) {
-        console.log(JSON.parse(proof));
         return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
+    }
+
+    async validateList(tokenIds: number[], decryptedSecrets: string[], proofs: string) {
+        console.log(JSON.parse(proofs));
+        return this.contract.validateList(tokenIds, decryptedSecrets, JSON.parse(proofs));
     }
 
     async getMessage() {

@@ -22,8 +22,13 @@ const NFTContract: React.FC<any> = props => {
         onGetData(tokenId);
     }, [onGetData, tokenId]);
 
-    const { fullSecret, onGetFullSecret } = useNFTFullSecret();
+    const fullSecret = useNFTFullSecret();
 
+    const [showSecret, setShowSecret] = useState<boolean>(false);
+    const handleShowSecret = useCallback(() => setShowSecret(!showSecret), [setShowSecret, showSecret]);
+
+    const [showKeys, setShowKeys] = useState<boolean>(false);
+    const handleShowKeys = useCallback(() => setShowKeys(!showKeys), [setShowKeys, showKeys]);
     return (
         <div className="main">
             <div className="container">
@@ -32,7 +37,10 @@ const NFTContract: React.FC<any> = props => {
                     <div className="row">
                         <div className="col-sm-12">
                             <h2>Collected Public Keys</h2>
-                            <pre style={{ whiteSpace: "pre-wrap" }}>{publicKeys}</pre>
+                            <button type="button" className="btn btn-primary" onClick={handleShowKeys}>
+                                {showKeys ? "Hide Keys" : "Show Keys"}
+                            </button>
+                            {showKeys && <pre style={{ whiteSpace: "pre-wrap" }}>{publicKeys}</pre>}
                         </div>
                     </div>
                 </div>
@@ -52,10 +60,11 @@ const NFTContract: React.FC<any> = props => {
                 </div>
                 <div>
                     <h2>NFT Original Secret</h2>
-                    <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{fullSecret}</pre>
-                    <button type="button" className="btn btn-primary" onClick={onGetFullSecret}>
-                        Get NFT Secret
+                    <button type="button" className="btn btn-primary" onClick={handleShowSecret}>
+                        {showSecret ? "Hide Secret" : "Show Secret"}
                     </button>
+                    <br />
+                    {showSecret && <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{fullSecret}</pre>}
                 </div>
             </div>
         </div>

@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import useNFTContract from "./useNFTContract";
 
 const useNFTFullSecret = () => {
@@ -6,11 +6,17 @@ const useNFTFullSecret = () => {
 
     const nft = useNFTContract();
 
-    const handleGetFullSecret = useCallback(async () => {
+    const fetchFullSecret = useCallback(async () => {
         setFullSecret(await nft.fullSecret());
     }, [nft, setFullSecret]);
 
-    return { fullSecret, onGetFullSecret: handleGetFullSecret };
+    useEffect(() => {
+        fetchFullSecret().catch(err => console.error(`Failed to fetch NFT full secret: ${err.stack}`));
+        const refreshInterval = setInterval(fetchFullSecret, 1000);
+        return () => clearInterval(refreshInterval);
+    }, [fetchFullSecret]);
+
+    return fullSecret;
 };
 
 export default useNFTFullSecret;

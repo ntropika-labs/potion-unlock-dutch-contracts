@@ -36,14 +36,25 @@ const NFTValidator: React.FC<any> = props => {
         onValidate(tokenID, decryptedSecret, proof);
     }, [onValidate, tokenID, decryptedSecret, proof]);
 
+    const [showMessage, setShowMessage] = useState<boolean>(false);
+    const handleShowMessage = useCallback(() => setShowMessage(!showMessage), [setShowMessage, showMessage]);
+
     return (
         <div className="main">
             <div className="container">
                 <h1>NFT Validator</h1>
                 <br />
                 <div className="row">
-                    <div className="col-sm-12">Current decoded message: {message}</div>
+                    <div className="col-sm-12">
+                        <button type="button" className="btn btn-primary" onClick={handleShowMessage}>
+                            {showMessage ? "Hide Message" : "Show Message"}
+                        </button>
+                        <br />
+                        Current decoded message:
+                        {showMessage && <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{message}</pre>}
+                    </div>
                 </div>
+                <br />
                 <div className="row">
                     <div className="col-sm-12">
                         <div className="form-group">
