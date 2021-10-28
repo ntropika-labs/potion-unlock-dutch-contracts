@@ -98,10 +98,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function endBatch() external {
-        //
-        // TODO!! reenable the check
-        //
-        //require(block.timestamp > currentBatch.auctionEndDate || currentBatch.numTokensAuctioned == 0, "Auction cannot be ended yet");
+        require(
+            block.timestamp > currentBatch.auctionEndDate || currentBatch.numTokensAuctioned == 0,
+            "Auction cannot be ended yet"
+        );
 
         // Whitelisting
         uint256 numAssignedTokens = 0;
