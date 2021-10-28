@@ -4,23 +4,21 @@ const { bufferToHex } = require("ethereumjs-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 
-const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, POTION_SECRET } = require("./config");
+const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE } = require("./config");
 const { encrypt, decrypt, getPublicKey, getPrivateKey } = require("./nacl");
 const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
 
-function exportContract(name, address, append = true) {
-    let deployments = {};
+require("dotenv").config();
 
-    if (append) {
-        try {
-            const deploymentsStr = fs.readFileSync(CONTRACTS_DEPLOYMENTS_FILE);
-            deployments = JSON.parse(deploymentsStr);
-        } catch {}
-    }
+/**
+ * Potion key management
+ */
+function getPotionGenesis() {
+    return Buffer.from(process.env.POTION_GENESIS, "hex");
+}
 
-    deployments[name] = address;
-
-    fs.writeFileSync(CONTRACTS_DEPLOYMENTS_FILE, JSON.stringify(deployments));
+function getPotionSecretKey() {
+    return keccak256(keccak256(keccak256(getPotionGenesis())));
 }
 
 function encryptPassword(password) {
@@ -41,6 +39,14 @@ function decryptPassword(encryptedPassword, privateKey) {
 /**
  * Potion public/private key utils
  */
+function getPotionPrivateKey() {
+    return getPrivateKey(getPotionSecretKey());
+}
+
+function getPotionPublicKey() {
+    return getPublicKey(getPotionSecretKey());
+}
+
 function signPotionMessage(message) {
     const potionPublicKey = getPotionPublicKey();
     const messageUintArray = decodeUTF8(message);
@@ -52,14 +58,6 @@ function decryptPotionMessage(encryptedMessage) {
     const potionPrivateKey = getPotionPrivateKey();
     const decryptedData = decrypt(encryptedMessage, potionPrivateKey);
     return encodeUTF8(decryptedData);
-}
-
-function getPotionPrivateKey() {
-    return getPrivateKey(POTION_SECRET);
-}
-
-function getPotionPublicKey() {
-    return getPublicKey(POTION_SECRET);
 }
 
 /**
@@ -100,6 +98,9 @@ function getDataFromSecret(secret, tokenId, encrypted = true) {
     }
 }
 
+/**
+ * Merkle Tree
+ */
 function getMerkleLeaves(secret, numNFTs, encrypted = true) {
     let leaves = [];
 
@@ -121,11 +122,31 @@ function buildMerkleTree(secret, numNFTs) {
     return merkleTree;
 }
 
+/**
+ * Misc
+ */
+function exportContract(name, address, append = true) {
+    let deployments = {};
+
+    if (append) {
+        try {
+            const deploymentsStr = fs.readFileSync(CONTRACTS_DEPLOYMENTS_FILE);
+            deployments = JSON.parse(deploymentsStr);
+        } catch {}
+    }
+
+    deployments[name] = address;
+
+    fs.writeFileSync(CONTRACTS_DEPLOYMENTS_FILE, JSON.stringify(deployments));
+}
+
 module.exports = {
-    signPotionMessage,
-    decryptPotionMessage,
+    getPotionGenesis,
+    getPotionSecretKey,
     getPotionPublicKey,
     getPotionPrivateKey,
+    signPotionMessage,
+    decryptPotionMessage,
     signMetamaskMessage,
     encryptSecret,
     buildMerkleTree,

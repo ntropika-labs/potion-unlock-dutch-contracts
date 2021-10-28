@@ -1,7 +1,6 @@
-const { getPotionPrivateKey, signMetamaskMessage, getMetamaskPublicKey } = require("./utils");
+const { getPotionPrivateKey, signMetamaskMessage } = require("./utils");
 const yargs = require("yargs");
 const fs = require("fs");
-const { NUM_NFTS } = require("./config");
 
 async function main() {
     const argv = await yargs

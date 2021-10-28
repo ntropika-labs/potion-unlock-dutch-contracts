@@ -5,7 +5,7 @@ function isNullish(value) {
 }
 
 function getKeyPair(secret) {
-    return nacl.box.keyPair.fromSecretKey(naclUtil.decodeBase64(secret));
+    return nacl.box.keyPair.fromSecretKey(secret);
 }
 
 function getPublicKey(secret) {
@@ -55,9 +55,14 @@ function decrypt(encryptedData, privateKey) {
     return nacl.box.open(ciphertext, nonce, publicKey, privateKey);
 }
 
+function randomBytes(length) {
+    return nacl.randomBytes(length);
+}
+
 module.exports = {
     encrypt,
     decrypt,
     getPublicKey,
     getPrivateKey,
+    randomBytes,
 };

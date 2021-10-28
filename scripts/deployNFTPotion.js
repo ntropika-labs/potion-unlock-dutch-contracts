@@ -2,13 +2,7 @@ const hre = require("hardhat");
 
 require("dotenv").config();
 
-const {
-    getMetamaskPublicKey,
-    encryptPassword,
-    buildMerkleTree,
-    getPotionPrivateKey,
-    exportContract,
-} = require("./utils");
+const { encryptPassword, buildMerkleTree, getPotionGenesis, exportContract } = require("./utils");
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 
 async function deployAuction(hre, biddingTokenAddress) {
@@ -16,8 +10,8 @@ async function deployAuction(hre, biddingTokenAddress) {
     let NFTAuction = await NFTAuctionFactory.deploy(biddingTokenAddress);
 
     await NFTAuction.deployed();
-    console.log(`Auction Contract deployed to: ${NFTAuction.address}`);
 
+    console.log(`Auction Contract deployed to: ${NFTAuction.address}`);
     exportContract("NFTPotionAuction", NFTAuction.address);
 
     return NFTAuction;
@@ -33,15 +27,14 @@ async function deployWETH(hre) {
     ]);
 
     await MockWETH.deployed();
-    console.log(`MockWETH Contract deployed to: ${MockWETH.address}`);
 
+    console.log(`MockWETH Contract deployed to: ${MockWETH.address}`);
     exportContract("MockWETH", MockWETH.address);
 
     return MockWETH;
 }
 
 async function deployNFTContract(hre, NFTAuctionContract, secret) {
-    console.log("Secret: " + secret);
     const NFTPotionFactory = await hre.ethers.getContractFactory("NFTPotion");
     let NFTPotion = await NFTPotionFactory.deploy(
         NFT_NAME,
@@ -54,8 +47,8 @@ async function deployNFTContract(hre, NFTAuctionContract, secret) {
     );
 
     await NFTPotion.deployed();
-    console.log("Potion NFT Contract deployed to:", NFTPotion.address);
 
+    console.log("Potion NFT Contract deployed to:", NFTPotion.address);
     exportContract("NFTPotion", NFTPotion.address);
 
     return NFTPotion;
@@ -68,27 +61,48 @@ async function deployNFTValidator(hre, NFTContractAddress, merkleTree, partialSe
     let NFTValidator = await NFTValidatorFactory.deploy(NFTContractAddress, merkleRoot, NUM_NFTS, partialSecretSize);
 
     await NFTValidator.deployed();
-    console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
-    console.log(`Merkle Root: ${merkleRoot}`);
 
+    console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
     exportContract("NFTPotionValidator", NFTValidator.address);
 
     return NFTValidator;
 }
 
 async function main() {
+    // Genesis
+    const potionGenesis = getPotionGenesis();
+    if (potionGenesis.length % NUM_NFTS !== 0) {
+        console.log(
+            `Potion Genesis length (${potionGenesis.length} bytes) is not divisible by number of NFTs (${NUM_NFTS})`,
+        );
+        return;
+    }
+
+    // Source code password
+    const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
+    const encryptedPasswordLength = Buffer.from(encryptedPassword.slice(2), "hex").length;
+
+    if (encryptedPasswordLength !== potionGenesis.length) {
+        console.log(
+            `Encrypted source code password length (${encryptedPasswordLength}) is different from Potion Genesis length (${potionGenesis.length})`,
+        );
+        return;
+    }
+
+    console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
+
+    // Merkle tree
+    const merkleTree = buildMerkleTree(potionGenesis, NUM_NFTS);
+    const partialSecretSize = potionGenesis.length / NUM_NFTS;
+
+    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
+
     // Auction contract
     const mockWETH = await deployWETH(hre);
     const NFTAuction = await deployAuction(hre, mockWETH.address);
 
     // NFT contract
-    const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
     const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword);
-
-    const potionPrivateKey = getPotionPrivateKey();
-    const merkleTree = buildMerkleTree(potionPrivateKey, NUM_NFTS);
-
-    const partialSecretSize = potionPrivateKey.length / NUM_NFTS;
 
     // Validator contract
     await deployNFTValidator(hre, NFTPotion.address, merkleTree, partialSecretSize);
