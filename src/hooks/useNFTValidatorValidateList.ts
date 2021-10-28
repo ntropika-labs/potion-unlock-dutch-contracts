@@ -7,8 +7,10 @@ const useNFTValidatorValidateList = (props: any) => {
     const nftValidator = useNFTValidatorContract();
 
     const handleValidateList = useCallback(
-        async (tokenIds: number[], decryptedSecrets: string[], proof: string) => {
-            handleTransaction(nftValidator.validateList(tokenIds, decryptedSecrets, proof));
+        async (tokenIds: string, decryptedSecrets: string, proofs: string) => {
+            handleTransaction(
+                nftValidator.validateList(JSON.parse(tokenIds), JSON.parse(decryptedSecrets), JSON.parse(proofs)),
+            );
         },
         [nftValidator, handleTransaction],
     );

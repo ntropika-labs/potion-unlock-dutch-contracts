@@ -1,13 +1,20 @@
 const { NUM_NFTS } = require("./config");
 
 const yargs = require("yargs");
-const { buildMerkleTree, getMerkleLeaves, getPotionPrivateKey, getPotionGenesis } = require("./utils");
+const { bufferToHex } = require("ethereumjs-util");
+const { buildMerkleTree, getMerkleLeaves, getPotionGenesis } = require("./utils");
 
 async function main() {
     const argv = await yargs
         .option("tokenId", {
             alias: "t",
-            description: "Token ID",
+            description: "Start Token ID",
+            type: "number",
+        })
+        .option("numElements", {
+            alias: "n",
+            description: "Number of proofs to generate starting at tokenId",
+            default: 1,
             type: "number",
         })
         .demandOption(["tokenId"])
@@ -21,12 +28,38 @@ async function main() {
 
     const leaves = getMerkleLeaves(potionGenesis, NUM_NFTS);
 
-    const proofHex = merkleTree.getHexProof(leaves[tokenId - 1]);
-
-    const proofSolidity = '["' + proofHex.join('", "') + '"]';
-
     console.log(merkleTree.getHexRoot());
-    console.log(`Proof: ${proofSolidity}`);
+
+    // Just one element
+    if (argv.numElements === 1) {
+        const proofHex = merkleTree.getHexProof(leaves[tokenId - 1]);
+        const proofSolidity = '["' + proofHex.join('", "') + '"]';
+
+        console.log(`Proof: ${proofSolidity}`);
+        return;
+    }
+
+    // List of elements
+    const tokenIDList = [];
+    const decryptedSecretList = [];
+    const proofList = [];
+
+    const subkeyLength = potionGenesis.length / NUM_NFTS;
+
+    for (let i = 0; i < argv.numElements; ++i) {
+        const proofHex = merkleTree.getHexProof(leaves[tokenId + i - 1]);
+        const proofSolidity = '["' + proofHex.join('", "') + '"]';
+
+        tokenIDList.push(tokenId + i);
+        decryptedSecretList.push(
+            bufferToHex(potionGenesis.subarray((tokenId + i - 1) * subkeyLength, (tokenId + i) * subkeyLength)),
+        );
+        proofList.push(proofSolidity);
+    }
+
+    console.log(`Token IDs: ${JSON.stringify(tokenIDList)}`);
+    console.log(`Decrypted Secrets: ${JSON.stringify(decryptedSecretList)}`);
+    console.log(`Proofs: [${proofList}]`);
 }
 
 main()

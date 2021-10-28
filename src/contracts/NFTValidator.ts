@@ -1,5 +1,5 @@
 import NFTValidatorJSON from "../artifacts/contracts/NFTPotionValidator.sol/NFTPotionValidator.json";
-import { Contract, ethers } from "ethers";
+import { BigNumber, Contract, ethers } from "ethers";
 import { getDefaultProvider, getWeb3Provider } from "../utils/provider";
 
 const Deployments = require("../deployments.json");
@@ -35,9 +35,19 @@ export class NFTPotionValidator {
         return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
     }
 
-    async validateList(tokenIds: number[], decryptedSecrets: string[], proofs: string) {
-        console.log(JSON.parse(proofs));
-        return this.contract.validateList(tokenIds, decryptedSecrets, JSON.parse(proofs));
+    async validateList(tokenIds: number[], decryptedSecrets: string[], proofs: string[][]) {
+        const tokenIDsBN = tokenIds.map(item => BigNumber.from(item));
+        const decrypted = decryptedSecrets.map(item => parseInt(item, 16));
+
+        const proofParsed = [];
+        for (let i = 0; i < proofs.length; ++i) {
+            const proof = proofs[i];
+            proofParsed.push(proof.map(item => Buffer.from(item.substr(2), "hex")));
+        }
+        console.log(tokenIDsBN);
+        console.log(decrypted);
+        console.log(proofParsed);
+        return this.contract.validateList(tokenIDsBN, decryptedSecrets, proofs);
     }
 
     async getMessage() {

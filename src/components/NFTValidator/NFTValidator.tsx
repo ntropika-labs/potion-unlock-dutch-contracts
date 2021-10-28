@@ -3,9 +3,16 @@ import { useCallback, useState } from "react";
 import { withGlobalState } from "react-globally";
 import useNFTValidatorMessage from "../../hooks/useNFTValidatorMessage";
 import useNFTValidatorValidate from "../../hooks/useNFTValidatorValidate";
+import useNFTValidatorValidateList from "../../hooks/useNFTValidatorValidateList";
 
 const NFTValidator: React.FC<any> = props => {
     const message = useNFTValidatorMessage();
+
+    // Decoded message
+    const [showMessage, setShowMessage] = useState<boolean>(false);
+    const handleShowMessage = useCallback(() => setShowMessage(!showMessage), [setShowMessage, showMessage]);
+
+    // Single validation
     const { onValidate } = useNFTValidatorValidate(props);
 
     const [tokenID, setTokenID] = useState<number>();
@@ -36,14 +43,41 @@ const NFTValidator: React.FC<any> = props => {
         onValidate(tokenID, decryptedSecret, proof);
     }, [onValidate, tokenID, decryptedSecret, proof]);
 
-    const [showMessage, setShowMessage] = useState<boolean>(false);
-    const handleShowMessage = useCallback(() => setShowMessage(!showMessage), [setShowMessage, showMessage]);
+    // Batch validation
+    const { onValidateList } = useNFTValidatorValidateList(props);
+
+    const [tokenIDList, setTokenIDList] = useState<string>();
+    const handleTokenIDListChange = useCallback(
+        event => {
+            setTokenIDList(event.target.value);
+        },
+        [setTokenIDList],
+    );
+
+    const [decryptedSecretList, setDecryptedSecretList] = useState<string>();
+    const handleDecryptedSecretList = useCallback(
+        event => {
+            setDecryptedSecretList(event.target.value);
+        },
+        [setDecryptedSecretList],
+    );
+
+    const [proofList, setProofList] = useState<string>();
+    const handleMerkleProofListChange = useCallback(
+        event => {
+            setProofList(event.target.value);
+        },
+        [setProofList],
+    );
+
+    const handleValidateList = useCallback(() => {
+        onValidateList(tokenIDList, decryptedSecretList, proofList);
+    }, [onValidateList, tokenIDList, decryptedSecretList, proofList]);
 
     return (
         <div className="main">
             <div className="container">
                 <h1>NFT Validator</h1>
-                <br />
                 <div className="row">
                     <div className="col-sm-12">
                         <button type="button" className="btn btn-primary" onClick={handleShowMessage}>
@@ -57,6 +91,7 @@ const NFTValidator: React.FC<any> = props => {
                 <br />
                 <div className="row">
                     <div className="col-sm-12">
+                        <h2>Single Validation</h2>
                         <div className="form-group">
                             <label htmlFor="tokenID">Token ID</label>
                             <input type="number" className="form-control" id="tokenID" onChange={handleTokenIDChange} />
@@ -69,7 +104,7 @@ const NFTValidator: React.FC<any> = props => {
                                 onChange={handleDecryptedSecret}
                             />
                             <br />
-                            <label htmlFor="Merkle Proof">Merkle Proof</label>
+                            <label htmlFor="merkleProof">Merkle Proof</label>
                             <input
                                 type="string"
                                 className="form-control"
@@ -79,6 +114,39 @@ const NFTValidator: React.FC<any> = props => {
                         </div>
                         <button type="button" className="btn btn-primary" onClick={handleValidate}>
                             Validate
+                        </button>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-sm-12">
+                        <h2>Batch Validation</h2>
+                        <div className="form-group">
+                            <label htmlFor="tokenIDs">Token IDs</label>
+                            <input
+                                type="string"
+                                className="form-control"
+                                id="tokenIDs"
+                                onChange={handleTokenIDListChange}
+                            />
+                            <br />
+                            <label htmlFor="decryptedSecrets">Decrypted Secrets</label>
+                            <input
+                                type="string"
+                                className="form-control"
+                                id="decryptedSecrets"
+                                onChange={handleDecryptedSecretList}
+                            />
+                            <br />
+                            <label htmlFor="merkleProofs">Merkle Proofs</label>
+                            <input
+                                type="string"
+                                className="form-control"
+                                id="merkleProofs"
+                                onChange={handleMerkleProofListChange}
+                            />
+                        </div>
+                        <button type="button" className="btn btn-primary" onClick={handleValidateList}>
+                            Batch Validate
                         </button>
                     </div>
                 </div>
