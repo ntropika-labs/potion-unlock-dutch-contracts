@@ -46,9 +46,8 @@ contract NFTPotionValidator is Context {
         uint256 tokenId,
         bytes memory decryptedSecret,
         bytes32[] memory proof
-    ) external {
+    ) public {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
-        require(tokenId <= maxSecretNFTs, "ITID"); // Invalid Token ID
         require(!isValidated[tokenId], "TAV"); // Token Already Validated
 
         bytes memory data = abi.encodePacked(tokenId, decryptedSecret);
@@ -63,6 +62,16 @@ contract NFTPotionValidator is Context {
         copyDecryptedSecret(tokenId, decryptedSecret);
 
         emit NFTValidated(_msgSender(), tokenId);
+    }
+
+    function validateList(
+        uint256[] calldata tokenIds,
+        bytes[] calldata decryptedSecrets,
+        bytes32[][] calldata proof
+    ) external {
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            validate(tokenIds[i], decryptedSecrets[i], proof[i]);
+        }
     }
 
     function copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
