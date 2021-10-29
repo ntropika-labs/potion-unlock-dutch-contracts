@@ -4,7 +4,7 @@ pragma solidity 0.8.9;
 import "hardhat/console.sol";
 
 import "@openzeppelin/contracts/utils/Context.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "./INFTPotion.sol";
 
 contract NFTPotionValidator is Context {
     /**
@@ -12,7 +12,7 @@ contract NFTPotionValidator is Context {
      */
     bytes32 public merkleRoot;
     uint256 public maxSecretNFTs;
-    IERC721 public NFTContract;
+    INFTPotion public NFTContract;
     mapping(uint256 => bool) public isValidated;
     uint256 public partialSecretSize;
     bytes public finalMessage;
@@ -33,7 +33,7 @@ contract NFTPotionValidator is Context {
     ) {
         merkleRoot = _merkleRoot;
         maxSecretNFTs = _maxSecretNFTs;
-        NFTContract = IERC721(_NFTContract);
+        NFTContract = INFTPotion(_NFTContract);
         partialSecretSize = _partialSecretSize;
 
         finalMessage = new bytes(_partialSecretSize * _maxSecretNFTs);
@@ -75,8 +75,12 @@ contract NFTPotionValidator is Context {
     }
 
     function copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
-        for (uint256 i = 0; i < decryptedSecret.length; ++i) {
-            finalMessage[partialSecretSize * (tokenId - 1) + i] = decryptedSecret[i];
+        (uint256 start, uint256 length, bool found) = NFTContract.getSecretPositionLength(tokenId);
+
+        require(found, "CRITICAL!! Token ID could not be found in rarity config");
+
+        for (uint256 i = 0; i < length; ++i) {
+            finalMessage[start + i] = decryptedSecret[i];
         }
     }
 

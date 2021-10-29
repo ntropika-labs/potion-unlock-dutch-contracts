@@ -5,16 +5,8 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 
+import "./INFTPotionWhitelist.sol";
 import "hardhat/console.sol";
-
-interface INFTPotionWhitelist {
-    struct WhitelistData {
-        uint256 firstId;
-        uint256 lastId;
-    }
-
-    function getWhitelistRanges(address buyer) external returns (WhitelistData[] memory);
-}
 
 contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
@@ -51,6 +43,13 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     // Whitelist
     mapping(address => WhitelistData[]) public whitelist;
+
+    /**
+        Events
+     */
+    event SetBid(address indexed bidder, uint64 indexed numTokens, uint128 indexed pricePerToken);
+    event CancelBid(address indexed bidder);
+    event Purchase(address indexed bidder, uint64 indexed numTokens, uint256 indexed pricePerToken);
 
     /**
         Modifiers
@@ -158,10 +157,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         _addBid(bidderId, numTokens, pricePerToken);
         _chargeBidder(pricePerToken * numTokens);
+
+        emit SetBid(_msgSender(), numTokens, pricePerToken);
     }
 
     function cancelBid() external checkAuctionActive {
         _cancelBid();
+
+        emit CancelBid(_msgSender());
     }
 
     /**
@@ -177,6 +180,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         lastAuctionedTokenId += numTokens;
 
         _chargeBidder(currentBatch.directPurchasePrice * numTokens);
+
+        emit Purchase(_msgSender(), numTokens, currentBatch.directPurchasePrice);
     }
 
     /**
