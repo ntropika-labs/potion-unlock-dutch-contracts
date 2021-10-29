@@ -4,7 +4,7 @@ const { bufferToHex } = require("ethereumjs-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 
-const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE } = require("./config");
+const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, RARITIES_CONFIG, NUM_NFTS } = require("../config");
 const { encrypt, decrypt, getPublicKey, getPrivateKey } = require("./nacl");
 const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
 
@@ -86,10 +86,13 @@ function encryptSecret(secret) {
     return encryptedSecret;
 }
 
-function getDataFromSecret(secret, tokenId, encrypted = true) {
+/**
+ * Merkle Tree
+ */
+ function getPieceHash(piece, tokenId, encrypted = true) {
     const tokenIdData = Buffer.from(String.fromCharCode(tokenId));
     const padding = Buffer.from("00000000000000000000000000000000000000000000000000000000000000", "hex");
-    const data = Buffer.concat([padding, tokenIdData, secret]);
+    const data = Buffer.concat([padding, tokenIdData, piece]);
 
     if (encrypted) {
         return keccak256(data);
@@ -98,25 +101,20 @@ function getDataFromSecret(secret, tokenId, encrypted = true) {
     }
 }
 
-/**
- * Merkle Tree
- */
-function getMerkleLeaves(secret, numNFTs, encrypted = true) {
+function getMerkleLeaves(secret, rarityConfig, encrypted = true) {
     let leaves = [];
 
-    const partialSecretLength = secret.length / numNFTs;
-
-    for (let i = 0; i < numNFTs; ++i) {
-        const partialSecret = secret.subarray(i * partialSecretLength, (i + 1) * partialSecretLength);
+    for (let i = 0; i < NUM_NFTS; ++i) {
         const tokenID = i + 1;
-        leaves.push(getDataFromSecret(partialSecret, tokenID, encrypted));
+        const secretPiece = getSecretPieceFromId(tokenID, secret, rarityConfig);
+        leaves.push(getPieceHash(secretPiece, tokenID, encrypted));
     }
 
     return leaves;
 }
 
-function buildMerkleTree(secret, numNFTs) {
-    let leaves = getMerkleLeaves(secret, numNFTs);
+function buildMerkleTree(secret, rarityConfig) {
+    let leaves = getMerkleLeaves(secret, rarityConfig);
 
     const merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
     return merkleTree;
@@ -140,6 +138,61 @@ function exportContract(name, address, append = true) {
     fs.writeFileSync(CONTRACTS_DEPLOYMENTS_FILE, JSON.stringify(deployments));
 }
 
+/**
+ * Rarities
+ */
+function getSecretPieceFromId(tokenId, secret, raritiesConfig)
+{
+    for (let i=0; i<raritiesConfig.length; ++i) {
+        const config = raritiesConfig[i];
+        if (tokenId < config.startTokenId || tokenId>config.endTokenId) {
+            continue;
+        }
+
+        const numTokens = raritiesConfig.endTokenId - raritiesConfig.startTokenId + 1;
+        const fragment = secret.subarray(raritiesConfig.secretSegmentStart, raritiesConfig.secretSegmentStart + raritiesConfig.secretSegmentLength);
+        const fragmentNumPieces = fragment.length / raritiesConfig.bytesPerPiece;
+        const tokensPerPiece = numTokens/fragmentNumPieces;
+        const pieceIndex = Math.floor((tokenId - raritiesConfig.startTokenId)/tokensPerPiece);
+
+        return fragment.subarray(pieceIndex * raritiesConfig.bytesPerPiece, (pieceIndex+1) * raritiesConfig.bytesPerPiece);
+    }
+
+    throw Error("Invalid token ID for rarity config when calculated secret fragment");
+}
+
+function getRaritiesConfig() {
+    let totalNFTs = 0;
+    let totalSecretLength = 0;
+
+    RARITIES_CONFIG.forEach(rarityConfig => {
+        if (rarityConfig.secretSegmentLength % rarityConfig.bytesPerPiece !== 0) {
+            throw Error(
+                `Error in rarity config, segment length (${rarityConfig.secretSegmentLength}) is not divisible by bytes per piece (${rarityConfig.bytesPerPiece})`,
+            );
+        }
+
+        totalNFTs += rarityConfig.endTokenId - rarityConfig.startTokenId + 1;
+        totalSecretLength += rarityConfig.secretSegmentLength;
+    });
+
+    if (totalNFTs !== NUM_NFTS) {
+        throw Error(
+            `Number of NFTs defined in rarity config (${totalNFTs}) is different from maximum number of NFTs in contract (${NUM_NFTS}) `,
+        );
+    }
+
+    const genesisLength = getPotionGenesis().length;
+
+    if (totalSecretLength !== genesisLength) {
+        throw Error(
+            `Secret length defined in rarity config (${totalSecretLength}) is different from Genesis length (${genesisLength}) `,
+        );
+    }
+
+    return RARITIES_CONFIG;
+}
+
 module.exports = {
     getPotionGenesis,
     getPotionSecretKey,
@@ -150,10 +203,12 @@ module.exports = {
     signMetamaskMessage,
     encryptSecret,
     buildMerkleTree,
-    getDataFromSecret,
+    getDataFromSecret: getPieceHash,
     getMerkleLeaves,
     getMetamaskPublicKey,
     encryptPassword,
     decryptPassword,
     exportContract,
+    getRaritiesConfig,
+    getSecretPieceFromId
 };

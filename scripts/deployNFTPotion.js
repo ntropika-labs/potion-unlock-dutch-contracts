@@ -2,8 +2,27 @@ const hre = require("hardhat");
 
 require("dotenv").config();
 
-const { encryptPassword, buildMerkleTree, getPotionGenesis, exportContract } = require("./lib/utils");
+const {
+    encryptPassword,
+    buildMerkleTree,
+    getPotionGenesis,
+    exportContract,
+    getRaritiesConfig,
+} = require("./lib/utils");
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
+const { BigNumber } = require("@ethersproject/bignumber");
+
+function encodeRarityConfig(rarityConfig) {
+    return rarityConfig.map(item => {
+        item.startTokenId = BigNumber.from(item.startTokenId);
+        item.endTokenId = BigNumber.from(item.endTokenId);
+        item.secretSegmentStart = BigNumber.from(item.secretSegmentStart);
+        item.secretSegmentLength = BigNumber.from(item.secretSegmentLength);
+        item.bytesPerPiece = BigNumber.from(item.bytesPerPiece);
+
+        return item;
+    });
+}
 
 async function deployAuction(hre, biddingTokenAddress) {
     const NFTAuctionFactory = await hre.ethers.getContractFactory("NFTPotionAuction");
@@ -34,7 +53,7 @@ async function deployWETH(hre) {
     return MockWETH;
 }
 
-async function deployNFTContract(hre, NFTAuctionContract, secret) {
+async function deployNFTContract(hre, NFTAuctionContract, secret, rarityConfig) {
     const NFTPotionFactory = await hre.ethers.getContractFactory("NFTPotion");
     let NFTPotion = await NFTPotionFactory.deploy(
         NFT_NAME,
@@ -44,6 +63,7 @@ async function deployNFTContract(hre, NFTAuctionContract, secret) {
         NUM_NFTS,
         secret,
         NFTAuctionContract.address,
+        rarityConfig,
     );
 
     await NFTPotion.deployed();
@@ -69,14 +89,12 @@ async function deployNFTValidator(hre, NFTContractAddress, merkleTree, partialSe
 }
 
 async function main() {
+    // Rarities
+    const raritiesConfig = getRaritiesConfig();
+    const raritiesConfigSolidity = encodeRarityConfig(raritiesConfig);
+
     // Genesis
     const potionGenesis = getPotionGenesis();
-    if (potionGenesis.length % NUM_NFTS !== 0) {
-        console.log(
-            `Potion Genesis length (${potionGenesis.length} bytes) is not divisible by number of NFTs (${NUM_NFTS})`,
-        );
-        return;
-    }
 
     // Source code password
     const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
@@ -91,21 +109,18 @@ async function main() {
 
     console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
 
-    // Merkle tree
-    const merkleTree = buildMerkleTree(potionGenesis, NUM_NFTS);
-    const partialSecretSize = potionGenesis.length / NUM_NFTS;
-
-    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
-
     // Auction contract
     const mockWETH = await deployWETH(hre);
     const NFTAuction = await deployAuction(hre, mockWETH.address);
 
     // NFT contract
-    const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword);
+    const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword, raritiesConfigSolidity);
 
     // Validator contract
-    await deployNFTValidator(hre, NFTPotion.address, merkleTree, partialSecretSize);
+    const merkleTree = buildMerkleTree(potionGenesis, raritiesConfig);
+    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
+
+    //await deployNFTValidator(hre, NFTPotion.address, merkleTree, raritiesConfigSolidity);
 }
 
 main()
