@@ -1,4 +1,4 @@
-const { randomBytes } = require("./nacl.js");
+const { randomBytes } = require("./lib/nacl.js");
 const { bufferToHex } = require("ethereumjs-util");
 const yargs = require("yargs");
 

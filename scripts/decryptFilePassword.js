@@ -1,4 +1,4 @@
-const { decryptPassword } = require("./utils");
+const { decryptPassword } = require("./lib/utils");
 const yargs = require("yargs");
 
 async function main() {

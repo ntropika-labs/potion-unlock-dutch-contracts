@@ -2,7 +2,7 @@ const hre = require("hardhat");
 
 require("dotenv").config();
 
-const { encryptPassword, buildMerkleTree, getPotionGenesis, exportContract } = require("./utils");
+const { encryptPassword, buildMerkleTree, getPotionGenesis, exportContract } = require("./lib/utils");
 const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 
 async function deployAuction(hre, biddingTokenAddress) {

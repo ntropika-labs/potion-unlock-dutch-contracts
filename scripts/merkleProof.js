@@ -2,7 +2,7 @@ const { NUM_NFTS } = require("./config");
 
 const yargs = require("yargs");
 const { bufferToHex } = require("ethereumjs-util");
-const { buildMerkleTree, getMerkleLeaves, getPotionGenesis } = require("./utils");
+const { buildMerkleTree, getMerkleLeaves, getPotionGenesis } = require("./lib/utils");
 
 async function main() {
     const argv = await yargs
