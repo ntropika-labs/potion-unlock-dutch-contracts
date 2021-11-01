@@ -14,13 +14,13 @@ const { BigNumber } = require("@ethersproject/bignumber");
 
 function encodeRarityConfig(rarityConfig) {
     return rarityConfig.map(item => {
-        item.startTokenId = BigNumber.from(item.startTokenId);
-        item.endTokenId = BigNumber.from(item.endTokenId);
-        item.secretSegmentStart = BigNumber.from(item.secretSegmentStart);
-        item.secretSegmentLength = BigNumber.from(item.secretSegmentLength);
-        item.bytesPerPiece = BigNumber.from(item.bytesPerPiece);
-
-        return item;
+        return {
+            startTokenId: BigNumber.from(item.startTokenId),
+            endTokenId: BigNumber.from(item.endTokenId),
+            secretSegmentStart: BigNumber.from(item.secretSegmentStart),
+            secretSegmentLength: BigNumber.from(item.secretSegmentLength),
+            bytesPerPiece: BigNumber.from(item.bytesPerPiece),
+        };
     });
 }
 
