@@ -2,7 +2,7 @@ const { NUM_NFTS } = require("./config");
 
 const yargs = require("yargs");
 const { bufferToHex } = require("ethereumjs-util");
-const { buildMerkleTree, getMerkleLeaves, getPotionGenesis } = require("./lib/utils");
+const { buildMerkleTree, getMerkleLeaves, getPotionGenesis, getRaritiesConfig } = require("./lib/utils");
 
 async function main() {
     const argv = await yargs
@@ -22,11 +22,12 @@ async function main() {
         .alias("help", "h").argv;
 
     const potionGenesis = getPotionGenesis();
-    const merkleTree = buildMerkleTree(potionGenesis, NUM_NFTS);
+    const rarityConfig = getRaritiesConfig();
+    const merkleTree = buildMerkleTree(potionGenesis, rarityConfig);
 
     const tokenId = argv.tokenId;
 
-    const leaves = getMerkleLeaves(potionGenesis, NUM_NFTS);
+    const leaves = getMerkleLeaves(potionGenesis, rarityConfig);
 
     console.log(merkleTree.getHexRoot());
 
