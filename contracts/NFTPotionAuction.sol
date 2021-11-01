@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 
 import "./INFTPotionWhitelist.sol";
-import "hardhat/console.sol";
 
 contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
@@ -19,7 +18,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 auctionEndDate;
         uint256 minimumPricePerToken;
         uint256 directPurchasePrice;
-        uint256 startTokenId; // Included
+        uint256 startTokenId;
         uint256 numTokensAuctioned;
         uint256 claimableFunds;
         uint64 nextBidderId;

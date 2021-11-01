@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 import "./NFTPotionAuction.sol";
 import "./RarityConfigItem.sol";
-import "hardhat/console.sol";
 
 contract NFTPotion is ERC721URIStorage, Ownable {
     /**
