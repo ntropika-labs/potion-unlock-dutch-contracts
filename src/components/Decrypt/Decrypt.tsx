@@ -18,10 +18,6 @@ const Decrypt: React.FC<any> = props => {
         onDecrypt(encrypted);
     }, [onDecrypt, encrypted]);
 
-    const myText = {
-        width: "200px",
-        "wrap-word": "break-word",
-    };
     return (
         <div className="main">
             <div className="container">
@@ -40,7 +36,9 @@ const Decrypt: React.FC<any> = props => {
                         <button type="button" className="btn btn-primary" onClick={handleDecrypt}>
                             Decrypt
                         </button>
-                        <div style={myText}>Decrypted message: {decryptedMessage}</div>
+                        <br />
+                        Decrypted message:{" "}
+                        <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{decryptedMessage}</pre>
                     </div>
                 </div>
             </div>

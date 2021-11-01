@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 import "./NFTPotionAuction.sol";
-
+import "./RarityConfigItem.sol";
 import "hardhat/console.sol";
 
 contract NFTPotion is ERC721URIStorage, Ownable {
@@ -15,11 +15,11 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     string public ipfsPrefix;
     string public ipfsSuffix;
     uint256 public numMintedTokens;
-    uint256 public maxMintedTokens;
+    uint256 public maxTokens;
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
-    uint256 public bytesPerSecret;
     INFTPotionWhitelist whitelist;
+    RarityConfigItem[] public rarityConfig;
 
     /**
         Events
@@ -34,7 +34,7 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         _;
     }
     modifier checkMaxNFTs() {
-        require(numMintedTokens < maxMintedTokens, "TMN"); // Too Many NFTs
+        require(numMintedTokens < maxTokens, "TMN"); // Too Many NFTs
         _;
     }
 
@@ -60,16 +60,20 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         string memory _tokenSymbol,
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
-        uint256 _maxMintedTokens,
+        uint256 _maxTokens,
         bytes memory _fullSecret,
-        address _whitelist
+        address _whitelist,
+        RarityConfigItem[] memory _rarityConfig
     ) ERC721(_tokenName, _tokenSymbol) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
-        maxMintedTokens = _maxMintedTokens;
+        maxTokens = _maxTokens;
         fullSecret = _fullSecret;
-        bytesPerSecret = _fullSecret.length / _maxMintedTokens;
         whitelist = INFTPotionWhitelist(_whitelist);
+
+        for (uint256 i = 0; i < _rarityConfig.length; ++i) {
+            rarityConfig.push(_rarityConfig[i]);
+        }
     }
 
     /**
@@ -79,15 +83,15 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         _safeMint(msg.sender, tokenId);
 
         string memory tokenIdStr = uint2str(tokenId);
-        string memory tokenURI = string(abi.encodePacked(ipfsPrefix, tokenIdStr, ipfsSuffix));
+        string memory uri = string(abi.encodePacked(ipfsPrefix, tokenIdStr, ipfsSuffix));
 
-        _setTokenURI(tokenId, tokenURI);
+        _setTokenURI(tokenId, uri);
 
         encryptionKeys[tokenId] = publicKey;
 
         numMintedTokens++;
 
-        emit Mint(tokenId, tokenURI);
+        emit Mint(tokenId, uri);
     }
 
     function mintList(uint256[] calldata tokenIds, string calldata publicKey) external {
@@ -99,15 +103,52 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         View functions
      */
+    function getSecretPositionLength(uint256 tokenId)
+        public
+        view
+        returns (
+            uint256 start,
+            uint256 length,
+            bool found
+        )
+    {
+        for (uint256 i = 0; i < rarityConfig.length; ++i) {
+            RarityConfigItem storage config = rarityConfig[i];
+
+            if (tokenId >= config.startTokenId && tokenId <= config.endTokenId) {
+                uint256 fragmentNumPieces = config.secretSegmentLength / config.bytesPerPiece;
+
+                // Piece index for batched tokenIDs
+                //uint256 numTokens = config.endTokenId - config.startTokenId + 1;
+                //uint256 tokensPerPiece = numTokens / fragmentNumPieces;
+                //uint256 pieceIndex = (tokenId - config.startTokenId) / tokensPerPiece;
+
+                // Piece index for consecutive tokenIDs
+                uint256 pieceIndex = (tokenId - config.startTokenId) % fragmentNumPieces;
+
+                start = config.secretSegmentStart + pieceIndex * config.bytesPerPiece;
+                length = config.bytesPerPiece;
+
+                found = true;
+                break;
+            }
+        }
+    }
+
     function secret(uint256 tokenId) external view returns (bytes memory) {
         if (ownerOf(tokenId) == address(0)) {
             return new bytes(0);
         }
 
-        bytes memory out = new bytes(bytesPerSecret);
+        (uint256 start, uint256 length, bool found) = getSecretPositionLength(tokenId);
+        if (!found) {
+            return new bytes(0);
+        }
 
-        for (uint256 i = 0; i < bytesPerSecret; ++i) {
-            out[i] = fullSecret[(tokenId - 1) * bytesPerSecret + i];
+        bytes memory out = new bytes(length);
+
+        for (uint256 i = 0; i < length; ++i) {
+            out[i] = fullSecret[start + i];
         }
 
         return out;
