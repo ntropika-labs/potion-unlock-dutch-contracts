@@ -1,4 +1,4 @@
-const { getPotionGenesis, signMetamaskMessage } = require("./lib/utils");
+const { getPotionGenesis, signMetamaskMessage, getSecretPieceFromId, getRaritiesConfig } = require("./lib/utils");
 const { NUM_NFTS } = require("./config");
 const yargs = require("yargs");
 const fs = require("fs");
@@ -20,23 +20,15 @@ async function main() {
         .alias("help", "h").argv;
 
     const potionGenesis = getPotionGenesis();
-    if (potionGenesis.length % NUM_NFTS !== 0) {
-        console.log(
-            `Potion Genesis length (${potionGenesis.length} bytes) is not divisible by number of NFTs (${NUM_NFTS})`,
-        );
-        return;
-    }
+    const raritiesConfig = getRaritiesConfig();
 
     const publicKeysJSON = fs.readFileSync(argv.keysFile);
     const publicKeys = JSON.parse(publicKeysJSON);
 
     let secrets = [];
-    const subkeyLength = potionGenesis.length / NUM_NFTS;
     for (let i = 0; i < publicKeys.length; ++i) {
-        const encryptedSecret = signMetamaskMessage(
-            publicKeys[i],
-            potionGenesis.subarray(i * subkeyLength, (i + 1) * subkeyLength),
-        );
+        const secretPiece = getSecretPieceFromId(i + 1, potionGenesis, raritiesConfig);
+        const encryptedSecret = signMetamaskMessage(publicKeys[i], secretPiece);
 
         secrets.push(encryptedSecret);
     }
