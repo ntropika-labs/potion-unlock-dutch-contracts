@@ -141,7 +141,7 @@ function exportContract(name, address, append = true) {
 /**
  * Rarities
  */
-function getSecretPieceFromId(tokenId, secret, raritiesConfig)
+function getSecretPieceFromId(tokenId, secret, raritiesConfig, batchFragments=false)
 {
     for (let i=0; i<raritiesConfig.length; ++i) {
         const config = raritiesConfig[i];
@@ -149,13 +149,14 @@ function getSecretPieceFromId(tokenId, secret, raritiesConfig)
             continue;
         }
 
-        const numTokens = raritiesConfig.endTokenId - raritiesConfig.startTokenId + 1;
-        const fragment = secret.subarray(raritiesConfig.secretSegmentStart, raritiesConfig.secretSegmentStart + raritiesConfig.secretSegmentLength);
-        const fragmentNumPieces = fragment.length / raritiesConfig.bytesPerPiece;
+        const numTokens = config.endTokenId - config.startTokenId + 1;
+        const fragment = secret.subarray(config.secretSegmentStart, config.secretSegmentStart + config.secretSegmentLength);
+        const fragmentNumPieces = fragment.length / config.bytesPerPiece;
         const tokensPerPiece = numTokens/fragmentNumPieces;
-        const pieceIndex = Math.floor((tokenId - raritiesConfig.startTokenId)/tokensPerPiece);
 
-        return fragment.subarray(pieceIndex * raritiesConfig.bytesPerPiece, (pieceIndex+1) * raritiesConfig.bytesPerPiece);
+        const pieceIndex = batchFragments ? Math.floor((tokenId - config.startTokenId)/tokensPerPiece) : 
+                                            (tokenId - config.startTokenId) % fragmentNumPieces;
+        return fragment.subarray(pieceIndex * config.bytesPerPiece, (pieceIndex+1) * config.bytesPerPiece);
     }
 
     throw Error("Invalid token ID for rarity config when calculated secret fragment");
