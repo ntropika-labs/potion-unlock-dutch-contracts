@@ -49,7 +49,7 @@ const NFTContract: React.FC<any> = props => {
                     <p>Artwork</p>
                     <img src={tokenURI} alt="artwork" width="200" />
                     <p>TokenURI: {tokenURI}</p>
-                    <p>Secret: {secret}</p>
+                    Secret: <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{secret}</pre>
                     <div className="form-group">
                         <label htmlFor="tokenId">Token ID</label>
                         <input type="string" className="form-control" id="tokenId" onChange={handleTokenIdChange} />
