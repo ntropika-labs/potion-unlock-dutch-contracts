@@ -11,7 +11,6 @@ contract NFTPotionValidator is Context {
         Storage
      */
     bytes32 public merkleRoot;
-    uint256 public maxSecretNFTs;
     INFTPotion public NFTContract;
     mapping(uint256 => bool) public isValidated;
     uint256 public partialSecretSize;
@@ -28,15 +27,12 @@ contract NFTPotionValidator is Context {
     constructor(
         address _NFTContract,
         bytes32 _merkleRoot,
-        uint256 _maxSecretNFTs,
-        uint256 _partialSecretSize
+        uint256 _secretSize
     ) {
         merkleRoot = _merkleRoot;
-        maxSecretNFTs = _maxSecretNFTs;
         NFTContract = INFTPotion(_NFTContract);
-        partialSecretSize = _partialSecretSize;
 
-        finalMessage = new bytes(_partialSecretSize * _maxSecretNFTs);
+        finalMessage = new bytes(_secretSize);
     }
 
     /**
@@ -78,6 +74,7 @@ contract NFTPotionValidator is Context {
         (uint256 start, uint256 length, bool found) = NFTContract.getSecretPositionLength(tokenId);
 
         require(found, "CRITICAL!! Token ID could not be found in rarity config");
+        require(start + length <= finalMessage.length, "CRITICAL!! Decrypted secret position exceeds secret length");
 
         for (uint256 i = 0; i < length; ++i) {
             finalMessage[start + i] = decryptedSecret[i];

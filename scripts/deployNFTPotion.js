@@ -74,11 +74,11 @@ async function deployNFTContract(hre, NFTAuctionContract, secret, rarityConfig) 
     return NFTPotion;
 }
 
-async function deployNFTValidator(hre, NFTContractAddress, merkleTree, partialSecretSize) {
+async function deployNFTValidator(hre, NFTContractAddress, merkleTree, secret) {
     const merkleRoot = merkleTree.getHexRoot();
 
     const NFTValidatorFactory = await hre.ethers.getContractFactory("NFTPotionValidator");
-    let NFTValidator = await NFTValidatorFactory.deploy(NFTContractAddress, merkleRoot, NUM_NFTS, partialSecretSize);
+    let NFTValidator = await NFTValidatorFactory.deploy(NFTContractAddress, merkleRoot, secret.length);
 
     await NFTValidator.deployed();
 
@@ -109,6 +109,10 @@ async function main() {
 
     console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
 
+    // Merkle tree
+    const merkleTree = buildMerkleTree(potionGenesis, raritiesConfig);
+    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
+
     // Auction contract
     const mockWETH = await deployWETH(hre);
     const NFTAuction = await deployAuction(hre, mockWETH.address);
@@ -117,10 +121,7 @@ async function main() {
     const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword, raritiesConfigSolidity);
 
     // Validator contract
-    const merkleTree = buildMerkleTree(potionGenesis, raritiesConfig);
-    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
-
-    //await deployNFTValidator(hre, NFTPotion.address, merkleTree, raritiesConfigSolidity);
+    await deployNFTValidator(hre, NFTPotion.address, merkleTree, potionGenesis);
 }
 
 main()
