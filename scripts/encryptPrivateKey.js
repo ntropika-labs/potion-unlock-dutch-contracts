@@ -1,5 +1,4 @@
 const { getPotionGenesis, signMetamaskMessage, getSecretPieceFromId, getRaritiesConfig } = require("./lib/utils");
-const { NUM_NFTS } = require("./config");
 const yargs = require("yargs");
 const fs = require("fs");
 
