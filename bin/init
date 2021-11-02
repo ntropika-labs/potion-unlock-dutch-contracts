@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "Run and deploy on Ganache" &&
-docker compose up -d  &&
+docker-compose up -d  &&
 sleep 1 &&
 ./bin/wait-for-it localhost:8545 &&
 sleep 1 &&
