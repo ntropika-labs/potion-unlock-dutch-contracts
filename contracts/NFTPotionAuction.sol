@@ -46,6 +46,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Events
      */
+    event BatchStarted(
+        uint256 indexed startTimestamp,
+        uint256 indexed startTokenId,
+        uint256 indexed endTokenId,
+        uint256 minimumPricePerToken,
+        uint256 directPurchasePrice,
+        uint256 auctionEndDate
+    );
+    event BatchEnded(uint256 indexed endTimestamp, uint256 numTokensSold);
     event SetBid(address indexed bidder, uint64 indexed numTokens, uint128 indexed pricePerToken);
     event CancelBid(address indexed bidder);
     event Purchase(address indexed bidder, uint64 indexed numTokens, uint256 indexed pricePerToken);
@@ -98,6 +107,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         currentBatch.auctionEndDate = auctionEndDate;
 
         currentBatch.claimableFunds = 0;
+
+        emit BatchStarted(
+            block.timestamp,
+            startTokenId,
+            endTokenId,
+            minimumPricePerToken,
+            directPurchasePrice,
+            auctionEndDate
+        );
     }
 
     function endBatch() external {
@@ -144,6 +162,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         lastAuctionedTokenId += numAssignedTokens;
 
         delete currentBatch;
+
+        emit BatchEnded(block.timestamp, numAssignedTokens);
     }
 
     /**
