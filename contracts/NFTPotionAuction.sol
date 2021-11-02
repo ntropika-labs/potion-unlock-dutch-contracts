@@ -238,8 +238,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function transferFunds(address recipient) external onlyOwner {
-        biddingToken.safeTransfer(recipient, claimableFunds);
+        uint256 transferAmount = claimableFunds;
         claimableFunds = 0;
+        biddingToken.safeTransfer(recipient, transferAmount);
     }
 
     /**
