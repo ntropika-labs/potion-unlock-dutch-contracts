@@ -37,6 +37,6 @@ module.exports = {
         flat: true,
         only: [':NFT'],
         spacing: 2,
-        pretty: true,
+        pretty: false,
       }
 };
