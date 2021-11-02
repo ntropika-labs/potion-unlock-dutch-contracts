@@ -54,7 +54,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 directPurchasePrice,
         uint256 auctionEndDate
     );
-    event BatchEnded(uint256 indexed endTimestamp, uint256 numTokensSold);
+    event BatchEnded(uint256 indexed auctionEndTimestamp, uint256 indexed actualEndTimestamp, uint256 numTokensSold);
     event SetBid(address indexed bidder, uint64 indexed numTokens, uint128 indexed pricePerToken);
     event CancelBid(address indexed bidder);
     event Purchase(address indexed bidder, uint64 indexed numTokens, uint256 indexed pricePerToken);
@@ -161,15 +161,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         claimableFunds += currentBatch.claimableFunds;
         lastAuctionedTokenId += numAssignedTokens;
 
-        delete currentBatch;
+        emit BatchEnded(currentBatch.auctionEndDate, block.timestamp, numAssignedTokens);
 
-        emit BatchEnded(block.timestamp, numAssignedTokens);
+        delete currentBatch;
     }
 
     /**
         Bid management
      */
-    function setBid(uint64 numTokens, uint128 pricePerToken) external checkAuctionActive {
+    function setBid(uint64 numTokens, uint128 pricePerToken) external payable checkAuctionActive {
         require(pricePerToken >= currentBatch.minimumPricePerToken, "Bid must reach minimum amount");
         require(pricePerToken < currentBatch.directPurchasePrice, "Bid cannot be higher than direct price");
 
