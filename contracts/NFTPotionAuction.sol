@@ -11,7 +11,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
     using StructuredLinkedList for StructuredLinkedList.List;
 
-    IERC20 biddingToken;
+    IERC20 public biddingToken;
 
     // Current running auction parameters
     struct BatchData {
