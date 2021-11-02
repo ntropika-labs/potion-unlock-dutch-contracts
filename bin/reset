@@ -1,0 +1,5 @@
+#!/bin/sh
+echo "Remove container and data folder"
+docker-compose down &&
+sudo rm -rf ./data &&
+./bin/init
