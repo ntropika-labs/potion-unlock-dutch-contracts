@@ -14,6 +14,7 @@ import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds
 import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
 import useNFTAuctionGetAllBids from "../../hooks/useNFTAuctionGetAllBids";
+import useNFTAuctionWhitelistBidder from "../../hooks/useNFTAuctionWhitelistBidder";
 import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
 import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
 import useNFTMintingList from "../../hooks/useNFTMintingList";
@@ -143,6 +144,33 @@ const NFTAuction: React.FC<any> = props => {
      * Token whitelisting
      */
     const tokenIdRanges = useNFTAuctionGetWhitelistRanges(props);
+
+    const { onWhitelistBidder } = useNFTAuctionWhitelistBidder(props);
+    const [whitelistAddress, setwhitelistAddress] = useState<string>();
+    const [whitelistNumTokens, setWhitelistNumTokens] = useState<string>();
+    const [whitelistFirstTokenID, setwhitelistFirstTokenID] = useState<string>();
+    const handleWhitelistAddressChange = useCallback(
+        event => {
+            setwhitelistAddress(event.target.value);
+        },
+        [setwhitelistAddress],
+    );
+    const handleWhitelistNumTokensChange = useCallback(
+        event => {
+            setWhitelistNumTokens(event.target.value);
+        },
+        [setWhitelistNumTokens],
+    );
+    const handleWhitelistFirstTokenIdChange = useCallback(
+        event => {
+            setwhitelistFirstTokenID(event.target.value);
+        },
+        [setwhitelistFirstTokenID],
+    );
+
+    const handleWhitelistBidder = useCallback(() => {
+        onWhitelistBidder(whitelistAddress, whitelistNumTokens, whitelistFirstTokenID);
+    }, [whitelistAddress, whitelistNumTokens, whitelistFirstTokenID, onWhitelistBidder]);
 
     const [showBids, setShowBids] = useState<boolean>(false);
     const handleShowBids = useCallback(() => {
@@ -331,6 +359,38 @@ const NFTAuction: React.FC<any> = props => {
                         <br />
                         <button type="button" className="btn btn-primary" onClick={onClaimRefund}>
                             Claim Refund
+                        </button>
+                    </div>
+                </div>
+                <div className="row">
+                    <div className="col-sm-12">
+                        <h2>Whitelist Bidder</h2>
+                        <label htmlFor="whitelistAddress">Bidder Address</label>
+                        <input
+                            type="string"
+                            className="form-control"
+                            id="whitelistAddress"
+                            onChange={handleWhitelistAddressChange}
+                        />
+                        <br />
+                        <label htmlFor="whitelistNumTokens">Num. Tokens List</label>
+                        <input
+                            type="string"
+                            className="form-control"
+                            id="whitelistNumTokens"
+                            onChange={handleWhitelistNumTokensChange}
+                        />
+                        <br />
+                        <label htmlFor="whitelistFirstTokenId">First Token ID List</label>
+                        <input
+                            type="string"
+                            className="form-control"
+                            id="whitelistFirstTokenId"
+                            onChange={handleWhitelistFirstTokenIdChange}
+                        />
+                        <br />
+                        <button type="button" className="btn btn-primary" onClick={handleWhitelistBidder}>
+                            Whitelist Bidder
                         </button>
                     </div>
                 </div>
