@@ -116,13 +116,6 @@ contract NFTPotion is ERC721URIStorage, Ownable {
 
             if (tokenId >= config.startTokenId && tokenId <= config.endTokenId) {
                 uint256 fragmentNumPieces = config.secretSegmentLength / config.bytesPerPiece;
-
-                // Piece index for batched tokenIDs
-                //uint256 numTokens = config.endTokenId - config.startTokenId + 1;
-                //uint256 tokensPerPiece = numTokens / fragmentNumPieces;
-                //uint256 pieceIndex = (tokenId - config.startTokenId) / tokensPerPiece;
-
-                // Piece index for consecutive tokenIDs
                 uint256 pieceIndex = (tokenId - config.startTokenId) % fragmentNumPieces;
 
                 start = config.secretSegmentStart + pieceIndex * config.bytesPerPiece;
