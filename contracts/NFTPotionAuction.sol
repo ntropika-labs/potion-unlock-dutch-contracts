@@ -58,6 +58,11 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         _;
     }
 
+    modifier checkAuctionInactive() {
+        require(block.timestamp > currentBatch.auctionEndDate, "Auction still active");
+        _;
+    }
+
     /**
         Constructor
      */
@@ -217,9 +222,25 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Owner methods
      */
+    function whitelistBidder(
+        address bidder,
+        uint256[] calldata numTokensList,
+        uint256[] calldata firstTokenIdList
+    ) external onlyOwner checkAuctionInactive {
+        require(numTokensList.length == firstTokenIdList.length, "Mismatch in array size for direct whitelist");
+        for (uint256 i = 0; i < numTokensList.length; ++i) {
+            require(firstTokenIdList[i] == lastAuctionedTokenId + 1, "Cannot have gaps when whitelisting");
+
+            _whitelistBidder(bidder, numTokensList[i], firstTokenIdList[i]);
+
+            lastAuctionedTokenId += numTokensList[i];
+        }
+    }
+
     function transferFunds(address recipient) external onlyOwner {
-        biddingToken.safeTransfer(recipient, claimableFunds);
+        uint256 transferAmount = claimableFunds;
         claimableFunds = 0;
+        biddingToken.safeTransfer(recipient, transferAmount);
     }
 
     /**
