@@ -15,8 +15,7 @@ import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
 import useNFTAuctionGetAllBids from "../../hooks/useNFTAuctionGetAllBids";
 import useNFTAuctionWhitelistBidder from "../../hooks/useNFTAuctionWhitelistBidder";
-import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
-import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
+import useNFTAuctionEtherBalance from "../../hooks/useNFTAuctionEtherBalance";
 import useNFTMintingList from "../../hooks/useNFTMintingList";
 import { formatUnits } from "ethers/lib/utils";
 import Deployments from "../../deployments.json";
@@ -29,7 +28,7 @@ const NFTAuction: React.FC<any> = props => {
     const currentBatch = useNFTAuctionCurrentBatch();
     const currentBatchEndDateMs = Number(formatUnits(currentBatch[4], "wei")) * 1000;
     const currentBatchEndDate = new Date(currentBatchEndDateMs);
-    const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTPotionAuction);
+    const lockedFunds = useNFTAuctionEtherBalance(props);
     const claimableFunds = useNFTAuctionClaimableFunds(props);
     const { onTransferFunds } = useNFTAuctionTransferFunds(props);
 
@@ -101,7 +100,6 @@ const NFTAuction: React.FC<any> = props => {
     const { onSetBid } = useNFTAuctionSetBid(props);
     const { onCancelBid } = useNFTAuctionCancelBid(props);
     const { onPurchase } = useNFTAuctionPurchase(props);
-    const { onIncreaseAllowance } = useMockWETHIncreaseAllowance(props);
     const { valid: validBid, numTokens, pricePerToken } = useNFTAuctionGetLatestBid(props);
 
     const [bid, setBid] = useState<string>();
@@ -126,11 +124,6 @@ const NFTAuction: React.FC<any> = props => {
     const handlePurchase = useCallback(() => {
         onPurchase(bidNumTokens);
     }, [bidNumTokens, onPurchase]);
-
-    const handleIncreaseAllowance = useCallback(() => {
-        const allowance = BigNumber.from(bid).mul(BigNumber.from(bidNumTokens));
-        onIncreaseAllowance(Deployments.NFTPotionAuction, allowance);
-    }, [bid, bidNumTokens, onIncreaseAllowance]);
 
     /**
      * Refunds management
@@ -327,10 +320,6 @@ const NFTAuction: React.FC<any> = props => {
                                         onChange={handleBidNumTokenChange}
                                     />
                                     <br />
-                                    <br />
-                                    <button type="button" className="btn btn-primary" onClick={handleIncreaseAllowance}>
-                                        Approve
-                                    </button>
                                     <br />
                                     <button type="button" className="btn btn-primary" onClick={handleSetBid}>
                                         Set Bid

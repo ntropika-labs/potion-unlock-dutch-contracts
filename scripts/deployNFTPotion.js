@@ -24,9 +24,9 @@ function encodeRarityConfig(rarityConfig) {
     });
 }
 
-async function deployAuction(hre, biddingTokenAddress) {
+async function deployAuction(hre) {
     const NFTAuctionFactory = await hre.ethers.getContractFactory("NFTPotionAuction");
-    let NFTAuction = await NFTAuctionFactory.deploy(biddingTokenAddress);
+    let NFTAuction = await NFTAuctionFactory.deploy();
 
     await NFTAuction.deployed();
 
@@ -34,23 +34,6 @@ async function deployAuction(hre, biddingTokenAddress) {
     exportContract("NFTPotionAuction", NFTAuction.address);
 
     return NFTAuction;
-}
-
-async function deployWETH(hre) {
-    const WETHFactory = await hre.ethers.getContractFactory("MockWETH");
-    let MockWETH = await WETHFactory.deploy([
-        "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-        "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
-        "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-        "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-    ]);
-
-    await MockWETH.deployed();
-
-    console.log(`MockWETH Contract deployed to: ${MockWETH.address}`);
-    exportContract("MockWETH", MockWETH.address);
-
-    return MockWETH;
 }
 
 async function deployNFTContract(hre, NFTAuctionContract, secret, rarityConfig) {
@@ -114,8 +97,7 @@ async function main() {
     console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // Auction contract
-    const mockWETH = await deployWETH(hre);
-    const NFTAuction = await deployAuction(hre, mockWETH.address);
+    const NFTAuction = await deployAuction(hre);
 
     // NFT contract
     const NFTPotion = await deployNFTContract(hre, NFTAuction, encryptedPassword, raritiesConfigSolidity);

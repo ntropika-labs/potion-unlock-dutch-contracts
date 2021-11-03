@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 
 import "./INFTPotionWhitelist.sol";
@@ -10,8 +11,6 @@ import "./INFTPotionWhitelist.sol";
 contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
     using StructuredLinkedList for StructuredLinkedList.List;
-
-    IERC20 public biddingToken;
 
     // Current running auction parameters
     struct BatchData {
@@ -75,8 +74,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Constructor
      */
-    constructor(IERC20 _biddingToken) {
-        biddingToken = _biddingToken;
+    constructor() {
         nextFreeTokenId = 1;
         nextBatchStartBidId = 1;
     }
@@ -189,7 +187,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         refunds[bidder] = lockedFunds;
 
         require(amountToRefund > 0, "No refund pending");
-        biddingToken.safeTransfer(bidder, amountToRefund);
+
+        Address.sendValue(payable(bidder), amountToRefund);
     }
 
     /**
@@ -241,10 +240,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
     }
 
-    function transferFunds(address recipient) external onlyOwner {
+    function transferFunds(address payable recipient) external onlyOwner {
         uint256 transferAmount = claimableFunds;
         claimableFunds = 0;
-        biddingToken.safeTransfer(recipient, transferAmount);
+        Address.sendValue(recipient, transferAmount);
     }
 
     /**
@@ -361,9 +360,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
 
         if (credit < amount) {
+            require(msg.value == (amount - credit), "Sent incorrect amount of cash");
             refunds[bidder] = lockFunds ? 0 : amount;
-
-            biddingToken.safeTransferFrom(bidder, address(this), amount - credit);
         } else if (lockFunds) {
             refunds[bidder] -= amount;
         }

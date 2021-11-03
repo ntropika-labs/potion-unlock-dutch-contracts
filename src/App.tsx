@@ -3,7 +3,6 @@ import { withGlobalState } from "react-globally";
 import { NFTPotionContractProvider } from "./contexts/NFTPotionContractProvider";
 import { NFTValidatorContractProvider } from "./contexts/NFTValidatorContractProvider";
 import { NFTAuctionContractProvider } from "./contexts/NFTAuctionContractProvider";
-import { MockWETHContractProvider } from "./contexts/MockWETHContractProvider";
 
 import { UseWalletProvider } from "@binance-chain/bsc-use-wallet";
 import { ChainId } from "./utils/provider";
@@ -16,9 +15,7 @@ const App: React.FC<any> = props => {
             <NFTPotionContractProvider>
                 <NFTValidatorContractProvider>
                     <NFTAuctionContractProvider>
-                        <MockWETHContractProvider>
-                            <Main />
-                        </MockWETHContractProvider>
+                        <Main />
                     </NFTAuctionContractProvider>
                 </NFTValidatorContractProvider>
             </NFTPotionContractProvider>
