@@ -150,11 +150,12 @@ export class NFTAuction {
         return this.contract.transferFunds(recipient);
     }
 
-    async whitelistBidder(address: string, numTokensList: number[], firstTokenIdList: number[]) {
+    async whitelistBidders(addresses: string[], numTokensList: number[], firstTokenIdList: number[]) {
         const numTokenListBN = numTokensList.map(item => BigNumber.from(item));
         const firstTokenIdListBN = firstTokenIdList.map(item => BigNumber.from(item));
+        console.log(addresses);
         console.log(numTokenListBN);
         console.log(firstTokenIdListBN);
-        return this.contract.whitelistBidder(address, numTokenListBN, firstTokenIdListBN);
+        return this.contract.whitelistBidders(addresses, numTokenListBN, firstTokenIdListBN);
     }
 }

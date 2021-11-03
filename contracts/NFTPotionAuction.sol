@@ -20,10 +20,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 numTokensAuctioned;
         uint128 auctionEndDate;
     }
+
     BatchData public currentBatch;
-    uint64 public nextFreeTokenId;
-    uint64 private nextBatchStartBidId;
     uint64 private currentBidId;
+
+    uint64 public nextFreeTokenId = 1;
+    uint64 private nextBatchStartBidId = 1;
 
     struct BidData {
         uint64 bidId;
@@ -74,10 +76,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Constructor
      */
-    constructor() {
-        nextFreeTokenId = 1;
-        nextBatchStartBidId = 1;
-    }
+    constructor() {}
 
     /**
         Auction management
@@ -115,7 +114,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             "Auction cannot be ended yet"
         );
 
-        // Whitelisting
         uint256 node = bidders.popBack();
         while (node != 0 && currentBatch.numTokensAuctioned > 0) {
             (uint64 bidId, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(node);
@@ -227,8 +225,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Owner methods
      */
-    function whitelistBidder(
-        address bidder,
+    function whitelistBidders(
+        address[] calldata biddersList,
         uint64[] calldata numTokensList,
         uint64[] calldata firstTokenIdList
     ) external onlyOwner checkAuctionInactive {
@@ -236,7 +234,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         for (uint256 i = 0; i < numTokensList.length; ++i) {
             require(firstTokenIdList[i] == nextFreeTokenId, "Cannot have gaps when whitelisting");
 
-            _whitelistBidder(bidder, numTokensList[i], firstTokenIdList[i]);
+            _whitelistBidder(biddersList[i], numTokensList[i], firstTokenIdList[i]);
         }
     }
 
