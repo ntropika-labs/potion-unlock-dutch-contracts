@@ -14,12 +14,10 @@ import useNFTAuctionClaimableFunds from "../../hooks/useNFTAuctionClaimableFunds
 import useNFTAuctionTransferFunds from "../../hooks/useNFTAuctionTransferFunds";
 import useNFTAuctionRefundAmount from "../../hooks/useNFTAuctionRefundAmount";
 import useNFTAuctionGetAllBids from "../../hooks/useNFTAuctionGetAllBids";
-import useNFTAuctionWhitelistBidder from "../../hooks/useNFTAuctionWhitelistBidder";
-import useMockWETHIncreaseAllowance from "../../hooks/useMockWETHIncreaseAllowance";
-import useMockWETHBalanceOf from "../../hooks/useMockWETHBalanceOf";
+import useNFTAuctionWhitelistBidders from "../../hooks/useNFTAuctionWhitelistBidders";
+import useNFTAuctionEtherBalance from "../../hooks/useNFTAuctionEtherBalance";
 import useNFTMintingList from "../../hooks/useNFTMintingList";
 import { formatUnits } from "ethers/lib/utils";
-import Deployments from "../../deployments.json";
 import { BigNumber } from "@ethersproject/bignumber";
 
 const NFTAuction: React.FC<any> = props => {
@@ -27,9 +25,9 @@ const NFTAuction: React.FC<any> = props => {
      * Current Batch Info
      */
     const currentBatch = useNFTAuctionCurrentBatch();
-    const currentBatchEndDateMs = Number(formatUnits(currentBatch[0], "wei")) * 1000;
+    const currentBatchEndDateMs = Number(formatUnits(currentBatch[4], "wei")) * 1000;
     const currentBatchEndDate = new Date(currentBatchEndDateMs);
-    const lockedFunds = useMockWETHBalanceOf(props, Deployments.NFTPotionAuction);
+    const lockedFunds = useNFTAuctionEtherBalance(props);
     const claimableFunds = useNFTAuctionClaimableFunds(props);
     const { onTransferFunds } = useNFTAuctionTransferFunds(props);
 
@@ -101,8 +99,7 @@ const NFTAuction: React.FC<any> = props => {
     const { onSetBid } = useNFTAuctionSetBid(props);
     const { onCancelBid } = useNFTAuctionCancelBid(props);
     const { onPurchase } = useNFTAuctionPurchase(props);
-    const { onIncreaseAllowance } = useMockWETHIncreaseAllowance(props);
-    const { numTokens, pricePerToken } = useNFTAuctionGetLatestBid(props);
+    const { valid: validBid, numTokens, pricePerToken } = useNFTAuctionGetLatestBid(props);
 
     const [bid, setBid] = useState<string>();
     const [bidNumTokens, setBidNumTokens] = useState<string>();
@@ -127,33 +124,27 @@ const NFTAuction: React.FC<any> = props => {
         onPurchase(bidNumTokens);
     }, [bidNumTokens, onPurchase]);
 
-    const handleIncreaseAllowance = useCallback(() => {
-        const allowance = BigNumber.from(bid).mul(BigNumber.from(bidNumTokens));
-        onIncreaseAllowance(Deployments.NFTPotionAuction, allowance);
-    }, [bid, bidNumTokens, onIncreaseAllowance]);
-
     /**
      * Refunds management
      */
     const { onClaimRefund } = useNFTAuctionClaimRefund(props);
     const refundAmount = useNFTAuctionRefundAmount(props);
-
-    const totalRefundsPending = lockedFunds.sub(claimableFunds).sub(currentBatch[5]);
+    const claimableRefundAmount = refundAmount.sub(numTokens.mul(pricePerToken));
 
     /**
      * Token whitelisting
      */
     const tokenIdRanges = useNFTAuctionGetWhitelistRanges(props);
 
-    const { onWhitelistBidder } = useNFTAuctionWhitelistBidder(props);
-    const [whitelistAddress, setwhitelistAddress] = useState<string>();
+    const { onWhitelistBidders } = useNFTAuctionWhitelistBidders(props);
+    const [whitelistAddresses, setwhitelistAddresses] = useState<string>();
     const [whitelistNumTokens, setWhitelistNumTokens] = useState<string>();
     const [whitelistFirstTokenID, setwhitelistFirstTokenID] = useState<string>();
     const handleWhitelistAddressChange = useCallback(
         event => {
-            setwhitelistAddress(event.target.value);
+            setwhitelistAddresses(event.target.value);
         },
-        [setwhitelistAddress],
+        [setwhitelistAddresses],
     );
     const handleWhitelistNumTokensChange = useCallback(
         event => {
@@ -169,8 +160,8 @@ const NFTAuction: React.FC<any> = props => {
     );
 
     const handleWhitelistBidder = useCallback(() => {
-        onWhitelistBidder(whitelistAddress, whitelistNumTokens, whitelistFirstTokenID);
-    }, [whitelistAddress, whitelistNumTokens, whitelistFirstTokenID, onWhitelistBidder]);
+        onWhitelistBidders(whitelistAddresses, whitelistNumTokens, whitelistFirstTokenID);
+    }, [whitelistAddresses, whitelistNumTokens, whitelistFirstTokenID, onWhitelistBidders]);
 
     const [showBids, setShowBids] = useState<boolean>(false);
     const handleShowBids = useCallback(() => {
@@ -214,17 +205,13 @@ const NFTAuction: React.FC<any> = props => {
                         <h2>Current Batch</h2>
                         End Date: {currentBatchEndDate.toLocaleString()}
                         <br />
-                        Minimum Price: {formatUnits(currentBatch[1])}
+                        Minimum Price: {formatUnits(currentBatch[0])}
                         <br />
-                        Direct Purchase Price: {formatUnits(currentBatch[2])}
+                        Direct Purchase Price: {formatUnits(currentBatch[1])}
                         <br />
-                        Start Token ID: {formatUnits(currentBatch[3], "wei")}
+                        Start Token ID: {formatUnits(currentBatch[2], "wei")}
                         <br />
-                        Num. Tokens Auctioned: {formatUnits(currentBatch[4], "wei")}
-                        <br />
-                        Batch Claimable Funds: {formatUnits(currentBatch[5])}
-                        <br />
-                        Num. Bidders: {formatUnits(currentBatch[6], "wei")}
+                        Num. Tokens Auctioned: {formatUnits(currentBatch[3], "wei")}
                         <br />
                         <br />
                         Current Bids:
@@ -293,9 +280,7 @@ const NFTAuction: React.FC<any> = props => {
                         <h2>Funds</h2>
                         Current Locked Funds: {formatUnits(lockedFunds)}
                         <br />
-                        Overall Claimable Funds: {formatUnits(claimableFunds.add(currentBatch[5]))}
-                        <br />
-                        Total Refunds Pending: {formatUnits(totalRefundsPending)}
+                        Claimable Funds: {formatUnits(claimableFunds)}
                         <br />
                         <label htmlFor="recipient">Recipient</label>
                         <input type="string" className="form-control" id="recipient" onChange={handleRecipientChange} />
@@ -312,6 +297,8 @@ const NFTAuction: React.FC<any> = props => {
                         <div className="row">
                             <div className="col-sm-12">
                                 <h3>Latest Bid</h3>
+                                Status: {validBid ? "Bid is VALID" : "Bid is NOT valid"}
+                                <br />
                                 Num. Tokens: {formatUnits(numTokens, "wei")}
                                 <br />
                                 Price per Token: {formatUnits(pricePerToken)}
@@ -332,11 +319,6 @@ const NFTAuction: React.FC<any> = props => {
                                         onChange={handleBidNumTokenChange}
                                     />
                                     <br />
-                                    <br />
-                                    <button type="button" className="btn btn-primary" onClick={handleIncreaseAllowance}>
-                                        Approve
-                                    </button>
-                                    <br />
                                     <button type="button" className="btn btn-primary" onClick={handleSetBid}>
                                         Set Bid
                                     </button>
@@ -355,7 +337,7 @@ const NFTAuction: React.FC<any> = props => {
                 <div className="row">
                     <div className="col-sm-12">
                         <h2>Claim Refund</h2>
-                        Amount: {formatUnits(refundAmount)}
+                        Amount: {formatUnits(claimableRefundAmount)}
                         <br />
                         <button type="button" className="btn btn-primary" onClick={onClaimRefund}>
                             Claim Refund

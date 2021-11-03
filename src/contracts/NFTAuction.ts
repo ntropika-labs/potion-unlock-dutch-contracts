@@ -67,8 +67,8 @@ export class NFTAuction {
         return !!this.myAccount;
     }
 
-    async validate(tokenId: number, decryptedSecret: string, proof: string) {
-        return this.contract.validate(tokenId, decryptedSecret, JSON.parse(proof));
+    async balance() {
+        return this.provider.getBalance(this.contract.address);
     }
 
     async startBatch(
@@ -92,7 +92,18 @@ export class NFTAuction {
     }
 
     async setBid(numTokens: string, pricePerToken: string) {
-        return this.contract.setBid(BigNumber.from(numTokens), BigNumber.from(pricePerToken));
+        const credit = await this.refundAmount();
+
+        const numTokensBN = BigNumber.from(numTokens);
+        const pricePerTokenBN = BigNumber.from(pricePerToken);
+
+        const priceToPay = numTokensBN.mul(pricePerTokenBN);
+
+        let valueToSend = BigNumber.from(0);
+        if (credit.lt(priceToPay)) {
+            valueToSend = priceToPay.sub(credit);
+        }
+        return this.contract.setBid(numTokensBN, pricePerTokenBN, { value: valueToSend });
     }
 
     async cancelBid() {
@@ -139,11 +150,12 @@ export class NFTAuction {
         return this.contract.transferFunds(recipient);
     }
 
-    async whitelistBidder(address: string, numTokensList: number[], firstTokenIdList: number[]) {
+    async whitelistBidders(addresses: string[], numTokensList: number[], firstTokenIdList: number[]) {
         const numTokenListBN = numTokensList.map(item => BigNumber.from(item));
         const firstTokenIdListBN = firstTokenIdList.map(item => BigNumber.from(item));
+        console.log(addresses);
         console.log(numTokenListBN);
         console.log(firstTokenIdListBN);
-        return this.contract.whitelistBidder(address, numTokenListBN, firstTokenIdListBN);
+        return this.contract.whitelistBidders(addresses, numTokenListBN, firstTokenIdListBN);
     }
 }

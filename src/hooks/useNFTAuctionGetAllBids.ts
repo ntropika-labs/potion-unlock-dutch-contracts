@@ -12,7 +12,7 @@ const useNFTAuctionGetAllBids = (props: any) => {
         allBids = allBids.map((item: any) => {
             return {
                 bidderAddress: item.bidderAddress,
-                bidderId: formatUnits(item.bidderId, "wei"),
+                bidId: formatUnits(item.bidId, "wei"),
                 numTokens: formatUnits(item.numTokens, "wei"),
                 pricePerToken: formatUnits(item.pricePerToken),
             };
