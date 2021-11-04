@@ -21,9 +21,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 auctionEndDate;
     }
 
-    BatchData public currentBatch;
-    uint64 private currentBidId;
+    uint256 public currentAuctionId;
+    mapping(uint256 => BatchData) public batches;
 
+    uint32 private currentBidId;
     uint64 public nextFreeTokenId = 1;
     uint64 private nextBatchStartBidId = 1;
 
@@ -34,11 +35,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 pricePerToken;
     }
 
-    // Bidders info
-    StructuredLinkedList.List public bidders;
-    mapping(address => uint256) public bidByBidder; // bidder -> bid
+    // Bidders info for each auction ID
+    StructuredLinkedList.List[] public bidders; // Bidders sorted list by auction ID
+    mapping(address => uint256)[] public bidByBidder; // bidder -> bid
+
+    // Global bidders info
     mapping(uint64 => address) public bidderById; // bidId -> bidder
     mapping(address => uint256) public refunds;
+
+    // Global funds info
     uint256 public claimableFunds;
 
     // Whitelist
@@ -48,28 +53,39 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         Events
      */
     event BatchStarted(
+        uint256 indexed auctionId,
         uint256 indexed startTimestamp,
         uint64 indexed startTokenId,
-        uint64 indexed endTokenId,
+        uint64 endTokenId,
         uint128 minimumPricePerToken,
         uint128 directPurchasePrice,
         uint128 auctionEndDate
     );
-    event BatchEnded(uint256 indexed auctionEndTimestamp, uint256 indexed actualEndTimestamp, uint64 numTokensSold);
-    event SetBid(address indexed bidder, uint64 indexed numTokens, uint128 indexed pricePerToken);
-    event CancelBid(address indexed bidder, uint256 indexed cancelTimestamp, uint256 indexed auctionEndTimestamp);
-    event Purchase(address indexed bidder, uint64 indexed numTokens, uint128 indexed pricePerToken);
+    event BatchEnded(
+        uint256 indexed auctionId,
+        uint256 indexed auctionEndTimestamp,
+        uint256 indexed actualEndTimestamp,
+        uint64 numTokensSold
+    );
+    event SetBid(uint256 indexed auctionId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
+    event CancelBid(
+        uint256 indexed auctionId,
+        address indexed bidder,
+        uint256 cancelTimestamp,
+        uint256 auctionEndTimestamp
+    );
+    event Purchase(uint256 indexed auctionId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
 
     /**
         Modifiers
     */
     modifier checkAuctionActive() {
-        require(block.timestamp <= currentBatch.auctionEndDate, "Auction already ended");
+        require(block.timestamp <= _getBatch(currentAuctionId).auctionEndDate, "Auction already ended");
         _;
     }
 
     modifier checkAuctionInactive() {
-        require(block.timestamp > currentBatch.auctionEndDate, "Auction still active");
+        require(block.timestamp > _getBatch(currentAuctionId).auctionEndDate, "Auction still active");
         _;
     }
 
@@ -92,13 +108,18 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(startTokenId == nextFreeTokenId, "Wrong start token ID");
         require(minimumPricePerToken <= directPurchasePrice, "Minimum higher than purchase price");
 
-        currentBatch.startTokenId = startTokenId;
-        currentBatch.numTokensAuctioned = endTokenId - startTokenId + 1;
-        currentBatch.minimumPricePerToken = minimumPricePerToken;
-        currentBatch.directPurchasePrice = directPurchasePrice;
-        currentBatch.auctionEndDate = auctionEndDate;
+        currentAuctionId++;
+
+        BatchData storage batch = _getBatch(currentAuctionId);
+
+        batch.startTokenId = startTokenId;
+        batch.numTokensAuctioned = endTokenId - startTokenId + 1;
+        batch.minimumPricePerToken = minimumPricePerToken;
+        batch.directPurchasePrice = directPurchasePrice;
+        batch.auctionEndDate = auctionEndDate;
 
         emit BatchStarted(
+            currentAuctionId,
             block.timestamp,
             startTokenId,
             endTokenId,
@@ -109,68 +130,68 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function endBatch() external {
-        require(
-            block.timestamp > currentBatch.auctionEndDate || currentBatch.numTokensAuctioned == 0,
-            "Auction cannot be ended yet"
-        );
+        BatchData storage batch = _getBatch(currentAuctionId);
 
-        while (currentBatch.numTokensAuctioned > 0) {
-            uint256 node = bidders.popBack();
+        require(block.timestamp > batch.auctionEndDate || batch.numTokensAuctioned == 0, "Auction cannot be ended yet");
+
+        while (node != 0 && batch.numTokensAuctioned > 0) {
+            uint256 node = bidders[currentAuctionId].popBack();
             if (node == 0) {
                 break;
             }
 
             (uint64 bidId, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(node);
 
-            if (numRequestedTokens > currentBatch.numTokensAuctioned) {
-                numRequestedTokens = currentBatch.numTokensAuctioned;
+            if (numRequestedTokens > batch.numTokensAuctioned) {
+                numRequestedTokens = batch.numTokensAuctioned;
             }
 
             address bidder = bidderById[bidId];
 
-            _cancelBid(bidder);
-            _purchase(bidder, numRequestedTokens, pricePerToken);
+            _cancelBid(currentAuctionId, bidder);
+            _purchase(currentAuctionId, bidder, numRequestedTokens, pricePerToken);
         }
 
         nextBatchStartBidId = currentBidId + 1;
 
-        emit BatchEnded(currentBatch.auctionEndDate, block.timestamp, nextFreeTokenId - currentBatch.startTokenId);
-
-        delete bidders;
-        delete currentBatch;
+        emit BatchEnded(currentAuctionId, batch.auctionEndDate, block.timestamp, nextFreeTokenId - batch.startTokenId);
     }
 
     /**
         Bid management
      */
     function setBid(uint64 numTokens, uint128 pricePerToken) external payable checkAuctionActive {
-        require(pricePerToken >= currentBatch.minimumPricePerToken, "Bid must reach minimum amount");
-        require(pricePerToken < currentBatch.directPurchasePrice, "Bid cannot be higher than direct price");
+        BatchData storage batch = _getBatch(currentAuctionId);
+
+        require(pricePerToken >= batch.minimumPricePerToken, "Bid must reach minimum amount");
+        require(pricePerToken < batch.directPurchasePrice, "Bid cannot be higher than direct price");
 
         address bidder = _msgSender();
 
-        _cancelBid(bidder);
-        _addBid(bidder, numTokens, pricePerToken);
+        _cancelBid(currentAuctionId, bidder);
+        _addBid(currentAuctionId, bidder, numTokens, pricePerToken);
         _chargeBidder(bidder, pricePerToken * numTokens, false);
 
-        emit SetBid(bidder, numTokens, pricePerToken);
+        emit SetBid(currentAuctionId, bidder, numTokens, pricePerToken);
     }
 
-    function cancelBid() external {
-        _cancelBid(_msgSender());
+    function cancelBid(uint256 auctionId) external {
+        _cancelBid(auctionId, _msgSender());
 
-        emit CancelBid(_msgSender(), block.timestamp, currentBatch.auctionEndDate);
+        emit CancelBid(auctionId, _msgSender(), block.timestamp, _getBatch(auctionId).auctionEndDate);
     }
 
     /**
         Direct purchase
      */
     function purchase(uint64 numTokens) external payable checkAuctionActive {
-        require(numTokens <= currentBatch.numTokensAuctioned, "Too many tokens for direct purchase");
+        BatchData storage batch = _getBatch(currentAuctionId);
 
-        _purchase(_msgSender(), numTokens, currentBatch.directPurchasePrice);
+        require(numTokens <= batch.numTokensAuctioned, "Too many tokens for direct purchase");
 
-        emit Purchase(_msgSender(), numTokens, currentBatch.directPurchasePrice);
+        _purchase(currentAuctionId, _msgSender(), numTokens, batch.directPurchasePrice);
+
+        emit Purchase(currentAuctionId, _msgSender(), numTokens, batch.directPurchasePrice);
     }
 
     /**
@@ -184,7 +205,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      *      all the cycle of start/end batch and set/cancel bid
      */
     function claimRefund() public {
-        address bidder = _msgSender();
+        /*address bidder = _msgSender();
 
         // Get latest bid, if it does not exist the returned values will
         // be 0 which works well with the rest of the calculation
@@ -201,6 +222,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(amountToRefund > 0, "No refund pending");
 
         Address.sendValue(payable(bidder), amountToRefund);
+        */
     }
 
     /**
@@ -220,19 +242,21 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         )
     {
         uint64 bidId;
-        (bidId, numTokens, pricePerToken) = _decodeBid(bidByBidder[bidder]);
+        (bidId, numTokens, pricePerToken) = _decodeBid(bidByBidder[currentAuctionId][bidder]);
         valid = bidId >= nextBatchStartBidId;
     }
 
     function getAllBids() external view returns (BidData[] memory bids) {
-        bids = new BidData[](bidders.sizeOf());
+        StructuredLinkedList.List storage biddersList = bidders[currentAuctionId];
 
-        (, uint256 node) = bidders.getPreviousNode(0);
-        for (uint256 i = 0; i < bidders.sizeOf(); ++i) {
+        bids = new BidData[](biddersList.sizeOf());
+
+        (, uint256 node) = biddersList.getPreviousNode(0);
+        for (uint256 i = 0; i < biddersList.sizeOf(); ++i) {
             (bids[i].bidId, bids[i].numTokens, bids[i].pricePerToken) = _decodeBid(node);
             bids[i].bidderAddress = bidderById[bids[i].bidId];
 
-            (, node) = bidders.getPreviousNode(node);
+            (, node) = biddersList.getPreviousNode(node);
         }
     }
 
@@ -261,6 +285,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Internals
      */
+    function _getBatch(uint256 auctionId) internal view returns (BatchData storage) {
+        return batches[auctionId];
+    }
+
+    function _getBidders(uint256 auctionId) internal view returns (StructuredLinkedList.List storage) {
+        return bidders[auctionId];
+    }
+
     function _encodeBid(
         uint64 bidId,
         uint64 numTokens,
@@ -284,6 +316,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function _addBid(
+        uint256 auctionId,
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken
@@ -291,32 +324,24 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 bidId = ++currentBidId;
 
         uint256 node = _encodeBid(bidId, numTokens, pricePerToken);
-        require(!bidders.nodeExists(node), "PANIC!! This should not happen!");
+        require(!bidders[auctionId].nodeExists(node), "PANIC!! This should not happen!");
 
-        uint256 position = bidders.getSortedSpot(address(this), getValue(node));
-        bidders.insertBefore(position, node);
-        bidByBidder[bidder] = node;
+        uint256 position = bidders[auctionId].getSortedSpot(address(this), getValue(node));
+        bidders[auctionId].insertBefore(position, node);
+        bidByBidder[auctionId][bidder] = node;
         bidderById[bidId] = bidder;
     }
 
-    function _cancelBid(address bidder) internal {
-        (uint64 bidId, , , uint256 node) = _getBidInfo(bidder);
+    function _cancelBid(uint256 auctionId, address bidder) internal {
+        (uint64 bidId, , , uint256 node) = _getBidInfo(auctionId, bidder);
         if (node != 0) {
-            if (bidId >= nextBatchStartBidId) {
-                bidders.remove(node);
-            }
+            bidders[auctionId].remove(node);
             delete bidderById[bidId];
-            delete bidByBidder[bidder];
+            delete bidByBidder[auctionId][bidder];
         }
     }
 
-    function _cleanBidderInfo(uint64 bidId) internal {
-        address bidder = bidderById[bidId];
-        delete bidByBidder[bidder];
-        delete bidderById[bidId];
-    }
-
-    function _getBidInfo(address bidder)
+    function _getBidInfo(uint256 auctionId, address bidder)
         internal
         view
         returns (
@@ -326,8 +351,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             uint256 node
         )
     {
-        node = bidByBidder[bidder]; // bidder -> bid
-        if (node != 0 && bidders.nodeExists(node)) {
+        node = bidByBidder[auctionId][bidder]; // bidder -> bid
+        if (node != 0 && bidders[auctionId].nodeExists(node)) {
             (bidId, numTokens, pricePerToken) = _decodeBid(node);
         }
     }
@@ -348,11 +373,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function _purchase(
+        uint256 auctionId,
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken
     ) internal {
-        currentBatch.numTokensAuctioned -= numTokens;
+        batches[auctionId].numTokensAuctioned -= numTokens;
 
         _whitelistBidder(bidder, numTokens, nextFreeTokenId);
         _chargeBidder(bidder, pricePerToken * numTokens, true);
