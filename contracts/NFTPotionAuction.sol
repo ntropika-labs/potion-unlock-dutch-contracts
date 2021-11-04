@@ -114,8 +114,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             "Auction cannot be ended yet"
         );
 
-        uint256 node = bidders.popBack();
-        while (node != 0 && currentBatch.numTokensAuctioned > 0) {
+        while (currentBatch.numTokensAuctioned > 0) {
+            uint256 node = bidders.popBack();
+            if (node == 0) {
+                break;
+            }
+
             (uint64 bidId, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(node);
 
             if (numRequestedTokens > currentBatch.numTokensAuctioned) {
@@ -126,8 +130,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
             _cancelBid(bidder);
             _purchase(bidder, numRequestedTokens, pricePerToken);
-
-            node = bidders.popBack();
         }
 
         nextBatchStartBidId = currentBidId + 1;
