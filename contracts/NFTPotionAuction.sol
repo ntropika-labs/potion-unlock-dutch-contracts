@@ -346,10 +346,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         _chargeBidder(bidder, pricePerToken * numTokens, true);
     }
 
-    function _refundBidder(address bidder, uint256 amount) internal {
-        refunds[bidder] += amount;
-    }
-
     function _chargeBidder(
         address bidder,
         uint256 amount,
