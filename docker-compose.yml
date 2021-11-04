@@ -7,3 +7,9 @@ services:
     command: NODE_OPTIONS=-max_old_space_size=8192 ganache-cli -h 0.0.0.0 --gasLimit=0x1C9C380 --callGasLimit=0x1C9C380 -m "${GANACHE_MNEMONIC}"
     volumes:
       - ./data/ganache:/data/ganache
+    networks:
+      - nft_auction
+
+networks:
+  nft_auction:
+    name: nft_auction
