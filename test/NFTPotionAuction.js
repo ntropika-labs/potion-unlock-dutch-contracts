@@ -230,7 +230,7 @@ describe("NFTPotionAuction", function () {
             expect(fromBN(ranges[0].lastId)).to.be.equal(5);
         });
     });
-    describe.only("Batch auction start/end with 20 bids", async function () {
+    describe("Batch auction start/end with 20 bids", async function () {
         const AUCTION_DURATION = 2000;
         const MINIMUM_PRICE = 10;
         const PURCHASE_PRICE = 100;
