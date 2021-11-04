@@ -174,16 +174,28 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     /**
-        Claiming functions
+     * @notice Calculates how much can be refunded to the bidder and sends this value back
+     *
+     * @dev This function works together with _chargeBidder to manage the credit and the refundable
+     *      cash for a bidder (@see _chargeBidder). All cash sent by a bidder is pre-marked as refundable.
+     *      claimRefund will look at the last valid bid to understand how much of the refundable cash
+     *      is locked to a bid. The rest of the refundable amount (refundable amount - latest bid amount)
+     *      is sent back to the bidder. This allows for easy upkeeping of the refundable amounts throughout
+     *      all the cycle of start/end batch and set/cancel bid
      */
     function claimRefund() public {
         address bidder = _msgSender();
 
+        // Get latest bid, if it does not exist the returned values will
+        // be 0 which works well with the rest of the calculation
         (, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bidByBidder[bidder]);
 
+        // Final refundable amount will be the pre-marked refundable amount
+        // minus the amount locked to the latest valid bid
         uint256 lockedFunds = numTokens * pricePerToken;
         uint256 amountToRefund = refunds[bidder] - lockedFunds;
 
+        // Pre-mark the latest bid amount as refundable
         refunds[bidder] = lockedFunds;
 
         require(amountToRefund > 0, "No refund pending");
@@ -346,6 +358,29 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         _chargeBidder(bidder, pricePerToken * numTokens, true);
     }
 
+    /**
+     * @notice Charges a bidder with a specific amount taking into account the existing credit
+     *
+     * @param bidder The address to charge
+     * @param amount The amount to be charged
+     * @param lockFunds Whether the funds will be locked in the contract and added to the
+     *                  claimable funds or can still be refunded to the bidder
+     *
+     *  @dev This function manages the refunds and credit logic. The cash that a bidder sent to the
+     *       contract has 3 states: refundable, locked to a bid or fully locked. When a bidder sends
+     *       a bid for the first time the cash they send is locked to that bid. If the bidder decides
+     *       to rebid then this function uses the previous credit and calculates the difference to the
+     *       previous bid:
+     *           - If the bid is lower, the difference between the credit
+     *             and the new bid is marked as refundable
+     *           - If the bid is higher, the difference between the new bid
+     *             and the credit is required to be sent along the transaction
+     *
+     *       All the cash that the bidder sends to the contract is pre-marked as refundable, and
+     *       it is the claimRefund function the one that decides how much of that refund is locked
+     *       to a bid by looking at the latest valid bid (@see claimRefund). Pre-marking the cash
+     *       as refundable allows the contract to avoid processing all refunds when endBatch is called
+     */
     function _chargeBidder(
         address bidder,
         uint256 amount,
@@ -359,10 +394,23 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         if (credit < amount) {
             require(msg.value == (amount - credit), "Sent incorrect amount of cash");
+
+            // Bidder must send the diff between the existing credit and the amount to pay.
+            // If we are locking the funds then the full amount is marked as fully locked
+            // and removed from the refunds. Otherwise the amount is pre-marked as refundable
             refunds[bidder] = lockFunds ? 0 : amount;
-        } else if (lockFunds) {
+        } else if (
+            /* credit > amount && */
+            lockFunds
+        ) {
+            // When there is enough credit to cover the amount and we are locking the funds
+            // we just mark amount as fully locked
             refunds[bidder] -= amount;
         }
+
+        // In case the credit is enough to cover the amount and we are not locking the funds
+        // we don't have to do anything, whatever amount is in refunds is already pre-marked
+        // as refundable
     }
 
     /**
