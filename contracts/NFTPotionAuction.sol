@@ -177,7 +177,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      * @notice Calculates how much can be refunded to the bidder and sends this value back
      *
      * @dev This function works together with _chargeBidder to manage the credit and the refundable
-     *      cash for a bidder (@see _chargeBidder). All cash sent by a bidder is pre-marked as refundable.
+     *      cash for a bidder (see _chargeBidder). All cash sent by a bidder is pre-marked as refundable.
      *      claimRefund will look at the last valid bid to understand how much of the refundable cash
      *      is locked to a bid. The rest of the refundable amount (refundable amount - latest bid amount)
      *      is sent back to the bidder. This allows for easy upkeeping of the refundable amounts throughout
@@ -378,7 +378,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
      *
      *       All the cash that the bidder sends to the contract is pre-marked as refundable, and
      *       it is the claimRefund function the one that decides how much of that refund is locked
-     *       to a bid by looking at the latest valid bid (@see claimRefund). Pre-marking the cash
+     *       to a bid by looking at the latest valid bid (see claimRefund). Pre-marking the cash
      *       as refundable allows the contract to avoid processing all refunds when endBatch is called
      */
     function _chargeBidder(
