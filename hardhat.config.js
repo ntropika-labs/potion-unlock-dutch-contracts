@@ -1,6 +1,6 @@
 require("@nomiclabs/hardhat-waffle");
-require('hardhat-abi-exporter');
-
+require("hardhat-abi-exporter");
+require("hardhat-gas-reporter");
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -26,17 +26,30 @@ module.exports = {
     networks: {
         hardhat: {
             chainId: 1337,
+            gasPrice: 180000000000,
         },
         localhost: {
             url: "http://127.0.0.1:8545",
+            gasPrice: 180000000000,
         },
     },
     abiExporter: {
-        path: './abis',
+        path: "./abis",
         clear: true,
         flat: true,
-        only: [':NFT', ':INFTPotionValidator$'],
+        only: [":NFT", ":INFTPotionValidator$"],
         spacing: 2,
         pretty: false,
-      }
+    },
+    gasReporter: {
+        currency: "USD",
+        gasPrice: 180,
+        enabled: true,
+    },
+    settings: {
+        optimizer: {
+            enabled: true,
+            runs: 200,
+        },
+    },
 };

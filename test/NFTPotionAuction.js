@@ -1,0 +1,295 @@
+const { expect } = require("chai");
+const { ethers } = require("hardhat");
+const { before } = require("mocha");
+const { formatUnits } = require("ethers/lib/utils");
+
+async function epochNow() {
+    return (await ethers.provider.getBlock("latest")).timestamp;
+}
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function getEventTimestamp(eventName, tx) {
+    const receipt = await tx.wait();
+
+    const events = receipt.events?.filter(x => {
+        return x.event === eventName;
+    });
+
+    expect(events.length).to.be.greaterThanOrEqual(1);
+
+    const batchStartedEvent = events[0];
+    const eventBlock = await batchStartedEvent.getBlock();
+    return eventBlock.timestamp;
+}
+
+async function fastForwardChain(seconds) {
+    await ethers.provider.send("evm_increaseTime", [seconds]);
+    await ethers.provider.send("evm_mine", []);
+}
+
+function fromBN(bn) {
+    return Number(formatUnits(bn, "wei"));
+}
+
+const FIRST_TOKEN_ID = 1;
+
+describe("NFTPotionAuction", function () {
+    describe("Default Values", function () {
+        it("All default values", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            const auction = await NFTPotionAuction.deploy();
+            await auction.deployed();
+
+            expect(await auction.nextFreeTokenId()).to.equal(1);
+        });
+    });
+
+    describe("Basic sanity checks for starting an auction", async function () {
+        var auctionContract;
+
+        before("Deploy NFT Auction", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            auctionContract = await NFTPotionAuction.deploy();
+            await auctionContract.deployed();
+        });
+
+        it("Can't start auction in the past", async function () {
+            const auctionEndDatePast = (await epochNow()) - 100;
+
+            const minimumPricePerToken = 10;
+            const directPurchasePrice = 100;
+
+            await expect(
+                auctionContract.startBatch(
+                    FIRST_TOKEN_ID,
+                    FIRST_TOKEN_ID + 10,
+                    minimumPricePerToken,
+                    directPurchasePrice,
+                    auctionEndDatePast,
+                ),
+            ).to.be.revertedWith("Auction is in the past");
+        });
+        it("Can't start first auction with token ID different than 1", async function () {
+            const minimumPricePerToken = 10;
+            const directPurchasePrice = 100;
+            const auctionEndDate = (await epochNow()) + 2000;
+
+            await expect(
+                auctionContract.startBatch(
+                    0,
+                    FIRST_TOKEN_ID + 10,
+                    minimumPricePerToken,
+                    directPurchasePrice,
+                    auctionEndDate,
+                ),
+            ).to.be.revertedWith("Wrong start token ID");
+            await expect(
+                auctionContract.startBatch(
+                    2,
+                    FIRST_TOKEN_ID + 10,
+                    minimumPricePerToken,
+                    directPurchasePrice,
+                    auctionEndDate,
+                ),
+            ).to.be.revertedWith("Wrong start token ID");
+            await expect(
+                auctionContract.startBatch(
+                    1231928931,
+                    FIRST_TOKEN_ID + 10,
+                    minimumPricePerToken,
+                    directPurchasePrice,
+                    auctionEndDate,
+                ),
+            ).to.be.revertedWith("Wrong start token ID");
+        });
+        it("Minimum price cannot be greater than purchase price", async function () {
+            const auctionEndDate = (await epochNow()) + 2000;
+
+            await expect(
+                auctionContract.startBatch(FIRST_TOKEN_ID, FIRST_TOKEN_ID + 10, 1, 0, auctionEndDate),
+            ).to.be.revertedWith("Minimum higher than purchase price");
+            await expect(
+                auctionContract.startBatch(FIRST_TOKEN_ID, FIRST_TOKEN_ID + 10, 2, 1, auctionEndDate),
+            ).to.be.revertedWith("Minimum higher than purchase price");
+            await expect(
+                auctionContract.startBatch(FIRST_TOKEN_ID, FIRST_TOKEN_ID + 10, 123123, 123, auctionEndDate),
+            ).to.be.revertedWith("Minimum higher than purchase price");
+        });
+        it("Start first batch auction (Token IDs 1-20)", async function () {
+            const auctionEndDate = (await epochNow()) + 2000;
+
+            const tx = await auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate);
+            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchStarted")
+                .withArgs(blockTimestamp, 1, 20, 100, 1200, auctionEndDate);
+        });
+        it("Can't start new batch without ending previous", async function () {
+            const auctionEndDate = (await epochNow()) + 2000;
+            await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate)).to.be.revertedWith(
+                "Auction still active",
+            );
+        });
+    });
+
+    describe("Batch auction start/end with no bids", async function () {
+        const AUCTION_DURATION = 2000;
+        var auctionContract;
+        var auctionEndDate;
+
+        before("Deploy NFT Auction", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            auctionContract = await NFTPotionAuction.deploy();
+            await auctionContract.deployed();
+        });
+
+        it("Start first batch auction (Token IDs 1-20)", async function () {
+            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+
+            const tx = await auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate);
+            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchStarted")
+                .withArgs(blockTimestamp, 1, 20, 100, 1200, auctionEndDate);
+        });
+        it("End batch with no bids", async function () {
+            await fastForwardChain(2000);
+            const tx = await auctionContract.endBatch();
+            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
+
+            await expect(tx).to.emit(auctionContract, "BatchEnded").withArgs(auctionEndDate, blockTimestamp, 0);
+        });
+    });
+
+    describe("Batch auction start/end with 1 bid", async function () {
+        const AUCTION_DURATION = 2000;
+        const MINIMUM_PRICE = 10;
+        const PURCHASE_PRICE = 100;
+        const NUM_TOKENS = 5;
+
+        var auctionContract;
+        var auctionEndDate;
+
+        before("Deploy NFT Auction", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            auctionContract = await NFTPotionAuction.deploy();
+            await auctionContract.deployed();
+        });
+
+        it("Start first batch auction (Token IDs 1-20)", async function () {
+            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+
+            const tx = await auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchStarted")
+                .withArgs(blockTimestamp, 1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+        });
+        it("Can't set bid below minimum price", async function () {
+            await expect(auctionContract.setBid(NUM_TOKENS, MINIMUM_PRICE - 1)).to.be.revertedWith(
+                "Bid must reach minimum amount",
+            );
+        });
+        it("Can't set bid equal or greater than purchase price", async function () {
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE)).to.be.revertedWith(
+                "Bid cannot be higher than direct price",
+            );
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 1)).to.be.revertedWith(
+                "Bid cannot be higher than direct price",
+            );
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 100)).to.be.revertedWith(
+                "Bid cannot be higher than direct price",
+            );
+        });
+        it("Set 1 bid at minimum price", async function () {
+            const sender = await ethers.provider.getSigner().getAddress();
+
+            await expect(auctionContract.setBid(5, MINIMUM_PRICE, { value: 5 * MINIMUM_PRICE }))
+                .to.emit(auctionContract, "SetBid")
+                .withArgs(sender, NUM_TOKENS, MINIMUM_PRICE);
+        });
+        it("End batch with 1 bid", async function () {
+            const sender = await ethers.provider.getSigner().getAddress();
+
+            await fastForwardChain(2000);
+            const tx = await auctionContract.endBatch();
+            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchEnded")
+                .withArgs(auctionEndDate, blockTimestamp, NUM_TOKENS);
+
+            const ranges = await auctionContract.getWhitelistRanges(sender);
+
+            expect(fromBN(ranges[0].firstId)).to.be.equal(1);
+            expect(fromBN(ranges[0].lastId)).to.be.equal(5);
+        });
+    });
+    describe.only("Batch auction start/end with 20 bids", async function () {
+        const AUCTION_DURATION = 2000;
+        const MINIMUM_PRICE = 10;
+        const PURCHASE_PRICE = 100;
+
+        var auctionContract;
+        var auctionEndDate;
+
+        before("Deploy NFT Auction", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            auctionContract = await NFTPotionAuction.deploy();
+            await auctionContract.deployed();
+        });
+
+        it("Start first batch auction (Token IDs 1-20)", async function () {
+            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+
+            const tx = await auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchStarted")
+                .withArgs(blockTimestamp, 1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+        });
+        it("Set 20 bids at different prices", async function () {
+            const senders = await ethers.getSigners();
+
+            for (let i = 0; i < senders.length; ++i) {
+                const numTokens = 1;
+                const pricePerToken = MINIMUM_PRICE + i;
+                const priceToPay = numTokens * pricePerToken;
+
+                const senderAddress = await senders[i].getAddress();
+
+                await expect(
+                    auctionContract.connect(senders[i]).setBid(numTokens, pricePerToken, { value: priceToPay }),
+                )
+                    .to.emit(auctionContract, "SetBid")
+                    .withArgs(senderAddress, numTokens, pricePerToken);
+            }
+        });
+        it("End batch with 20 bids", async function () {
+            const senders = await ethers.getSigners();
+
+            await fastForwardChain(2000);
+            const tx = await auctionContract.endBatch();
+            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
+
+            await expect(tx).to.emit(auctionContract, "BatchEnded").withArgs(auctionEndDate, blockTimestamp, 20);
+
+            for (let i = 0; i < senders.length; ++i) {
+                const senderAddress = await senders[i].getAddress();
+
+                const ranges = await auctionContract.getWhitelistRanges(senderAddress);
+
+                expect(ranges.length).to.be.equal(1);
+
+                expect(fromBN(ranges[0].firstId)).to.be.equal(20 - i);
+                expect(fromBN(ranges[0].lastId)).to.be.equal(20 - i);
+            }
+        });
+    });
+});

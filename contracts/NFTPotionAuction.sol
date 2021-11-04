@@ -87,7 +87,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 minimumPricePerToken,
         uint128 directPurchasePrice,
         uint128 auctionEndDate
-    ) external onlyOwner {
+    ) external onlyOwner checkAuctionInactive {
         require(auctionEndDate > block.timestamp, "Auction is in the past");
         require(startTokenId == nextFreeTokenId, "Wrong start token ID");
         require(minimumPricePerToken <= directPurchasePrice, "Minimum higher than purchase price");
@@ -163,7 +163,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Direct purchase
      */
-    function purchase(uint64 numTokens) external checkAuctionActive {
+    function purchase(uint64 numTokens) external payable checkAuctionActive {
         require(numTokens <= currentBatch.numTokensAuctioned, "Too many tokens for direct purchase");
 
         _purchase(_msgSender(), numTokens, currentBatch.directPurchasePrice);
