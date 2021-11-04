@@ -290,7 +290,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function _cancelBid(address bidder) internal {
         (uint64 bidId, , , uint256 node) = _getBidInfo(bidder);
         if (node != 0) {
-            bidders.remove(node);
+            if (bidId >= nextBatchStartBidId) {
+                bidders.remove(node);
+            }
             delete bidderById[bidId];
             delete bidByBidder[bidder];
         }
