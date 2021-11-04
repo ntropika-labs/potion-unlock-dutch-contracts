@@ -110,8 +110,13 @@ export class NFTAuction {
         return this.contract.cancelBid();
     }
 
-    async purchase(numTokens: string) {
-        return this.contract.purchase(BigNumber.from(numTokens));
+    async purchase(numTokens: string, pricePerToken: string) {
+        const numTokensBN = BigNumber.from(numTokens);
+        const pricePerTokenBN = BigNumber.from(pricePerToken);
+
+        const priceToPay = numTokensBN.mul(pricePerTokenBN);
+
+        return this.contract.purchase(BigNumber.from(numTokens), { value: priceToPay });
     }
 
     async claimRefund() {

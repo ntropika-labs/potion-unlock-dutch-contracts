@@ -7,8 +7,8 @@ const useNFTAuctionPurchase = (props: any) => {
     const auction = useNFTAuction();
 
     const handlePurchase = useCallback(
-        async (numTokens: string) => {
-            handleTransaction(auction.purchase(numTokens));
+        async (numTokens: string, priceToPay: string) => {
+            handleTransaction(auction.purchase(numTokens, priceToPay));
         },
         [auction, handleTransaction],
     );

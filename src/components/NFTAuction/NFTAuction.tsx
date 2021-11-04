@@ -121,8 +121,8 @@ const NFTAuction: React.FC<any> = props => {
     }, [bidNumTokens, bid, onSetBid]);
 
     const handlePurchase = useCallback(() => {
-        onPurchase(bidNumTokens);
-    }, [bidNumTokens, onPurchase]);
+        onPurchase(bidNumTokens, bid);
+    }, [bidNumTokens, bid, onPurchase]);
 
     /**
      * Refunds management
