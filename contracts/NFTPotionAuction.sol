@@ -134,7 +134,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         require(block.timestamp > batch.auctionEndDate || batch.numTokensAuctioned == 0, "Auction cannot be ended yet");
 
-        while (node != 0 && batch.numTokensAuctioned > 0) {
+        while (batch.numTokensAuctioned > 0) {
             uint256 node = bidders[currentAuctionId].popBack();
             if (node == 0) {
                 break;
