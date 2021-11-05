@@ -7,7 +7,7 @@ const useNFTAuctionEndBatch = (props: any) => {
     const auction = useNFTAuction();
 
     const handleEndBatch = useCallback(async () => {
-        handleTransaction(auction.endBatch());
+        handleTransaction(auction.endBatch(100));
     }, [auction, handleTransaction]);
     return { onEndBatch: handleEndBatch };
 };

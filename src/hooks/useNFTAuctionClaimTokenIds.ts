@@ -2,17 +2,17 @@ import { useCallback } from "react";
 import useNFTAuction from "./useNFTAuction";
 import useHandleTransaction from "./useHandleTransaction";
 
-const useNFTAuctionCancelBid = (props: any) => {
+const useNFTAuctionClaimTokenIds = (props: any) => {
     const handleTransaction = useHandleTransaction(props);
     const auction = useNFTAuction();
 
-    const handleCancelBid = useCallback(
+    const handleClaimTokenIds = useCallback(
         async (batchId: number, alsoRefund: boolean) => {
-            handleTransaction(auction.cancelBid(batchId, alsoRefund));
+            handleTransaction(auction.claimTokenIds(batchId, alsoRefund));
         },
         [auction, handleTransaction],
     );
-    return { onCancelBid: handleCancelBid };
+    return { onClaimTokenIds: handleClaimTokenIds };
 };
 
-export default useNFTAuctionCancelBid;
+export default useNFTAuctionClaimTokenIds;

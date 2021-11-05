@@ -87,12 +87,15 @@ export class NFTAuction {
         );
     }
 
-    async endBatch() {
-        return this.contract.endBatch();
+    async endBatch(numBidsToProcess: number) {
+        return this.contract.endBatch(numBidsToProcess);
     }
 
     async setBid(numTokens: string, pricePerToken: string) {
-        const credit = await this.refundAmount();
+        const latestBid = await this.getCurrentLatestBid();
+
+        let credit = await this.refundAmount();
+        credit = credit.add(latestBid.numTokens.mul(latestBid.pricePerToken));
 
         const numTokensBN = BigNumber.from(numTokens);
         const pricePerTokenBN = BigNumber.from(pricePerToken);
@@ -106,8 +109,9 @@ export class NFTAuction {
         return this.contract.setBid(numTokensBN, pricePerTokenBN, { value: valueToSend });
     }
 
-    async cancelBid() {
-        return this.contract.cancelBid();
+    async cancelBid(batchId: number, alsoRefund: boolean) {
+        console.log(batchId, alsoRefund);
+        return this.contract.cancelBid(batchId, alsoRefund);
     }
 
     async purchase(numTokens: string, pricePerToken: string) {
@@ -117,6 +121,10 @@ export class NFTAuction {
         const priceToPay = numTokensBN.mul(pricePerTokenBN);
 
         return this.contract.purchase(BigNumber.from(numTokens), { value: priceToPay });
+    }
+
+    async claimTokenIds(batchId: number, alsoRefund: boolean) {
+        return this.contract.claimTokenIds(batchId, alsoRefund);
     }
 
     async claimRefund() {
@@ -131,14 +139,22 @@ export class NFTAuction {
         return this.contract.listBidders();
     }
 
-    async currentBatch() {
-        return this.contract.currentBatch();
+    async getBatch(batchId: number) {
+        return [...(await this.contract.getBatch(batchId)), batchId];
     }
 
-    async getLatestBid() {
-        return this.contract.getLatestBid(this.myAccount);
+    async currentBatchId() {
+        return this.contract.currentBatchId();
     }
 
+    async getLatestBid(batchId: number) {
+        return this.contract.getLatestBid(batchId, this.myAccount);
+    }
+
+    async getCurrentLatestBid() {
+        const currentBatchId = await this.currentBatchId();
+        return this.contract.getLatestBid(currentBatchId, this.myAccount);
+    }
     async getAllBids() {
         return this.contract.getAllBids();
     }
