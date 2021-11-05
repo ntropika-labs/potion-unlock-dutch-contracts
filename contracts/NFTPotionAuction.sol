@@ -12,32 +12,32 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
     using StructuredLinkedList for StructuredLinkedList.List;
 
-    // Current running auction parameters
-    struct BatchData {
+    struct BatchParameters {
         uint128 minimumPricePerToken;
         uint128 directPurchasePrice;
         uint64 startTokenId;
         uint64 numTokensAuctioned;
         uint128 auctionEndDate;
     }
+    struct Batch {
+        BatchParameters parameters;
+        StructuredLinkedList.List bidders;
+        mapping(address => uint256) bidByBidder;
+        uint64 currentBidId;
+        uint128 clearingPrice;
+        uint64 lasBidderNumAssignedTokens;
+    }
 
-    uint256 public currentAuctionId;
-    mapping(uint256 => BatchData) public batches;
-
-    uint32 private currentBidId;
-    uint64 public nextFreeTokenId = 1;
-    uint64 private nextBatchStartBidId = 1;
-
-    struct BidData {
+    struct Bid {
+        address bidder;
         uint64 bidId;
-        address bidderAddress;
         uint64 numTokens;
         uint128 pricePerToken;
     }
 
-    // Bidders info for each auction ID
-    StructuredLinkedList.List[] public bidders; // Bidders sorted list by auction ID
-    mapping(address => uint256)[] public bidByBidder; // bidder -> bid
+    mapping(uint256 => Batch) internal batches; // batchId -> batchParameters
+    uint256 public currentBatchId = 1;
+    uint64 public nextFreeTokenId = 1;
 
     // Global bidders info
     mapping(uint64 => address) public bidderById; // bidId -> bidder
@@ -53,7 +53,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         Events
      */
     event BatchStarted(
-        uint256 indexed auctionId,
+        uint256 indexed batchId,
         uint256 indexed startTimestamp,
         uint64 indexed startTokenId,
         uint64 endTokenId,
@@ -62,30 +62,30 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 auctionEndDate
     );
     event BatchEnded(
-        uint256 indexed auctionId,
+        uint256 indexed batchId,
         uint256 indexed auctionEndTimestamp,
         uint256 indexed actualEndTimestamp,
         uint64 numTokensSold
     );
-    event SetBid(uint256 indexed auctionId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
+    event SetBid(uint256 indexed batchId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
     event CancelBid(
-        uint256 indexed auctionId,
+        uint256 indexed batchId,
         address indexed bidder,
         uint256 cancelTimestamp,
         uint256 auctionEndTimestamp
     );
-    event Purchase(uint256 indexed auctionId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
+    event Purchase(uint256 indexed batchId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
 
     /**
         Modifiers
     */
     modifier checkAuctionActive() {
-        require(block.timestamp <= _getBatch(currentAuctionId).auctionEndDate, "Auction already ended");
+        require(block.timestamp <= _getBatchParameters(currentBatchId).auctionEndDate, "Auction already ended");
         _;
     }
 
     modifier checkAuctionInactive() {
-        require(block.timestamp > _getBatch(currentAuctionId).auctionEndDate, "Auction still active");
+        require(block.timestamp > _getBatchParameters(currentBatchId).auctionEndDate, "Auction still active");
         _;
     }
 
@@ -108,18 +108,18 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(startTokenId == nextFreeTokenId, "Wrong start token ID");
         require(minimumPricePerToken <= directPurchasePrice, "Minimum higher than purchase price");
 
-        currentAuctionId++;
+        BatchParameters storage batchParameters = _getBatchParameters(currentBatchId);
 
-        BatchData storage batch = _getBatch(currentAuctionId);
+        batchParameters.startTokenId = startTokenId;
+        batchParameters.numTokensAuctioned = endTokenId - startTokenId + 1;
+        batchParameters.minimumPricePerToken = minimumPricePerToken;
+        batchParameters.directPurchasePrice = directPurchasePrice;
+        batchParameters.auctionEndDate = auctionEndDate;
 
-        batch.startTokenId = startTokenId;
-        batch.numTokensAuctioned = endTokenId - startTokenId + 1;
-        batch.minimumPricePerToken = minimumPricePerToken;
-        batch.directPurchasePrice = directPurchasePrice;
-        batch.auctionEndDate = auctionEndDate;
+        _getBatch(currentBatchId).clearingPrice = type(uint128).max;
 
         emit BatchStarted(
-            currentAuctionId,
+            currentBatchId,
             block.timestamp,
             startTokenId,
             endTokenId,
@@ -129,100 +129,112 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         );
     }
 
-    function endBatch() external {
-        BatchData storage batch = _getBatch(currentAuctionId);
+    function endBatch(uint256 numBidsToProcess) external {
+        Batch storage batch = _getBatch(currentBatchId);
 
-        require(block.timestamp > batch.auctionEndDate || batch.numTokensAuctioned == 0, "Auction cannot be ended yet");
+        require(
+            block.timestamp > batch.parameters.auctionEndDate || batch.parameters.numTokensAuctioned == 0,
+            "Auction cannot be ended yet"
+        );
 
-        while (batch.numTokensAuctioned > 0) {
-            uint256 node = bidders[currentAuctionId].popBack();
-            if (node == 0) {
+        StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
+        (bool isBidValid, uint256 bid) = bidders.getPreviousNode(0);
+
+        while (numBidsToProcess > 0 && isBidValid && batch.parameters.numTokensAuctioned > 0) {
+            (, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(bid);
+
+            if (numRequestedTokens > batch.parameters.numTokensAuctioned) {
+                batch.lasBidderNumAssignedTokens = batch.parameters.numTokensAuctioned;
+                batch.clearingPrice = numRequestedTokens * pricePerToken;
                 break;
             }
 
-            (uint64 bidId, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(node);
+            numBidsToProcess--;
 
-            if (numRequestedTokens > batch.numTokensAuctioned) {
-                numRequestedTokens = batch.numTokensAuctioned;
-            }
-
-            address bidder = bidderById[bidId];
-
-            _cancelBid(currentAuctionId, bidder);
-            _purchase(currentAuctionId, bidder, numRequestedTokens, pricePerToken);
+            (isBidValid, bid) = bidders.getPreviousNode(bid);
         }
 
-        nextBatchStartBidId = currentBidId + 1;
+        if (batch.parameters.numTokensAuctioned == 0) {
+            // Clearing price has been fully calculated
+            currentBatchId++;
 
-        emit BatchEnded(currentAuctionId, batch.auctionEndDate, block.timestamp, nextFreeTokenId - batch.startTokenId);
+            emit BatchEnded(
+                currentBatchId,
+                batch.parameters.auctionEndDate,
+                block.timestamp,
+                nextFreeTokenId - batch.parameters.startTokenId
+            );
+        }
     }
 
     /**
         Bid management
      */
     function setBid(uint64 numTokens, uint128 pricePerToken) external payable checkAuctionActive {
-        BatchData storage batch = _getBatch(currentAuctionId);
+        BatchParameters storage batchParameters = _getBatchParameters(currentBatchId);
 
-        require(pricePerToken >= batch.minimumPricePerToken, "Bid must reach minimum amount");
-        require(pricePerToken < batch.directPurchasePrice, "Bid cannot be higher than direct price");
+        require(pricePerToken >= batchParameters.minimumPricePerToken, "Bid must reach minimum amount");
+        require(pricePerToken < batchParameters.directPurchasePrice, "Bid cannot be higher than direct price");
 
         address bidder = _msgSender();
 
-        _cancelBid(currentAuctionId, bidder);
-        _addBid(currentAuctionId, bidder, numTokens, pricePerToken);
-        _chargeBidder(bidder, pricePerToken * numTokens, false);
+        _cancelBid(currentBatchId, bidder);
+        _addBid(currentBatchId, bidder, numTokens, pricePerToken);
+        _chargeBidder(bidder, pricePerToken * numTokens);
 
-        emit SetBid(currentAuctionId, bidder, numTokens, pricePerToken);
+        emit SetBid(currentBatchId, bidder, numTokens, pricePerToken);
     }
 
-    function cancelBid(uint256 auctionId) external {
-        _cancelBid(auctionId, _msgSender());
+    function cancelBid(uint256 batchId, bool alsoRefund) external {
+        address bidder = _msgSender();
 
-        emit CancelBid(auctionId, _msgSender(), block.timestamp, _getBatch(auctionId).auctionEndDate);
+        _cancelBid(batchId, bidder);
+
+        if (alsoRefund) {
+            _claimRefund(bidder);
+        }
+        emit CancelBid(batchId, bidder, block.timestamp, _getBatchParameters(batchId).auctionEndDate);
     }
 
     /**
         Direct purchase
      */
     function purchase(uint64 numTokens) external payable checkAuctionActive {
-        BatchData storage batch = _getBatch(currentAuctionId);
+        BatchParameters storage batchParameters = _getBatchParameters(currentBatchId);
 
-        require(numTokens <= batch.numTokensAuctioned, "Too many tokens for direct purchase");
+        require(numTokens <= batchParameters.numTokensAuctioned, "Too many tokens for direct purchase");
 
-        _purchase(currentAuctionId, _msgSender(), numTokens, batch.directPurchasePrice);
+        _purchase(currentBatchId, _msgSender(), numTokens, batchParameters.directPurchasePrice);
 
-        emit Purchase(currentAuctionId, _msgSender(), numTokens, batch.directPurchasePrice);
+        emit Purchase(currentBatchId, _msgSender(), numTokens, batchParameters.directPurchasePrice);
     }
 
     /**
-     * @notice Calculates how much can be refunded to the bidder and sends this value back
-     *
-     * @dev This function works together with _chargeBidder to manage the credit and the refundable
-     *      cash for a bidder (see _chargeBidder). All cash sent by a bidder is pre-marked as refundable.
-     *      claimRefund will look at the last valid bid to understand how much of the refundable cash
-     *      is locked to a bid. The rest of the refundable amount (refundable amount - latest bid amount)
-     *      is sent back to the bidder. This allows for easy upkeeping of the refundable amounts throughout
-     *      all the cycle of start/end batch and set/cancel bid
-     */
-    function claimRefund() public {
-        /*address bidder = _msgSender();
+        Claiming functions
+    */
+    function claimTokenIds(uint256 batchId, bool alsoRefund) external {
+        Batch storage batch = _getBatch(batchId);
+        address bidder = _msgSender();
 
-        // Get latest bid, if it does not exist the returned values will
-        // be 0 which works well with the rest of the calculation
-        (, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bidByBidder[bidder]);
+        uint256 bid = _getBatchBidByBidder(batchId, bidder);
+        (, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bid);
 
-        // Final refundable amount will be the pre-marked refundable amount
-        // minus the amount locked to the latest valid bid
-        uint256 lockedFunds = numTokens * pricePerToken;
-        uint256 amountToRefund = refunds[bidder] - lockedFunds;
+        if (pricePerToken == batch.clearingPrice) {
+            _whitelistBidder(bidder, batch.lasBidderNumAssignedTokens, nextFreeTokenId);
+        } else if (pricePerToken > batch.clearingPrice) {
+            _whitelistBidder(bidder, numTokens, nextFreeTokenId);
+        }
 
-        // Pre-mark the latest bid amount as refundable
-        refunds[bidder] = lockedFunds;
+        _cancelBid(batchId, bidder);
 
-        require(amountToRefund > 0, "No refund pending");
+        if (alsoRefund) {
+            _claimRefund(_msgSender());
+        }
+    }
 
-        Address.sendValue(payable(bidder), amountToRefund);
-        */
+    function claimRefund() external {
+        require(refunds[_msgSender()] > 0, "No refundable cash");
+        _claimRefund(_msgSender());
     }
 
     /**
@@ -232,31 +244,23 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         return whitelist[buyer];
     }
 
-    function getLatestBid(address bidder)
-        external
-        view
-        returns (
-            bool valid,
-            uint64 numTokens,
-            uint128 pricePerToken
-        )
-    {
-        uint64 bidId;
-        (bidId, numTokens, pricePerToken) = _decodeBid(bidByBidder[currentAuctionId][bidder]);
-        valid = bidId >= nextBatchStartBidId;
+    function getLatestBid(uint256 batchId, address bidder) external view returns (Bid memory bid) {
+        uint256 encodedBid = _getBatchBidByBidder(batchId, bidder);
+        bid.bidder = bidder;
+        (bid.bidId, bid.numTokens, bid.pricePerToken) = _decodeBid(encodedBid);
     }
 
-    function getAllBids() external view returns (BidData[] memory bids) {
-        StructuredLinkedList.List storage biddersList = bidders[currentAuctionId];
+    function getAllBids() external view returns (Bid[] memory bids) {
+        StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
 
-        bids = new BidData[](biddersList.sizeOf());
+        bids = new Bid[](bidders.sizeOf());
 
-        (, uint256 node) = biddersList.getPreviousNode(0);
-        for (uint256 i = 0; i < biddersList.sizeOf(); ++i) {
-            (bids[i].bidId, bids[i].numTokens, bids[i].pricePerToken) = _decodeBid(node);
-            bids[i].bidderAddress = bidderById[bids[i].bidId];
+        (, uint256 bid) = bidders.getPreviousNode(0);
+        for (uint256 i = 0; i < bidders.sizeOf(); ++i) {
+            bids[i].bidder = bidderById[bids[i].bidId];
+            (bids[i].bidId, bids[i].numTokens, bids[i].pricePerToken) = _decodeBid(bid);
 
-            (, node) = biddersList.getPreviousNode(node);
+            (, bid) = bidders.getPreviousNode(bid);
         }
     }
 
@@ -283,16 +287,45 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     /**
-        Internals
+        Internal getters
      */
-    function _getBatch(uint256 auctionId) internal view returns (BatchData storage) {
-        return batches[auctionId];
+    function _getBatch(uint256 batchId) internal view returns (Batch storage) {
+        return batches[batchId];
     }
 
-    function _getBidders(uint256 auctionId) internal view returns (StructuredLinkedList.List storage) {
-        return bidders[auctionId];
+    function _getBatchParameters(uint256 batchId) internal view returns (BatchParameters storage) {
+        return batches[batchId].parameters;
     }
 
+    function _getBatchBidders(uint256 batchId) internal view returns (StructuredLinkedList.List storage) {
+        return batches[batchId].bidders;
+    }
+
+    function _getBatchBidByBidder(uint256 batchId, address bidder) internal view returns (uint256) {
+        return batches[batchId].bidByBidder[bidder];
+    }
+
+    function _getBidInfo(uint256 batchId, address bidder)
+        internal
+        view
+        returns (
+            uint64 bidId,
+            uint64 numTokens,
+            uint128 pricePerToken,
+            uint256 bid
+        )
+    {
+        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
+
+        bid = batches[batchId].bidByBidder[bidder];
+        if (bid != 0 && bidders.nodeExists(bid)) {
+            (bidId, numTokens, pricePerToken) = _decodeBid(bid);
+        }
+    }
+
+    /**
+        Internal bid management
+    */
     function _encodeBid(
         uint64 bidId,
         uint64 numTokens,
@@ -316,47 +349,95 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function _addBid(
-        uint256 auctionId,
+        uint256 batchId,
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken
     ) internal {
-        uint64 bidId = ++currentBidId;
+        // Optimize by receiving prev and next bid
+        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
 
-        uint256 node = _encodeBid(bidId, numTokens, pricePerToken);
-        require(!bidders[auctionId].nodeExists(node), "PANIC!! This should not happen!");
+        uint64 bidId = ++_getBatch(batchId).currentBidId;
 
-        uint256 position = bidders[auctionId].getSortedSpot(address(this), getValue(node));
-        bidders[auctionId].insertBefore(position, node);
-        bidByBidder[auctionId][bidder] = node;
+        uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
+        uint256 next = bidders.getSortedSpot(address(this), getValue(bid));
+        (, uint256 prev) = bidders.getPreviousNode(next);
+
+        _checkPriceUnique(prev, next, pricePerToken);
+
+        bidders.insertBefore(next, bid);
+        batches[batchId].bidByBidder[bidder] = bid;
         bidderById[bidId] = bidder;
     }
 
-    function _cancelBid(uint256 auctionId, address bidder) internal {
-        (uint64 bidId, , , uint256 node) = _getBidInfo(auctionId, bidder);
+    function _checkPriceUnique(
+        uint256 prev,
+        uint256 next,
+        uint128 pricePerToken
+    ) internal pure {
+        if (prev != 0) {
+            (, , uint128 prevPricePerToken) = _decodeBid(prev);
+            require(prevPricePerToken != pricePerToken, "Bid price is not unique");
+        }
+        if (next != 0) {
+            (, , uint128 nextPricePerToken) = _decodeBid(next);
+            require(nextPricePerToken != pricePerToken, "Bid price is not unique");
+        }
+    }
+
+    function _cancelBid(uint256 batchId, address bidder) internal {
+        (uint64 bidId, uint64 numTokens, uint128 pricePerToken, uint256 node) = _getBidInfo(batchId, bidder);
         if (node != 0) {
-            bidders[auctionId].remove(node);
+            StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
+
+            bidders.remove(node);
             delete bidderById[bidId];
-            delete bidByBidder[auctionId][bidder];
+            delete batches[batchId].bidByBidder[bidder];
+
+            // Refund the bid amount
+            refunds[bidder] += numTokens * pricePerToken;
         }
     }
 
-    function _getBidInfo(uint256 auctionId, address bidder)
-        internal
-        view
-        returns (
-            uint64 bidId,
-            uint64 numTokens,
-            uint128 pricePerToken,
-            uint256 node
-        )
-    {
-        node = bidByBidder[auctionId][bidder]; // bidder -> bid
-        if (node != 0 && bidders[auctionId].nodeExists(node)) {
-            (bidId, numTokens, pricePerToken) = _decodeBid(node);
+    /**
+        Internal purchase
+     */
+    function _purchase(
+        uint256 batchId,
+        address bidder,
+        uint64 numTokens,
+        uint128 pricePerToken
+    ) internal {
+        _getBatchParameters(batchId).numTokensAuctioned -= numTokens;
+
+        _whitelistBidder(bidder, numTokens, nextFreeTokenId);
+        _chargeBidder(bidder, pricePerToken * numTokens);
+    }
+
+    /**
+        Internal funds and credit 
+     */
+    function _chargeBidder(address bidder, uint256 amount) internal {
+        uint256 credit = refunds[bidder];
+        if (credit < amount) {
+            require(msg.value == (amount - credit), "Sent incorrect amount of cash");
+            refunds[bidder] = 0;
+        } else {
+            refunds[bidder] -= amount;
         }
     }
 
+    function _claimRefund(address bidder) internal {
+        uint256 amountToRefund = refunds[bidder];
+        if (amountToRefund > 0) {
+            refunds[bidder] = 0;
+            Address.sendValue(payable(bidder), amountToRefund);
+        }
+    }
+
+    /**
+        Internal whitelisting
+     */
     function _whitelistBidder(
         address bidder,
         uint64 numTokens,
@@ -370,73 +451,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         whitelist[bidder].push(whitelistData);
 
         nextFreeTokenId += numTokens;
-    }
-
-    function _purchase(
-        uint256 auctionId,
-        address bidder,
-        uint64 numTokens,
-        uint128 pricePerToken
-    ) internal {
-        batches[auctionId].numTokensAuctioned -= numTokens;
-
-        _whitelistBidder(bidder, numTokens, nextFreeTokenId);
-        _chargeBidder(bidder, pricePerToken * numTokens, true);
-    }
-
-    /**
-     * @notice Charges a bidder with a specific amount taking into account the existing credit
-     *
-     * @param bidder The address to charge
-     * @param amount The amount to be charged
-     * @param lockFunds Whether the funds will be locked in the contract and added to the
-     *                  claimable funds or can still be refunded to the bidder
-     *
-     *  @dev This function manages the refunds and credit logic. The cash that a bidder sent to the
-     *       contract has 3 states: refundable, locked to a bid or fully locked. When a bidder sends
-     *       a bid for the first time the cash they send is locked to that bid. If the bidder decides
-     *       to rebid then this function uses the previous credit and calculates the difference to the
-     *       previous bid:
-     *           - If the bid is lower, the difference between the credit
-     *             and the new bid is marked as refundable
-     *           - If the bid is higher, the difference between the new bid
-     *             and the credit is required to be sent along the transaction
-     *
-     *       All the cash that the bidder sends to the contract is pre-marked as refundable, and
-     *       it is the claimRefund function the one that decides how much of that refund is locked
-     *       to a bid by looking at the latest valid bid (see claimRefund). Pre-marking the cash
-     *       as refundable allows the contract to avoid processing all refunds when endBatch is called
-     */
-    function _chargeBidder(
-        address bidder,
-        uint256 amount,
-        bool lockFunds
-    ) internal {
-        uint256 credit = refunds[bidder];
-
-        if (lockFunds) {
-            claimableFunds += amount;
-        }
-
-        if (credit < amount) {
-            require(msg.value == (amount - credit), "Sent incorrect amount of cash");
-
-            // Bidder must send the diff between the existing credit and the amount to pay.
-            // If we are locking the funds then the full amount is marked as fully locked
-            // and removed from the refunds. Otherwise the amount is pre-marked as refundable
-            refunds[bidder] = lockFunds ? 0 : amount;
-        } else if (
-            /* credit > amount && */
-            lockFunds
-        ) {
-            // When there is enough credit to cover the amount and we are locking the funds
-            // we just mark amount as fully locked
-            refunds[bidder] -= amount;
-        }
-
-        // In case the credit is enough to cover the amount and we are not locking the funds
-        // we don't have to do anything, whatever amount is in refunds is already pre-marked
-        // as refundable
     }
 
     /**
