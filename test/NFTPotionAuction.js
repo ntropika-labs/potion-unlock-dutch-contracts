@@ -379,7 +379,7 @@ describe("NFTPotionAuction", function () {
                     .withArgs(1, bidderAddress, TOKENS_PER_BIDDER, pricePerToken);
             }
         }).timeout(500000);
-        it("End batch with 1000 bids", async function () {
+        it("End batch and claim token IDs", async function () {
             await fastForwardChain(2000);
             const tx = await auctionContract.endBatch(NUM_BIDDERS);
             const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
