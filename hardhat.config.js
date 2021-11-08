@@ -2,6 +2,8 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
 require("hardhat-gas-reporter");
 
+require("dotenv").config();
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -19,7 +21,15 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
  * @type import('hardhat/config').HardhatUserConfig
  */
 module.exports = {
-    solidity: "0.8.9",
+    solidity: {
+        version: "0.8.9",
+        settings: {
+            optimizer: {
+                enabled: true,
+                runs: 200,
+            },
+        },
+    },
     paths: {
         artifacts: "./src/artifacts",
     },
@@ -42,14 +52,8 @@ module.exports = {
         pretty: false,
     },
     gasReporter: {
-        currency: "USD",
-        gasPrice: 180,
+        currency: "EUR",
+        coinmarketcap: process.env.COINMARKETCAP_API_KEY,
         enabled: true,
-    },
-    settings: {
-        optimizer: {
-            enabled: true,
-            runs: 200,
-        },
     },
 };

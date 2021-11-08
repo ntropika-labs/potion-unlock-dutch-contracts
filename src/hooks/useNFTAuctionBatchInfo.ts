@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import useNFTAuction from "./useNFTAuction";
 import { BigNumber } from "@ethersproject/bignumber";
 
-const useNFTAuctionCurrentBatch = () => {
-    const [currentBatch, setCurrentBatch] = useState([
+const useNFTAuctionBatchInfo = (batchId: number) => {
+    const [batchInfo, setBatchInfo] = useState([
         BigNumber.from(0),
         BigNumber.from(0),
         BigNumber.from(0),
@@ -18,10 +18,10 @@ const useNFTAuctionCurrentBatch = () => {
 
     const fetchCurrentBatch = useCallback(async () => {
         try {
-            const batchValues = await auction.currentBatch();
-            setCurrentBatch(batchValues);
+            const batchValues = await auction.getBatch(batchId);
+            setBatchInfo(batchValues);
         } catch {}
-    }, [auction, setCurrentBatch]);
+    }, [auction, batchId, setBatchInfo]);
 
     useEffect(() => {
         fetchCurrentBatch().catch(err => console.error(`Failed to fetch NFT auction batch: ${err.stack}`));
@@ -29,7 +29,7 @@ const useNFTAuctionCurrentBatch = () => {
         return () => clearInterval(refreshInterval);
     }, [fetchCurrentBatch]);
 
-    return currentBatch;
+    return batchInfo;
 };
 
-export default useNFTAuctionCurrentBatch;
+export default useNFTAuctionBatchInfo;
