@@ -25,6 +25,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 auctionEndDate;
         uint128 clearingPrice;
         uint64 lastBidderNumAssignedTokens;
+        uint64 numTokensSold;
+        uint64 numTokensClaimed;
     }
 
     /**
@@ -113,7 +115,11 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     //---------------------------
 
     /**
-        @notice Starts a new batch auction with the given parameters 
+        @notice Starts a new batch auction with the given parameters
+
+        @dev currentBatchId is not incremented here as it is incremented in endBatch instead.
+        This helps identify when a batch is already ended 
+        
     */
     function startBatch(
         uint64 startTokenId,
@@ -134,8 +140,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         batchState.directPurchasePrice = directPurchasePrice;
         batchState.auctionEndDate = auctionEndDate;
 
-        // TODO: Add an auction ended boolean so we don't need to initialize the clearing price
-        batchState.clearingPrice = type(uint128).max;
+        // clearingPrice, lastBidderNumAssignedTokens, numTokensSold and numTokensClaimed are left at 0
 
         emit BatchStarted(
             currentBatchId,
@@ -167,36 +172,37 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         );
 
         StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
-        (bool isBidValid, uint256 bid) = bidders.getPreviousNode(0);
+        (, uint256 bid) = bidders.getPreviousNode(0);
 
-        while (numBidsToProcess > 0 && isBidValid && batchState.numTokensAuctioned > 0) {
+        uint64 numTokensLeft = batchState.numTokensAuctioned - batchState.numTokensSold;
+
+        while (numBidsToProcess > 0 && bid != 0 && numTokensLeft > 0) {
             (, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(bid);
 
-            if (numRequestedTokens > batchState.numTokensAuctioned) {
-                numRequestedTokens = batchState.numTokensAuctioned;
+            if (numRequestedTokens > numTokensLeft) {
+                numRequestedTokens = numTokensLeft;
                 // Calculate how many tokens the last bidder will get and save it, so it can
                 // be used by claimTokenIds when whitelisting token IDs
-                batchState.lastBidderNumAssignedTokens = batchState.numTokensAuctioned;
+                batchState.lastBidderNumAssignedTokens = numTokensLeft;
                 batchState.clearingPrice = pricePerToken;
             }
 
             claimableFunds += numRequestedTokens * pricePerToken;
-            batchState.numTokensAuctioned -= numRequestedTokens;
+            numTokensLeft -= numRequestedTokens;
             numBidsToProcess--;
 
-            (isBidValid, bid) = bidders.getPreviousNode(bid);
+            (, bid) = bidders.getPreviousNode(bid);
         }
 
-        if (batchState.numTokensAuctioned == 0) {
-            // Clearing price has been fully calculated
-            currentBatchId++;
+        batchState.numTokensSold = batchState.numTokensAuctioned - numTokensLeft;
 
-            emit BatchEnded(
-                currentBatchId,
-                batchState.auctionEndDate,
-                block.timestamp,
-                nextFreeTokenId - batchState.startTokenId
-            );
+        if (bid == 0 || batchState.numTokensSold == batchState.numTokensAuctioned) {
+            // Clearing price has been fully calculated
+            nextFreeTokenId += batchState.numTokensSold;
+
+            emit BatchEnded(currentBatchId, batchState.auctionEndDate, block.timestamp, batchState.numTokensSold);
+
+            currentBatchId++;
         }
     }
 
@@ -210,18 +216,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         @param pricePerToken The price per token to bid for
      */
     function setBid(uint64 numTokens, uint128 pricePerToken) external payable checkAuctionActive {
-        BatchState storage batchState = _getBatchState(currentBatchId);
-
-        require(pricePerToken >= batchState.minimumPricePerToken, "Bid must reach minimum amount");
-        require(pricePerToken < batchState.directPurchasePrice, "Bid cannot be higher than direct price");
-
-        address bidder = _msgSender();
-
-        _cancelBid(currentBatchId, bidder, true);
-        _addBid(currentBatchId, bidder, numTokens, pricePerToken);
-        _chargeBidder(bidder, pricePerToken * numTokens);
-
-        emit SetBid(currentBatchId, bidder, numTokens, pricePerToken);
+        _setBid(_msgSender(), numTokens, pricePerToken);
     }
 
     /**
@@ -266,34 +261,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     //-----------------------
 
     /**
-        @notice Tries to claim the token IDs for the given batch ID
+        @notice Claims token IDs for the sender
         @param batchId The ID of the batch to claim the token IDs for
         @param alsoRefund If true, the sender will be refunded the the current existing credit they have
-
-        @dev This function can be called even if the bidder has not won any token IDs. If called when
-        no token IDs have been won this function behaves exactly like cancelBid. Any amount credited
-        after the bid has been processed will be send back to the caller if alsoRefund is set to true
-     */
+    */
     function claimTokenIds(uint256 batchId, bool alsoRefund) external {
-        BatchState storage batchState = _getBatchState(batchId);
-        address bidder = _msgSender();
-
-        uint256 bid = _getBatchBidByBidder(batchId, bidder);
-        require(bid != 0, "Bidder has no claimable bid");
-
-        (, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bid);
-
-        if (pricePerToken == batchState.clearingPrice) {
-            _whitelistBidder(bidder, batchState.lastBidderNumAssignedTokens, nextFreeTokenId);
-        } else if (pricePerToken > batchState.clearingPrice) {
-            _whitelistBidder(bidder, numTokens, nextFreeTokenId);
-        }
-
-        _cancelBid(batchId, bidder, false);
-
-        if (alsoRefund) {
-            _claimRefund(_msgSender());
-        }
+        _claim(batchId, _msgSender(), alsoRefund);
     }
 
     /**
@@ -306,9 +279,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         _claimRefund(_msgSender());
     }
 
-    /**
-        View functions
-    */
+    //-------------------
+    //  View functions
+    //-------------------
     function getCurrentBatch() external view returns (BatchState memory) {
         return _getBatchState(currentBatchId);
     }
@@ -346,6 +319,35 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     //-------------------
 
     /**
+        @notice Sets a bid for the current batch on behalf of the given bidder
+        @param numTokens The number of tokens to bid for
+        @param pricePerToken The price per token to bid for
+
+        @dev Only owner can set bids on behalf of other users
+     */
+    function setBidOnBehalf(
+        address bidder,
+        uint64 numTokens,
+        uint128 pricePerToken
+    ) external payable onlyOwner checkAuctionActive {
+        _setBid(bidder, numTokens, pricePerToken);
+    }
+
+    /**
+        @notice Claims token IDs on behalf of a bidder
+        @param batchId The ID of the batch to claim the token IDs for
+        @param bidder Address to claim the token IDs for
+        @param alsoRefund If true, the sender will be refunded the the current existing credit they have
+    */
+    function claimTokenIdsOnBehalf(
+        uint256 batchId,
+        address bidder,
+        bool alsoRefund
+    ) external onlyOwner {
+        _claim(batchId, bidder, alsoRefund);
+    }
+
+    /**
         @notice Directly whitelists bidders for the given tokenIDs ranges
         @param biddersList The list of bidders to whitelist
         @param numTokensList The list of number of tokens to assign to each bidder
@@ -366,7 +368,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         for (uint256 i = 0; i < numTokensList.length; ++i) {
             require(firstTokenIdList[i] == nextFreeTokenId, "Cannot have gaps when whitelisting");
 
-            _whitelistBidder(biddersList[i], numTokensList[i], firstTokenIdList[i]);
+            _addWhitelist(biddersList[i], numTokensList[i], firstTokenIdList[i]);
         }
     }
 
@@ -418,9 +420,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
     }
 
-    /**
-        Internal bid management
-    */
+    //---------------------------
+    //  Internal bid management
+    //---------------------------
     function _encodeBid(
         uint64 bidId,
         uint64 numTokens,
@@ -441,6 +443,28 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         bidId = uint64((node << 192) >> 192);
         numTokens = uint64((node << 128) >> 192);
         pricePerToken = uint128(node >> 128);
+    }
+
+    /**
+        @notice Sets a bid for the current batch and the given bidder
+        @param numTokens The number of tokens to bid for
+        @param pricePerToken The price per token to bid for
+     */
+    function _setBid(
+        address bidder,
+        uint64 numTokens,
+        uint128 pricePerToken
+    ) internal {
+        BatchState storage batchState = _getBatchState(currentBatchId);
+
+        require(pricePerToken >= batchState.minimumPricePerToken, "Bid must reach minimum amount");
+        require(pricePerToken < batchState.directPurchasePrice, "Bid cannot be higher than direct price");
+
+        _cancelBid(currentBatchId, bidder, true);
+        _addBid(currentBatchId, bidder, numTokens, pricePerToken);
+        _chargeBidder(bidder, pricePerToken * numTokens);
+
+        emit SetBid(currentBatchId, bidder, numTokens, pricePerToken);
     }
 
     function _addBid(
@@ -500,6 +524,40 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     /**
+        @notice Tries to claim the token IDs for the given batch ID and the given bidder
+        @param batchId The ID of the batch to claim the token IDs for
+        @param bidder Address to claim the token IDs for
+        @param alsoRefund If true, the sender will be refunded the the current existing credit they have
+
+        @dev This function can be called even if the bidder has not won any token IDs. If called when
+        no token IDs have been won this function behaves exactly like cancelBid. Any amount credited
+        after the bid has been processed will be send back to the caller if alsoRefund is set to true
+     */
+    function _claim(
+        uint256 batchId,
+        address bidder,
+        bool alsoRefund
+    ) internal {
+        BatchState storage batchState = _getBatchState(batchId);
+        uint256 bid = _getBatchBidByBidder(batchId, bidder);
+        require(bid != 0, "Bidder has no claimable bid");
+
+        (, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bid);
+
+        if (pricePerToken == batchState.clearingPrice) {
+            _whitelistBidder(batchId, bidder, batchState.lastBidderNumAssignedTokens);
+        } else if (pricePerToken > batchState.clearingPrice) {
+            _whitelistBidder(batchId, bidder, numTokens);
+        }
+
+        _cancelBid(batchId, bidder, false);
+
+        if (alsoRefund) {
+            _claimRefund(bidder);
+        }
+    }
+
+    /**
         Internal purchase
      */
     function _purchase(
@@ -508,9 +566,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 numTokens,
         uint128 pricePerToken
     ) internal {
-        _getBatchState(batchId).numTokensAuctioned -= numTokens;
+        _getBatchState(batchId).numTokensSold += numTokens;
 
-        _whitelistBidder(bidder, numTokens, nextFreeTokenId);
+        _whitelistBidder(batchId, bidder, numTokens);
         _chargeBidder(bidder, pricePerToken * numTokens);
     }
 
@@ -539,6 +597,18 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         Internal whitelisting
      */
     function _whitelistBidder(
+        uint256 batchId,
+        address bidder,
+        uint64 numTokens
+    ) internal {
+        BatchState storage batchState = _getBatchState(batchId);
+
+        _addWhitelist(bidder, numTokens, batchState.startTokenId + batchState.numTokensClaimed);
+
+        batchState.numTokensClaimed += numTokens;
+    }
+
+    function _addWhitelist(
         address bidder,
         uint64 numTokens,
         uint64 firstTokenId
@@ -549,8 +619,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         whitelistData.lastId = firstTokenId + numTokens - 1;
 
         whitelist[bidder].push(whitelistData);
-
-        nextFreeTokenId += numTokens;
     }
 
     /**
