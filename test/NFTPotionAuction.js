@@ -326,7 +326,7 @@ describe("NFTPotionAuction", function () {
         const START_TOKEN_ID = 1;
         const END_TOKEN_ID = 5000;
         const TOKENS_PER_BIDDER = 5;
-        const NUM_BIDDERS = 200;
+        const NUM_BIDDERS = 500;
 
         var auctionContract;
         var auctionEndDate;

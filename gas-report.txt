@@ -1,6 +1,7 @@
 Gas Estimations
+---------------
 
-200 bidders, 2500 tokenIds, 5 token IDs each
+[NOT OPTIMIZED] 200 bidders, 2500 tokenIds, 5 token IDs each
 
 endBatch 4554 gas per bidder
 
@@ -24,9 +25,9 @@ endBatch 4554 gas per bidder
 |  NFTPotionAuction                            ·           -  ·          -  ·    4383258  ·       14.6 %  ·          -  │
 ·----------------------------------------------|--------------|-------------|-------------|---------------|-------------·
 
-500 bidders, 2500 token IDs, 5 token IDs each
+[NOT OPTIMIZED] 500 bidders, 2500 token IDs, 5 token IDs each
 
-endBatch 4288 gas per bidder
+endBatch: unoptimized version is avg. 4288 gas per bidder
 
 ·----------------------------------------------|----------------------------|-------------|-----------------------------·
 |             Solc version: 0.8.9              ·  Optimizer enabled: false  ·  Runs: 200  ·  Block limit: 30000000 gas  │
@@ -48,9 +49,10 @@ endBatch 4288 gas per bidder
 |  NFTPotionAuction                            ·          -  ·           -  ·    4383258  ·       14.6 %  ·          -  │
 ·----------------------------------------------|-------------|--------------|-------------|---------------|-------------·
 
-500 bidders, 2500 token IDs, 5 token IDs each
+[OPTIMIZED endBatch] 500 bidders, 2500 token IDs, 5 token IDs each
 
-After optimization of linked list traversal with iterEnd/iterPrev endBatch 3808 gas per bidder
+endBatch: after optimization of linked list traversal with iterEnd/iterPrev cost is avg 3808 gas per bidder (vs. 4288)
+setBid: unoptimized version cost is max. 2048767, avg. 1099156
 
 ·----------------------------------------------|----------------------------|-------------|-----------------------------·
 |             Solc version: 0.8.9              ·  Optimizer enabled: false  ·  Runs: 200  ·  Block limit: 30000000 gas  │
@@ -72,9 +74,10 @@ After optimization of linked list traversal with iterEnd/iterPrev endBatch 3808 
 |  NFTPotionAuction                            ·          -  ·           -  ·    4402387  ·       14.7 %  ·          -  │
 ·----------------------------------------------|-------------|--------------|-------------|---------------|-------------·
 
-500 bidders, 2500 token IDs, 5 token IDs each
+[OPTIMIZED endBatch, setBid] 200 bidders, 2500 token IDs, 5 token IDs each
 
-After optimization of setBid gas cost is 180102 vs 2048767
+endBatch: after optimization of linked list traversal with iterEnd/iterPrev cost is avg 3808 gas per bidder (vs. 4288)
+setBid: after optimization of setBid gas cost is avg 150569, max 180102 (vs. 2048767)
 
 ·----------------------------------------------|----------------------------|-------------|-----------------------------·
 |             Solc version: 0.8.9              ·  Optimizer enabled: false  ·  Runs: 200  ·  Block limit: 30000000 gas  │
@@ -99,3 +102,32 @@ After optimization of setBid gas cost is 180102 vs 2048767
 ···············································|··············|·············|·············|···············|··············
 |  NFTPotionAuction                            ·           -  ·          -  ·    4484080  ·       14.9 %  ·          -  │
 ·----------------------------------------------|--------------|-------------|-------------|---------------|-------------·
+
+[OPTIMIZED endBatch, setBid] 500 bidders, 2500 token IDs, 5 token IDs each
+
+endBatch: after optimization of linked list traversal with iterEnd/iterPrev cost is avg 3808 gas per bidder (vs. 4288)
+setBid: after optimization of setBid gas cost is avg 150502, max 180102 (vs. 2048767)
+
+·----------------------------------------------|----------------------------|-------------|-----------------------------·
+|             Solc version: 0.8.9              ·  Optimizer enabled: false  ·  Runs: 200  ·  Block limit: 30000000 gas  │
+···············································|····························|·············|······························
+|  Methods                                                                                                              │
+·····················|·························|·············|··············|·············|···············|··············
+|  Contract          ·  Method                 ·  Min        ·  Max         ·  Avg        ·  # calls      ·  usd (avg)  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  claimTokenIds          ·     112490  ·      136672  ·     120526  ·           21  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  claimTokenIdsOnBehalf  ·     115121  ·      139303  ·     122233  ·          500  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  endBatch               ·      41151  ·     1904249  ·     548320  ·           12  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  setBid                 ·     147804  ·      177491  ·     150631  ·           42  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  setBidOnBehalf         ·     150415  ·      180102  ·     150502  ·         1000  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  NFTPotionAuction  ·  startBatch             ·      79434  ·       79458  ·      79444  ·           15  ·          -  │
+·····················|·························|·············|··············|·············|···············|··············
+|  Deployments                                 ·                                          ·  % of limit   ·             │
+···············································|·············|··············|·············|···············|··············
+|  NFTPotionAuction                            ·          -  ·           -  ·    4484080  ·       14.9 %  ·          -  │
+·----------------------------------------------|-------------|--------------|-------------|---------------|-------------·
