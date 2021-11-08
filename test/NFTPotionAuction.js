@@ -191,25 +191,25 @@ describe("NFTPotionAuction", function () {
                 .withArgs(1, blockTimestamp, 1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
         });
         it("Can't set bid below minimum price", async function () {
-            await expect(auctionContract.setBid(NUM_TOKENS, MINIMUM_PRICE - 1)).to.be.revertedWith(
+            await expect(auctionContract.setBid(NUM_TOKENS, MINIMUM_PRICE - 1, 0, 0)).to.be.revertedWith(
                 "Bid must reach minimum amount",
             );
         });
         it("Can't set bid equal or greater than purchase price", async function () {
-            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE)).to.be.revertedWith(
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE, 0, 0)).to.be.revertedWith(
                 "Bid cannot be higher than direct price",
             );
-            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 1)).to.be.revertedWith(
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 1, 0, 0)).to.be.revertedWith(
                 "Bid cannot be higher than direct price",
             );
-            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 100)).to.be.revertedWith(
+            await expect(auctionContract.setBid(NUM_TOKENS, PURCHASE_PRICE + 100, 0, 0)).to.be.revertedWith(
                 "Bid cannot be higher than direct price",
             );
         });
         it("Set 1 bid at minimum price", async function () {
             const sender = await ethers.provider.getSigner().getAddress();
 
-            await expect(auctionContract.setBid(5, MINIMUM_PRICE, { value: 5 * MINIMUM_PRICE }))
+            await expect(auctionContract.setBid(NUM_TOKENS, MINIMUM_PRICE, 0, 0, { value: 5 * MINIMUM_PRICE }))
                 .to.emit(auctionContract, "SetBid")
                 .withArgs(1, sender, NUM_TOKENS, MINIMUM_PRICE);
         });
@@ -273,8 +273,12 @@ describe("NFTPotionAuction", function () {
 
                 const senderAddress = await senders[i].getAddress();
 
+                const [prevBid, nextBid] = await auctionContract.getBidPrevNext(1, numTokens, pricePerToken);
+
                 await expect(
-                    auctionContract.connect(senders[i]).setBid(numTokens, pricePerToken, { value: priceToPay }),
+                    auctionContract
+                        .connect(senders[i])
+                        .setBid(numTokens, pricePerToken, prevBid, nextBid, { value: priceToPay }),
                 )
                     .to.emit(auctionContract, "SetBid")
                     .withArgs(1, senderAddress, numTokens, pricePerToken);
@@ -315,14 +319,14 @@ describe("NFTPotionAuction", function () {
             }
         });
     });
-    describe.skip("Batch auction start/end with 500 bids", async function () {
+    describe("Batch auction start/end with 500 bids", async function () {
         const AUCTION_DURATION = 2000;
         const MINIMUM_PRICE = 10;
         const PURCHASE_PRICE = 10000;
         const START_TOKEN_ID = 1;
         const END_TOKEN_ID = 5000;
         const TOKENS_PER_BIDDER = 5;
-        const NUM_BIDDERS = 500;
+        const NUM_BIDDERS = 200;
 
         var auctionContract;
         var auctionEndDate;
@@ -364,8 +368,10 @@ describe("NFTPotionAuction", function () {
 
                 const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
 
+                const [prevBid, nextBid] = await auctionContract.getBidPrevNext(1, TOKENS_PER_BIDDER, pricePerToken);
+
                 await expect(
-                    auctionContract.setBidOnBehalf(bidderAddress, TOKENS_PER_BIDDER, pricePerToken, {
+                    auctionContract.setBidOnBehalf(bidderAddress, TOKENS_PER_BIDDER, pricePerToken, prevBid, nextBid, {
                         value: priceToPay,
                     }),
                 )

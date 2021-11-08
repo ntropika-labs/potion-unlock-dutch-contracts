@@ -4,8 +4,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "solidity-linked-list/contracts/StructuredLinkedList.sol";
 
+import "./utils/StructuredLinkedList.sol";
 import "./INFTPotionWhitelist.sol";
 
 contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
@@ -172,7 +172,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         );
 
         StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
-        (, uint256 bid) = bidders.getPreviousNode(0);
+        uint256 bid = bidders.iterEnd();
 
         uint64 numTokensLeft = batchState.numTokensAuctioned - batchState.numTokensSold;
 
@@ -191,7 +191,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             numTokensLeft -= numRequestedTokens;
             numBidsToProcess--;
 
-            (, bid) = bidders.getPreviousNode(bid);
+            bid = bidders.iterPrev(bid);
         }
 
         batchState.numTokensSold = batchState.numTokensAuctioned - numTokensLeft;
@@ -213,10 +213,19 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         @notice Sets a bid for the current batch using the sender as the bidder
         @param numTokens The number of tokens to bid for
-        @param pricePerToken The price per token to bid for
+        @param pricePerToken The price per token to bid forBid 
+        @param prevBid The bid that comes before the new one in the sorted list
+        @param nextBid The bid that comes after the new one in the sorted list
+
+        @dev See _setBid for an explanation on how prevBid and nextBid are used
      */
-    function setBid(uint64 numTokens, uint128 pricePerToken) external payable checkAuctionActive {
-        _setBid(_msgSender(), numTokens, pricePerToken);
+    function setBid(
+        uint64 numTokens,
+        uint128 pricePerToken,
+        uint256 prevBid,
+        uint256 nextBid
+    ) external payable checkAuctionActive {
+        _setBid(_msgSender(), numTokens, pricePerToken, prevBid, nextBid);
     }
 
     /**
@@ -314,6 +323,18 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
     }
 
+    function getBidPrevNext(
+        uint256 batchId,
+        uint64 numTokens,
+        uint128 pricePerToken
+    ) external view returns (uint256 prev, uint256 next) {
+        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
+
+        uint64 bidId = _getBatch(batchId).currentBidId + 1;
+        uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
+        (prev, next) = bidders.getSortedSpot(address(this), getValue(bid));
+    }
+
     //-------------------
     // Owner methods
     //-------------------
@@ -328,9 +349,11 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function setBidOnBehalf(
         address bidder,
         uint64 numTokens,
-        uint128 pricePerToken
+        uint128 pricePerToken,
+        uint256 prevBid,
+        uint256 nextBid
     ) external payable onlyOwner checkAuctionActive {
-        _setBid(bidder, numTokens, pricePerToken);
+        _setBid(bidder, numTokens, pricePerToken, prevBid, nextBid);
     }
 
     /**
@@ -453,7 +476,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function _setBid(
         address bidder,
         uint64 numTokens,
-        uint128 pricePerToken
+        uint128 pricePerToken,
+        uint256 prevBid,
+        uint256 nextBid
     ) internal {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
@@ -461,7 +486,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(pricePerToken < batchState.directPurchasePrice, "Bid cannot be higher than direct price");
 
         _cancelBid(currentBatchId, bidder, true);
-        _addBid(currentBatchId, bidder, numTokens, pricePerToken);
+        _addBid(currentBatchId, bidder, numTokens, pricePerToken, prevBid, nextBid);
         _chargeBidder(bidder, pricePerToken * numTokens);
 
         emit SetBid(currentBatchId, bidder, numTokens, pricePerToken);
@@ -471,16 +496,17 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 batchId,
         address bidder,
         uint64 numTokens,
-        uint128 pricePerToken
+        uint128 pricePerToken,
+        uint256 prev,
+        uint256 next
     ) internal {
-        // TODO: Optimize by receiving prev and next bid
         StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
 
         uint64 bidId = ++_getBatch(batchId).currentBidId;
 
         uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
-        uint256 next = bidders.getSortedSpot(address(this), getValue(bid));
-        (, uint256 prev) = bidders.getPreviousNode(next);
+        // TODO: Optimize by receiving prev and next bid
+        //(uint256 prev, uint256 next) = bidders.getSortedSpot(address(this), getValue(bid));
 
         _checkPriceUnique(prev, next, pricePerToken);
 
