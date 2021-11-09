@@ -2,13 +2,9 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { before } = require("mocha");
 const { formatUnits } = require("ethers/lib/utils");
-const { send } = require("process");
 
 async function epochNow() {
     return (await ethers.provider.getBlock("latest")).timestamp;
-}
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 async function getEventTimestamp(eventName, tx) {
@@ -126,12 +122,9 @@ describe("NFTPotionAuction", function () {
         it("Start first batch auction (Token IDs 1-20)", async function () {
             const auctionEndDate = (await epochNow()) + 2000;
 
-            const tx = await auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate);
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(1, blockTimestamp, 1, 20, 100, 1200, auctionEndDate);
+                .withArgs(1);
         });
         it("Can't start new batch without ending previous", async function () {
             const auctionEndDate = (await epochNow()) + 2000;
@@ -154,20 +147,13 @@ describe("NFTPotionAuction", function () {
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
-
-            const tx = await auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate);
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(1, blockTimestamp, 1, 20, 100, 1200, auctionEndDate);
+                .withArgs(1);
         });
         it("End batch with no bids", async function () {
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(100);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx).to.emit(auctionContract, "BatchEnded").withArgs(1, auctionEndDate, blockTimestamp, 0);
+            await expect(auctionContract.endBatch(100)).to.emit(auctionContract, "BatchEnded").withArgs(1);
         });
     });
 
@@ -188,13 +174,9 @@ describe("NFTPotionAuction", function () {
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
-
-            const tx = await auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(1, blockTimestamp, 1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+                .withArgs(1);
         });
         it("Can't set bid below minimum price", async function () {
             await expect(auctionContract.setBid(NUM_TOKENS, MINIMUM_PRICE - 1, 0)).to.be.revertedWith(
@@ -223,12 +205,7 @@ describe("NFTPotionAuction", function () {
             const sender = await ethers.provider.getSigner().getAddress();
 
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(100);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx)
-                .to.emit(auctionContract, "BatchEnded")
-                .withArgs(1, auctionEndDate, blockTimestamp, NUM_TOKENS);
+            await expect(auctionContract.endBatch(100)).to.emit(auctionContract, "BatchEnded").withArgs(1);
 
             // No ranges assigned yet
             let ranges = await auctionContract.getWhitelistRanges(sender);
@@ -261,13 +238,9 @@ describe("NFTPotionAuction", function () {
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
-
-            const tx = await auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(1, blockTimestamp, 1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate);
+                .withArgs(1);
         });
         it("Set 20 bids at different prices", async function () {
             const senders = await ethers.getSigners();
@@ -294,10 +267,7 @@ describe("NFTPotionAuction", function () {
             const senders = await ethers.getSigners();
 
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(100);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx).to.emit(auctionContract, "BatchEnded").withArgs(1, auctionEndDate, blockTimestamp, 20);
+            await expect(auctionContract.endBatch(100)).to.emit(auctionContract, "BatchEnded").withArgs(1);
 
             // Ranges are not assigned yet
             for (let i = 0; i < senders.length; ++i) {
@@ -346,26 +316,11 @@ describe("NFTPotionAuction", function () {
         it("Start batch auction", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
 
-            const tx = await auctionContract.startBatch(
-                START_TOKEN_ID,
-                END_TOKEN_ID,
-                MINIMUM_PRICE,
-                PURCHASE_PRICE,
-                auctionEndDate,
-            );
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(
+                auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
+            )
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(
-                    1,
-                    blockTimestamp,
-                    START_TOKEN_ID,
-                    END_TOKEN_ID,
-                    MINIMUM_PRICE,
-                    PURCHASE_PRICE,
-                    auctionEndDate,
-                );
+                .withArgs(1);
 
             const batch = await auctionContract.getCurrentBatch();
 
@@ -400,12 +355,7 @@ describe("NFTPotionAuction", function () {
         });
         it("End batch and claim token IDs", async function () {
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(NUM_BIDDERS);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx)
-                .to.emit(auctionContract, "BatchEnded")
-                .withArgs(1, auctionEndDate, blockTimestamp, END_TOKEN_ID - START_TOKEN_ID + 1);
+            await expect(auctionContract.endBatch(NUM_BIDDERS)).to.emit(auctionContract, "BatchEnded").withArgs(1);
 
             // Ranges are not assigned yet
             for (let i = 0; i < NUM_BIDDERS; ++i) {
@@ -461,27 +411,11 @@ describe("NFTPotionAuction", function () {
 
         it("Start batch auction", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
-
-            const tx = await auctionContract.startBatch(
-                START_TOKEN_ID,
-                END_TOKEN_ID,
-                MINIMUM_PRICE,
-                PURCHASE_PRICE,
-                auctionEndDate,
-            );
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(
+                auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
+            )
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(
-                    1,
-                    blockTimestamp,
-                    START_TOKEN_ID,
-                    END_TOKEN_ID,
-                    MINIMUM_PRICE,
-                    PURCHASE_PRICE,
-                    auctionEndDate,
-                );
+                .withArgs(1);
 
             const batch = await auctionContract.getCurrentBatch();
 
@@ -526,21 +460,13 @@ describe("NFTPotionAuction", function () {
             let prevBid = await auctionContract.getPreviousBid(1, TOKENS_PER_BIDDER, pricePerToken);
 
             // Cancel bids for bidder 10 and bidder 11
-            let tx = await auctionContract.connect(senders[10]).cancelBid(1, true);
-
-            let blockTimestamp = await getEventTimestamp("CancelBid", tx);
-
-            await expect(tx)
+            await expect(auctionContract.connect(senders[10]).cancelBid(1, true))
                 .to.emit(auctionContract, "CancelBid")
-                .withArgs(1, senders[10].address, blockTimestamp, auctionEndDate);
+                .withArgs(1, senders[10].address);
 
-            tx = await auctionContract.connect(senders[11]).cancelBid(1, true);
-
-            blockTimestamp = await getEventTimestamp("CancelBid", tx);
-
-            await expect(tx)
+            await expect(auctionContract.connect(senders[11]).cancelBid(1, true))
                 .to.emit(auctionContract, "CancelBid")
-                .withArgs(1, senders[11].address, blockTimestamp, auctionEndDate);
+                .withArgs(1, senders[11].address);
 
             // Set the bid now
             await expect(
@@ -566,12 +492,7 @@ describe("NFTPotionAuction", function () {
             const senders = await ethers.getSigners();
 
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(senders.length);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx)
-                .to.emit(auctionContract, "BatchEnded")
-                .withArgs(1, auctionEndDate, blockTimestamp, (senders.length - 2) * TOKENS_PER_BIDDER);
+            await expect(auctionContract.endBatch(senders.length)).to.emit(auctionContract, "BatchEnded").withArgs(1);
 
             // Ranges are not assigned yet
             for (let i = 0; i < senders.length; ++i) {
@@ -617,7 +538,7 @@ describe("NFTPotionAuction", function () {
         const START_TOKEN_ID = 1;
         const END_TOKEN_ID = 5000;
         const TOKENS_PER_BIDDER = 5;
-        const NUM_BIDDERS = 200;
+        const NUM_BIDDERS = 500;
 
         var auctionContract;
         var auctionEndDate;
@@ -631,26 +552,11 @@ describe("NFTPotionAuction", function () {
         it("Start batch auction", async function () {
             auctionEndDate = (await epochNow()) + AUCTION_DURATION;
 
-            const tx = await auctionContract.startBatch(
-                START_TOKEN_ID,
-                END_TOKEN_ID,
-                MINIMUM_PRICE,
-                PURCHASE_PRICE,
-                auctionEndDate,
-            );
-            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
-
-            await expect(tx)
+            await expect(
+                auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
+            )
                 .to.emit(auctionContract, "BatchStarted")
-                .withArgs(
-                    1,
-                    blockTimestamp,
-                    START_TOKEN_ID,
-                    END_TOKEN_ID,
-                    MINIMUM_PRICE,
-                    PURCHASE_PRICE,
-                    auctionEndDate,
-                );
+                .withArgs(1);
         });
         it("Set bids at different prices", async function () {
             for (let i = 0; i < NUM_BIDDERS; ++i) {
@@ -672,12 +578,7 @@ describe("NFTPotionAuction", function () {
         }).timeout(500000);
         it("End batch and claim token IDs", async function () {
             await fastForwardChain(2000);
-            const tx = await auctionContract.endBatch(NUM_BIDDERS);
-            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
-
-            await expect(tx)
-                .to.emit(auctionContract, "BatchEnded")
-                .withArgs(1, auctionEndDate, blockTimestamp, NUM_BIDDERS * TOKENS_PER_BIDDER);
+            await expect(auctionContract.endBatch(NUM_BIDDERS)).to.emit(auctionContract, "BatchEnded").withArgs(1);
 
             // Ranges are not assigned yet
             for (let i = 0; i < NUM_BIDDERS; ++i) {

@@ -69,29 +69,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Events
      */
-    event BatchStarted(
-        uint256 indexed batchId,
-        uint256 indexed startTimestamp,
-        uint64 indexed startTokenId,
-        uint64 endTokenId,
-        uint128 minimumPricePerToken,
-        uint128 directPurchasePrice,
-        uint128 auctionEndDate
-    );
-    event BatchEnded(
-        uint256 indexed batchId,
-        uint256 indexed auctionEndTimestamp,
-        uint256 indexed actualEndTimestamp,
-        uint64 numTokensSold
-    );
+    event BatchStarted(uint256 indexed batchId);
+    event BatchEnded(uint256 indexed batchId);
     event SetBid(uint256 indexed batchId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
-    event CancelBid(
-        uint256 indexed batchId,
-        address indexed bidder,
-        uint256 cancelTimestamp,
-        uint256 auctionEndTimestamp
-    );
-    event Purchase(uint256 indexed batchId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
+    event CancelBid(uint256 indexed batchId, address indexed bidder);
+    event Purchase(uint256 indexed batchId, address indexed bidder, uint64 numTokens);
+    event Whitelist(uint256 indexed batchId, address indexed bidder, uint128 firstTokenId, uint64 numTokens);
 
     /**
         Modifiers
@@ -145,15 +128,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         batches[currentBatchId].currentBidId = type(uint64).max;
 
-        emit BatchStarted(
-            currentBatchId,
-            block.timestamp,
-            startTokenId,
-            endTokenId,
-            minimumPricePerToken,
-            directPurchasePrice,
-            auctionEndDate
-        );
+        emit BatchStarted(currentBatchId);
     }
 
     /**
@@ -204,7 +179,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             // Clearing price has been fully calculated
             nextFreeTokenId += batchState.numTokensSold;
 
-            emit BatchEnded(currentBatchId, batchState.auctionEndDate, block.timestamp, batchState.numTokensSold);
+            emit BatchEnded(currentBatchId);
 
             currentBatchId++;
         }
@@ -246,7 +221,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         if (alsoRefund) {
             _claimRefund(bidder);
         }
-        emit CancelBid(batchId, bidder, block.timestamp, _getBatchState(batchId).auctionEndDate);
+        emit CancelBid(batchId, bidder);
     }
 
     /**
@@ -264,7 +239,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         _purchase(currentBatchId, _msgSender(), numTokens, batchState.directPurchasePrice);
 
-        emit Purchase(currentBatchId, _msgSender(), numTokens, batchState.directPurchasePrice);
+        emit Purchase(currentBatchId, _msgSender(), numTokens);
     }
 
     //-----------------------
@@ -662,6 +637,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         _addWhitelist(bidder, numTokens, batchState.startTokenId + batchState.numTokensClaimed);
 
         batchState.numTokensClaimed += numTokens;
+
+        emit Whitelist(batchId, bidder, batchState.startTokenId, numTokens);
     }
 
     function _addWhitelist(
