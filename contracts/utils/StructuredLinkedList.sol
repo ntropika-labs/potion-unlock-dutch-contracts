@@ -151,11 +151,20 @@ library StructuredLinkedList {
         address _structure,
         uint256 _value
     ) internal view returns (uint256 prev, uint256 next) {
+        return getSortedSpotFrom(self, _structure, _value, _HEAD);
+    }
+
+    function getSortedSpotFrom(
+        List storage self,
+        address _structure,
+        uint256 _value,
+        uint256 _from
+    ) internal view returns (uint256 prev, uint256 next) {
         if (sizeOf(self) == 0) {
             return (0, 0);
         }
 
-        (, next) = getAdjacent(self, _HEAD, _NEXT);
+        (, next) = getAdjacent(self, _from, _NEXT);
         while ((next != 0) && ((_value < IStructureInterface(_structure).getValue(next)) != _NEXT)) {
             next = self.list[next][_NEXT];
         }
@@ -202,13 +211,60 @@ library StructuredLinkedList {
         if ((_node == _NULL) || (!nodeExists(self, _node))) {
             return 0;
         }
+
         _createLink(self, self.list[_node][_PREV], self.list[_node][_NEXT], _NEXT);
+
         delete self.list[_node][_PREV];
         delete self.list[_node][_NEXT];
 
         self.size -= 1; // NOT: SafeMath library should be used here to decrement.
 
         return _node;
+    }
+
+    /**
+     * @dev Unlinks an entry from the linked list
+     * @param self stored linked list from contract
+     * @param _node node to unlink from the list
+     * @return uint256 the unlinked node
+     */
+    function unlink(List storage self, uint256 _node) internal returns (uint256) {
+        if ((_node == _NULL) || (!nodeExists(self, _node))) {
+            return 0;
+        }
+
+        _createLink(self, self.list[_node][_PREV], self.list[_node][_NEXT], _NEXT);
+
+        delete self.list[_node][_NEXT];
+
+        self.size -= 1; // NOT: SafeMath library should be used here to decrement.
+
+        return _node;
+    }
+
+    /**
+     * @dev Updates an entry value without resorting it
+     * @param self stored linked list from contract
+     * @param _node node to update in the list
+     * @param _newNode new node value
+     * @return uint256 the new node
+     */
+    function update(
+        List storage self,
+        uint256 _node,
+        uint256 _newNode
+    ) internal returns (uint256) {
+        if ((_node == _NULL) || (!nodeExists(self, _node))) {
+            return 0;
+        }
+
+        self.list[_newNode][_PREV] = self.list[_node][_PREV];
+        self.list[_newNode][_NEXT] = self.list[_node][_NEXT];
+
+        delete self.list[_node][_PREV];
+        delete self.list[_node][_NEXT];
+
+        return _newNode;
     }
 
     /**

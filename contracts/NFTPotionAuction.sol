@@ -219,17 +219,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         @param numTokens The number of tokens to bid for
         @param pricePerToken The price per token to bid forBid 
         @param prevBid The bid that comes before the new one in the sorted list
-        @param nextBid The bid that comes after the new one in the sorted list
 
-        @dev See _setBid for an explanation on how prevBid and nextBid are used
+        @dev See _insertBid for an explanation on how prevBid is used
      */
     function setBid(
         uint64 numTokens,
         uint128 pricePerToken,
-        uint256 prevBid,
-        uint256 nextBid
+        uint256 prevBid
     ) external payable checkAuctionActive {
-        _setBid(_msgSender(), numTokens, pricePerToken, prevBid, nextBid);
+        _setBid(_msgSender(), numTokens, pricePerToken, prevBid);
     }
 
     /**
@@ -327,16 +325,16 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
     }
 
-    function getBidPrevNext(
+    function getPreviousBid(
         uint256 batchId,
         uint64 numTokens,
         uint128 pricePerToken
-    ) external view returns (uint256 prev, uint256 next) {
+    ) external view returns (uint256 prev) {
         StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
 
         uint64 bidId = _getBatch(batchId).currentBidId;
         uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
-        (prev, next) = bidders.getSortedSpot(address(this), getValue(bid));
+        (prev, ) = bidders.getSortedSpot(address(this), getValue(bid));
     }
 
     //-------------------
@@ -354,10 +352,9 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken,
-        uint256 prevBid,
-        uint256 nextBid
+        uint256 prevBid
     ) external payable onlyOwner checkAuctionActive {
-        _setBid(bidder, numTokens, pricePerToken, prevBid, nextBid);
+        _setBid(bidder, numTokens, pricePerToken, prevBid);
     }
 
     /**
@@ -476,13 +473,13 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         @notice Sets a bid for the current batch and the given bidder
         @param numTokens The number of tokens to bid for
         @param pricePerToken The price per token to bid for
+        @param prevBid The bid that comes right after the new bid being set
      */
     function _setBid(
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken,
-        uint256 prevBid,
-        uint256 nextBid
+        uint256 prevBid
     ) internal {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
@@ -490,7 +487,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(pricePerToken < batchState.directPurchasePrice, "Bid cannot be higher than direct price");
 
         _cancelBid(currentBatchId, bidder, true);
-        _addBid(currentBatchId, bidder, numTokens, pricePerToken, prevBid, nextBid);
+        _addBid(currentBatchId, bidder, numTokens, pricePerToken, prevBid);
         _chargeBidder(bidder, pricePerToken * numTokens);
 
         emit SetBid(currentBatchId, bidder, numTokens, pricePerToken);
@@ -501,36 +498,81 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         address bidder,
         uint64 numTokens,
         uint128 pricePerToken,
-        uint256 prev,
-        uint256 next
+        uint256 prev
     ) internal {
-        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
-
         uint64 bidId = _getBatch(batchId).currentBidId--;
 
         uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
 
-        bidders.insertBefore(next, bid);
+        _insertBid(batchId, bid, prev);
+
         batches[batchId].bidByBidder[bidder] = bid;
         bidderById[bidId] = bidder;
     }
 
+    /**
+        @notice Inserts a bid into the list of bids for the given batch
+        @param batchId The ID of the batch to insert the bid into
+        @param bid The bid to insert
+        @param prev The bid that comes right after the new bid being set
+     
+        @dev prev bid is used to optimize the insertion of the bid into the list. In a normal case, prev
+        bid still exists and we can just use it as a starting point to search forward in the linked list.
+        However prev bid may have disappeared in the time that the transaction gets to be mined. In that
+        case we search backwards from prev bid until we find a valid bid (one that has not been unlinked
+        from the list) Then we search forward from that bid until we find the right sport to insert the new
+        one
+    */
+    function _insertBid(
+        uint256 batchId,
+        uint256 bid,
+        uint256 prev
+    ) internal {
+        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
+        require(bidders.nodeExists(prev), "Previous bid not found in bid history");
+
+        // In the time that takes for the trasaction to be mined, the prev bid may have been removed.
+        // If so, we search back from the prev bid until we find a valid one
+        (, uint256 next) = bidders.getNextNode(prev);
+        while (prev != 0 && next == 0) {
+            (, prev) = bidders.getPreviousNode(prev);
+            (, next) = bidders.getNextNode(prev);
+        }
+
+        // Here prev is a valid bid that is smaller than the new bid. Now we search forward
+        // from prev until we find the right place to insert the new bid
+        (, next) = bidders.getSortedSpotFrom(address(this), getValue(bid), prev);
+        bidders.insertBefore(next, bid);
+    }
+
+    /**
+        @notice Cancels a bid for the given batch and bidder. It also allows to refund the pending credit
+        @param batchId The ID of the batch to cancel the bid for
+        @param bidder The bidder to cancel the bid for
+        @param refundAmount Whether to refund the pending credit or not
+
+        @dev The bid being cancel is just unlinked from the sorted list. This means that its link to the
+        next node is deleted. This allows us to find the cancelled bid in the history and use it to
+        optimize the insertion
+    */
     function _cancelBid(
         uint256 batchId,
         address bidder,
         bool refundAmount
     ) internal {
         (uint64 bidId, uint64 numTokens, uint128 pricePerToken, uint256 node) = _getBidInfo(batchId, bidder);
-        if (node != 0) {
-            StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
+        if (node == 0) {
+            return;
+        }
 
-            bidders.remove(node);
-            delete bidderById[bidId];
-            delete batches[batchId].bidByBidder[bidder];
+        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
 
-            if (refundAmount) {
-                refunds[bidder] += numTokens * pricePerToken;
-            }
+        bidders.unlink(node);
+        delete bidderById[bidId];
+        delete batches[batchId].bidByBidder[bidder];
+
+        if (refundAmount) {
+            refunds[bidder] += numTokens * pricePerToken;
         }
     }
 
