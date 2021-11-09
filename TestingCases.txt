@@ -20,10 +20,12 @@ NFTAuctionPotion Use Cases
     - Calling setBidOnBehalf from non-owner account
     - Calling claimTokenIdsOnBehalf from non-owner account
     - Calling whitelistBidders from non-owner account
+    - ...
 
   - Basic Cases
     - Start batch, no bids, end batch (no whitelisted addresses)
     - Start batch, no bids, end batch cycle
+    - ...
 
   - Normal Cases
     - Unique bids in ascending order
@@ -32,10 +34,13 @@ NFTAuctionPotion Use Cases
     - Duplicate bids in ascending order
     - Duplicate bids in descending order
     - Duplicate bids in random order
+    - ...
 
   - Complex Cases
     - Bidders rebid with different amount
     - Bidders rebid with same amount, different number of tokens
+    - Paginated endBatch
+    - ...
 
   - Edge cases
     - Calling cancelBid when bidder has won tokens (prevent calling it when auction is not active,
@@ -43,3 +48,4 @@ NFTAuctionPotion Use Cases
     - Calling claimTokenIds before any batch has been configured
     - Calling claimRefund before any batch has been configured
     - Calling transferFunds before bidders have claimed their tokens
+    - ...
