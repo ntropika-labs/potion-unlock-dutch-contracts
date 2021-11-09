@@ -162,6 +162,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
                 // Calculate how many tokens the last bidder will get and save it, so it can
                 // be used by claimTokenIds when whitelisting token IDs
                 batchState.lastBidderNumAssignedTokens = numTokensLeft;
+
+                // Clearing price is used to determine if a bidder can claim tokens or not.
+                // The clearing bid ID is used along the clearing price to resolve ties with the
+                // same price. In case of a tie, the bid that was added earlier has priority
                 batchState.clearingPrice = pricePerToken;
                 batchState.clearingBidId = bidId;
             }
