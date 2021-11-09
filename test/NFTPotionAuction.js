@@ -319,6 +319,123 @@ describe("NFTPotionAuction", function () {
             }
         });
     });
+    describe("Bids at the same price", async function () {
+        const AUCTION_DURATION = 2000;
+        const MINIMUM_PRICE = 10;
+        const PURCHASE_PRICE = 10000;
+        const START_TOKEN_ID = 1;
+        const END_TOKEN_ID = 100;
+        const TOKENS_PER_BIDDER = 5;
+        const NUM_BIDDERS = 40;
+
+        var auctionContract;
+        var auctionEndDate;
+
+        before("Deploy NFT Auction", async function () {
+            const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
+            auctionContract = await NFTPotionAuction.deploy();
+            await auctionContract.deployed();
+        });
+
+        it("Start batch auction", async function () {
+            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+
+            const tx = await auctionContract.startBatch(
+                START_TOKEN_ID,
+                END_TOKEN_ID,
+                MINIMUM_PRICE,
+                PURCHASE_PRICE,
+                auctionEndDate,
+            );
+            const blockTimestamp = await getEventTimestamp("BatchStarted", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchStarted")
+                .withArgs(
+                    1,
+                    blockTimestamp,
+                    START_TOKEN_ID,
+                    END_TOKEN_ID,
+                    MINIMUM_PRICE,
+                    PURCHASE_PRICE,
+                    auctionEndDate,
+                );
+
+            const batch = await auctionContract.getCurrentBatch();
+
+            expect(batch.minimumPricePerToken).to.be.equal(MINIMUM_PRICE);
+            expect(batch.directPurchasePrice).to.be.equal(PURCHASE_PRICE);
+            expect(batch.startTokenId).to.be.equal(START_TOKEN_ID);
+            expect(batch.numTokensAuctioned).to.be.equal(END_TOKEN_ID - START_TOKEN_ID + 1);
+            expect(batch.auctionEndDate).to.be.equal(auctionEndDate);
+            expect(batch.clearingPrice).to.be.equal(0);
+            expect(batch.clearingBidId).to.be.equal(0);
+            expect(batch.lastBidderNumAssignedTokens).to.be.equal(0);
+            expect(batch.numTokensSold).to.be.equal(0);
+            expect(batch.numTokensClaimed).to.be.equal(0);
+        });
+        it("Set bids at the same price", async function () {
+            for (let i = 0; i < NUM_BIDDERS; ++i) {
+                const pricePerToken = MINIMUM_PRICE + 100;
+                const priceToPay = TOKENS_PER_BIDDER * pricePerToken;
+
+                const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
+
+                const [prevBid, nextBid] = await auctionContract.getBidPrevNext(1, TOKENS_PER_BIDDER, pricePerToken);
+
+                await expect(
+                    auctionContract.setBidOnBehalf(bidderAddress, TOKENS_PER_BIDDER, pricePerToken, prevBid, nextBid, {
+                        value: priceToPay,
+                    }),
+                )
+                    .to.emit(auctionContract, "SetBid")
+                    .withArgs(1, bidderAddress, TOKENS_PER_BIDDER, pricePerToken);
+            }
+        });
+        it("End batch and claim token IDs", async function () {
+            await fastForwardChain(2000);
+            const tx = await auctionContract.endBatch(NUM_BIDDERS);
+            const blockTimestamp = await getEventTimestamp("BatchEnded", tx);
+
+            await expect(tx)
+                .to.emit(auctionContract, "BatchEnded")
+                .withArgs(1, auctionEndDate, blockTimestamp, END_TOKEN_ID - START_TOKEN_ID + 1);
+
+            // Ranges are not assigned yet
+            for (let i = 0; i < NUM_BIDDERS; ++i) {
+                const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
+
+                const ranges = await auctionContract.getWhitelistRanges(bidderAddress);
+                expect(ranges.length).to.be.equal(0);
+            }
+
+            // Claim Token IDs
+            for (let i = 0; i < NUM_BIDDERS; ++i) {
+                const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
+                await auctionContract.claimTokenIdsOnBehalf(1, bidderAddress, true);
+            }
+
+            // First half of bidders got their token IDs
+            for (let i = 0; i < NUM_BIDDERS / 2; ++i) {
+                const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
+
+                const ranges = await auctionContract.getWhitelistRanges(bidderAddress);
+
+                expect(ranges.length).to.be.equal(1);
+
+                expect(fromBN(ranges[0].firstId)).to.be.equal(i * TOKENS_PER_BIDDER + 1);
+                expect(fromBN(ranges[0].lastId)).to.be.equal((i + 1) * TOKENS_PER_BIDDER);
+            }
+            // First half of bidders got their token IDs
+            for (let i = NUM_BIDDERS / 2; i < NUM_BIDDERS; ++i) {
+                const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
+
+                const ranges = await auctionContract.getWhitelistRanges(bidderAddress);
+                expect(ranges.length).to.be.equal(0);
+            }
+        });
+    });
+
     describe("Batch auction start/end with 500 bids", async function () {
         const AUCTION_DURATION = 2000;
         const MINIMUM_PRICE = 10;
@@ -326,7 +443,7 @@ describe("NFTPotionAuction", function () {
         const START_TOKEN_ID = 1;
         const END_TOKEN_ID = 5000;
         const TOKENS_PER_BIDDER = 5;
-        const NUM_BIDDERS = 500;
+        const NUM_BIDDERS = 100;
 
         var auctionContract;
         var auctionEndDate;
