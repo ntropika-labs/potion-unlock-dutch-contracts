@@ -1,7 +1,6 @@
 TODO
 ----
 
-- Add bidId to list sorting so same pricePerToken can be used in more than 1 bid
 - Add smart search to optimize setBid when prev and next bids have been cancelled
 
 NFTAuctionPotion Use Cases
@@ -13,7 +12,7 @@ NFTAuctionPotion Use Cases
     - End batch before end date
     - Start batch with end date in the past
     - Start batch with incorrect start token ID
-    - Start batch with direct price less than minimum pric
+    - Start batch with direct price less than minimum price
     - Calling setBid when no batch is active
     - Calling cancelBid when no batch is active
     - Calling purchase when no batch is active
@@ -23,21 +22,22 @@ NFTAuctionPotion Use Cases
     - Calling whitelistBidders from non-owner account
 
   - Basic Cases
-    - Start 
     - Start batch, no bids, end batch (no whitelisted addresses)
-    - Start batch, no bids, end batch, several times
-
+    - Start batch, no bids, end batch cycle
 
   - Normal Cases
-    - Receive unique bids in ascending order, end batch, claim all tokens, check whitelist
-    - Receive unique bids in descending order, end batch, claim all tokens, check whitelist
-    - Receive unique bids in random order, end batch, claim all tokens, check whitelist
+    - Unique bids in ascending order
+    - Unique bids in descending order
+    - Unique bids in random order
+    - Duplicate bids in ascending order
+    - Duplicate bids in descending order
+    - Duplicate bids in random order
 
   - Complex Cases
-    - Receive unique bids, bidders rebid several times, end batch, claim tokens, check whitelist
+    - Bidders rebid with different amount
+    - Bidders rebid with same amount, different number of tokens
 
-
-
+  - Edge cases
     - Calling cancelBid when bidder has won tokens (prevent calling it when auction is not active,
       bidder must call claimTokenIds)
     - Calling claimTokenIds before any batch has been configured

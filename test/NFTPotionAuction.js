@@ -610,14 +610,14 @@ describe("NFTPotionAuction", function () {
         });
     });
 
-    describe("Batch auction start/end with 500 bids", async function () {
+    describe("Batch auction start/end with 200 bids", async function () {
         const AUCTION_DURATION = 2000;
         const MINIMUM_PRICE = 10;
         const PURCHASE_PRICE = 10000;
         const START_TOKEN_ID = 1;
         const END_TOKEN_ID = 5000;
         const TOKENS_PER_BIDDER = 5;
-        const NUM_BIDDERS = 100;
+        const NUM_BIDDERS = 200;
 
         var auctionContract;
         var auctionEndDate;
