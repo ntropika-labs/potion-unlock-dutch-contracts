@@ -74,7 +74,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     event SetBid(uint256 indexed batchId, address indexed bidder, uint64 numTokens, uint128 pricePerToken);
     event CancelBid(uint256 indexed batchId, address indexed bidder);
     event Purchase(uint256 indexed batchId, address indexed bidder, uint64 numTokens);
-    event Whitelist(uint256 indexed batchId, address indexed bidder, uint128 firstTokenId, uint64 numTokens);
+    event Whitelist(uint256 indexed batchId, address indexed bidder);
 
     /**
         Modifiers
@@ -638,7 +638,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         batchState.numTokensClaimed += numTokens;
 
-        emit Whitelist(batchId, bidder, batchState.startTokenId, numTokens);
+        emit Whitelist(batchId, bidder);
     }
 
     function _addWhitelist(
