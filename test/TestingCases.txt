@@ -9,7 +9,6 @@ NFTAuctionPotion Test Cases
     - setBid: call when batch is not active
     - setBid: call with price less than minimum
     - setBid: call with price higher or equal than purchase price
-    - setBid: call with a non-existing previous bid
     - setBid: send amount of cash different than needed
     - cancelBid: call when batch is not active
     - purchase: call when batch is not active
