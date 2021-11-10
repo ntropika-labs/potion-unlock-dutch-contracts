@@ -517,7 +517,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 prev
     ) internal {
         StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
-        require(bidders.nodeExists(prev), "Previous bid not found in bid history");
 
         // In the time that takes for the trasaction to be mined, the prev bid may have been removed.
         // If so, we search back from the prev bid until we find a valid one
