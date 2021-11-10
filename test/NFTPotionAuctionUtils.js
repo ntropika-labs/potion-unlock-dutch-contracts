@@ -1,9 +1,10 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { formatUnits } = require("ethers/lib/utils");
+const { BigNumber } = require("@ethersproject/bignumber");
 
-async function epochNow() {
-    return (await ethers.provider.getBlock("latest")).timestamp;
+async function chainEpoch(timeFromNow = 0) {
+    return (await ethers.provider.getBlock("latest")).timestamp + timeFromNow;
 }
 
 async function getEventTimestamp(eventName, tx) {
@@ -26,7 +27,20 @@ async function fastForwardChain(seconds) {
 }
 
 function fromBN(bn) {
-    return Number(formatUnits(bn, "wei"));
+    const value = formatUnits(bn, "wei");
+    try {
+        return parseInt(value);
+    } catch {
+        return value;
+    }
+}
+
+function fromBNStr(bn) {
+    return formatUnits(bn, "wei");
+}
+
+function toBN(number) {
+    return BigNumber.from(number);
 }
 
 function getBidderAddress(bidderNumber) {
@@ -35,9 +49,11 @@ function getBidderAddress(bidderNumber) {
 }
 
 module.exports = {
-    epochNow,
+    chainEpoch,
     getEventTimestamp,
     fastForwardChain,
     fromBN,
+    fromBNStr,
+    toBN,
     getBidderAddress,
 };

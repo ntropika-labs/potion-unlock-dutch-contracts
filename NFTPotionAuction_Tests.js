@@ -1,43 +1,11 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { before } = require("mocha");
-const { formatUnits } = require("ethers/lib/utils");
-
-async function epochNow() {
-    return (await ethers.provider.getBlock("latest")).timestamp;
-}
-
-async function getEventTimestamp(eventName, tx) {
-    const receipt = await tx.wait();
-
-    const events = receipt.events?.filter(x => {
-        return x.event === eventName;
-    });
-
-    expect(events.length).to.be.greaterThanOrEqual(1);
-
-    const batchStartedEvent = events[0];
-    const eventBlock = await batchStartedEvent.getBlock();
-    return eventBlock.timestamp;
-}
-
-async function fastForwardChain(seconds) {
-    await ethers.provider.send("evm_increaseTime", [seconds]);
-    await ethers.provider.send("evm_mine", []);
-}
-
-function fromBN(bn) {
-    return Number(formatUnits(bn, "wei"));
-}
-
-function getBidderAddress(bidderNumber) {
-    //return ethers.Wallet.createRandom().address;
-    return "0x" + bidderNumber.toString().padStart(40, "0");
-}
+const { chainEpoch, fastForwardChain, fromBN } = require("./NFTPotionAuctionUtils");
 
 const FIRST_TOKEN_ID = 1;
 
-describe("NFTPotionAuction", function () {
+describe.skip("NFTPotionAuction", function () {
     describe("Default Values", function () {
         it("All default values", async function () {
             const NFTPotionAuction = await ethers.getContractFactory("NFTPotionAuction");
@@ -58,7 +26,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Can't start auction in the past", async function () {
-            const auctionEndDatePast = (await epochNow()) - 100;
+            const auctionEndDatePast = (await chainEpoch()) - 100;
 
             const minimumPricePerToken = 10;
             const directPurchasePrice = 100;
@@ -76,7 +44,7 @@ describe("NFTPotionAuction", function () {
         it("Can't start first auction with token ID different than 1", async function () {
             const minimumPricePerToken = 10;
             const directPurchasePrice = 100;
-            const auctionEndDate = (await epochNow()) + 2000;
+            const auctionEndDate = (await chainEpoch()) + 2000;
 
             await expect(
                 auctionContract.startBatch(
@@ -107,7 +75,7 @@ describe("NFTPotionAuction", function () {
             ).to.be.revertedWith("Wrong start token ID");
         });
         it("Minimum price cannot be greater than purchase price", async function () {
-            const auctionEndDate = (await epochNow()) + 2000;
+            const auctionEndDate = (await chainEpoch()) + 2000;
 
             await expect(
                 auctionContract.startBatch(FIRST_TOKEN_ID, FIRST_TOKEN_ID + 10, 1, 0, auctionEndDate),
@@ -120,14 +88,14 @@ describe("NFTPotionAuction", function () {
             ).to.be.revertedWith("Minimum higher than purchase price");
         });
         it("Start first batch auction (Token IDs 1-20)", async function () {
-            const auctionEndDate = (await epochNow()) + 2000;
+            const auctionEndDate = (await chainEpoch()) + 2000;
 
             await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
                 .withArgs(1);
         });
         it("Can't start new batch without ending previous", async function () {
-            const auctionEndDate = (await epochNow()) + 2000;
+            const auctionEndDate = (await chainEpoch()) + 2000;
             await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate)).to.be.revertedWith(
                 "Auction still active",
             );
@@ -146,7 +114,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
             await expect(auctionContract.startBatch(1, 20, 100, 1200, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
                 .withArgs(1);
@@ -173,7 +141,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
             await expect(auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
                 .withArgs(1);
@@ -212,7 +180,7 @@ describe("NFTPotionAuction", function () {
             expect(ranges.length).to.be.equal(0);
 
             // Claim Token IDs
-            await auctionContract.claimTokenIds(1, true);
+            await auctionContract.claim(1, true);
 
             // Ranges are now assigned
             ranges = await auctionContract.getWhitelistRanges(sender);
@@ -237,7 +205,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start first batch auction (Token IDs 1-20)", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
             await expect(auctionContract.startBatch(1, 20, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate))
                 .to.emit(auctionContract, "BatchStarted")
                 .withArgs(1);
@@ -279,7 +247,7 @@ describe("NFTPotionAuction", function () {
 
             // Claim Token IDs
             for (let i = 0; i < senders.length; ++i) {
-                await auctionContract.connect(senders[i]).claimTokenIds(1, true);
+                await auctionContract.connect(senders[i]).claim(1, true);
             }
 
             // Ranges must be assigned now
@@ -314,7 +282,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start batch auction", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
 
             await expect(
                 auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
@@ -368,7 +336,7 @@ describe("NFTPotionAuction", function () {
             // Claim Token IDs
             for (let i = 0; i < NUM_BIDDERS; ++i) {
                 const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
-                await auctionContract.claimTokenIdsOnBehalf(1, bidderAddress, true);
+                await auctionContract.claimOnBehalf(1, bidderAddress, true);
             }
 
             // First half of bidders got their token IDs
@@ -410,7 +378,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start batch auction", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
             await expect(
                 auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
             )
@@ -503,11 +471,11 @@ describe("NFTPotionAuction", function () {
             // Claim Token IDs
             for (let i = 0; i < senders.length; ++i) {
                 if (i === 10 || i === 11) {
-                    await expect(auctionContract.connect(senders[i]).claimTokenIds(1, true)).to.be.revertedWith(
+                    await expect(auctionContract.connect(senders[i]).claim(1, true)).to.be.revertedWith(
                         "Bidder has no claimable bid",
                     );
                 } else {
-                    await auctionContract.connect(senders[i]).claimTokenIds(1, true);
+                    await auctionContract.connect(senders[i]).claim(1, true);
                 }
             }
 
@@ -531,7 +499,7 @@ describe("NFTPotionAuction", function () {
         });
     });
 
-    describe("Batch auction start/end with 200 bids", async function () {
+    describe.skip("Batch auction start/end with 200 bids", async function () {
         const AUCTION_DURATION = 2000;
         const MINIMUM_PRICE = 10;
         const PURCHASE_PRICE = 10000;
@@ -550,7 +518,7 @@ describe("NFTPotionAuction", function () {
         });
 
         it("Start batch auction", async function () {
-            auctionEndDate = (await epochNow()) + AUCTION_DURATION;
+            auctionEndDate = (await chainEpoch()) + AUCTION_DURATION;
 
             await expect(
                 auctionContract.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, auctionEndDate),
@@ -591,7 +559,7 @@ describe("NFTPotionAuction", function () {
             // Claim Token IDs
             for (let i = 0; i < NUM_BIDDERS; ++i) {
                 const bidderAddress = "0x" + (i + 1).toString().padStart(40, "0");
-                await auctionContract.claimTokenIdsOnBehalf(1, bidderAddress, true);
+                await auctionContract.claimOnBehalf(1, bidderAddress, true);
             }
 
             // Ranges must be assigned now
