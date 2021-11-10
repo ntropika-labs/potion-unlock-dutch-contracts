@@ -29,8 +29,14 @@ NFTAuctionPotion Test Cases
 
   - Auction Basic Cases
     - Bidder rebids several times
-    - Bidder bids and cancels repeated times
-    - Bidder purchase
+    - Bidder bids and cancels repeated times, no refund
+    - Bidder bids and cancels repeated times, with refund
+    - Bidder bids and cancels repeated times, sometimes with refund
+    
+    - Bidder purchase some tokens once
+    - Bidder purchase some tokens several times
+    - Bidder purchase all tokens at once
+    - Bidder purchase all tokens in several purchases
 
   - Auction Full Cycle
     - Auction: 1 Batch, 20 bidders, 100 token IDs

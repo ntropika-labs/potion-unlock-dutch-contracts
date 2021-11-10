@@ -1,7 +1,8 @@
-const {task, types} = require('hardhat/config')
+const { task, types } = require("hardhat/config");
 require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
 require("hardhat-gas-reporter");
+require("solidity-coverage");
 
 require("dotenv").config();
 
@@ -15,19 +16,19 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
     }
 });
 
-task('fastForward', 'Fast forward time (only works for local test networks)')
-  .addOptionalParam(
-    'seconds',
-    'Number of seconds by which the blockchain should advance time (default: one year)',
-    31556952,
-    types.int,
-  )
-  .setAction(async (args, hre) => {
-    // Default to one year
-    await hre.ethers.provider.send('evm_increaseTime', [args.seconds])
-    await hre.ethers.provider.send('evm_mine', [])
-    console.log(`Fast forwarded time by ${args.seconds} seconds (${args.seconds / (60 * 60 * 24)} days)`)
-  })
+task("fastForward", "Fast forward time (only works for local test networks)")
+    .addOptionalParam(
+        "seconds",
+        "Number of seconds by which the blockchain should advance time (default: one year)",
+        31556952,
+        types.int,
+    )
+    .setAction(async (args, hre) => {
+        // Default to one year
+        await hre.ethers.provider.send("evm_increaseTime", [args.seconds]);
+        await hre.ethers.provider.send("evm_mine", []);
+        console.log(`Fast forwarded time by ${args.seconds} seconds (${args.seconds / (60 * 60 * 24)} days)`);
+    });
 
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
