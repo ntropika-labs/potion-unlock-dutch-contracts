@@ -210,23 +210,21 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     /**
-        @notice Cancels a bid for the given batch ID and refunds the sender if requested
-        @param batchId The ID of the batch to cancel the bid for
+        @notice Cancels a bid for the active batch and refunds the sender if requested
         @param alsoRefund If true, the sender will be refunded the amount of cash they bid for
 
         @dev If the bidder does not request a refund to be sent back, the amount will be credited
         internally and used in future bids. It can also be requested later on by calling claimRefund
     */
-    function cancelBid(uint256 batchId, bool alsoRefund) external {
-        require(batchId == currentBatchId, "Cannot cancel bid for a batch that is not active");
+    function cancelBid(bool alsoRefund) external checkAuctionActive {
         address bidder = _msgSender();
 
-        _cancelBid(batchId, bidder, true);
+        _cancelBid(currentBatchId, bidder, true);
 
         if (alsoRefund) {
             _claimRefund(bidder);
         }
-        emit CancelBid(batchId, bidder);
+        emit CancelBid(currentBatchId, bidder);
     }
 
     /**
@@ -378,7 +376,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(biddersList.length == numTokensList.length, "Mismatch in array sizes for direct whitelist");
 
         for (uint256 i = 0; i < numTokensList.length; ++i) {
-            require(firstTokenIdList[i] == nextFreeTokenId, "Cannot have gaps when whitelisting");
+            require(firstTokenIdList[i] == nextFreeTokenId, "Cannot have gaps or overlaps when whitelisting");
 
             _addWhitelist(biddersList[i], numTokensList[i], firstTokenIdList[i]);
 
