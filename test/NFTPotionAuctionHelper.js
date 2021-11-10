@@ -156,15 +156,39 @@ class NFTPotionAuctionHelper {
             signer = (await ethers.getSigners())[0];
         }
 
-        await expect(
-            this.contract
-                .connect(signer)
-                .purchase(numTokens, { value: numTokens * this.currentBatch.directPurchasePrice }),
-        )
-            .to.emit(this.contract, "Purchase")
-            .withArgs(this.currentBatchId, signer.address, numTokens);
+        const balance = await signer.getBalance();
+        const whitelistRanges = await this.contract.getWhitelistRanges(signer.address);
 
+        // Logic
+        const tx = await this.contract
+            .connect(signer)
+            .purchase(numTokens, { value: numTokens * this.currentBatch.directPurchasePrice });
+
+        await expect(tx).to.emit(this.contract, "Purchase").withArgs(this.currentBatchId, signer.address, numTokens);
+
+        const receipt = await tx.wait();
+        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+
+        // Checks
+        const currentBalance = await signer.getBalance();
+
+        expect(currentBalance).to.be.equal(balance.sub(gasCost).sub(numTokens * this.currentBatch.directPurchasePrice));
+
+        const currentWhitelistRanges = await this.contract.getWhitelistRanges(signer.address);
+        expect(currentWhitelistRanges.length).to.be.equal(whitelistRanges.length + 1);
+        expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].firstId).to.be.equal(
+            this.currentBatch.startTokenId + this.currentBatch.numTokensSold,
+        );
+        expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].lastId).to.be.equal(
+            this.currentBatch.startTokenId + this.currentBatch.numTokensSold + numTokens - 1,
+        );
+
+        // Effects
         this.currentBatch.numTokensSold += numTokens;
+        this.currentBatch.numTokensClaimed += numTokens;
+    }
+    async getPreviousBatch() {
+        return this.getBatch(this.currentBatchId - 1);
     }
 
     async getBatch(batchId) {
@@ -266,6 +290,7 @@ class NFTPotionAuctionHelper {
         expect(this.currentBatch.clearingBidId).to.equal(contractState.clearingBidId);
         expect(this.currentBatch.lastBidderNumAssignedTokens).to.equal(contractState.lastBidderNumAssignedTokens);
         expect(this.currentBatch.numTokensSold).to.equal(contractState.numTokensSold);
+        expect(this.currentBatch.numTokensClaimed).to.equal(contractState.numTokensClaimed);
     }
 }
 
