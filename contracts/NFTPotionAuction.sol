@@ -145,7 +145,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         require(batchState.auctionEndDate != 0, "Auction has not been started yet");
         require(
-            block.timestamp > batchState.auctionEndDate || batchState.numTokensAuctioned == 0,
+            block.timestamp > batchState.auctionEndDate || batchState.numTokensAuctioned == batchState.numTokensSold,
             "Auction cannot be ended yet"
         );
 
