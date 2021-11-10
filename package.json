@@ -6,6 +6,7 @@
         "migrate": "npx hardhat run scripts/deploy.js --network localhost",
         "deployNFTPotion": "npx hardhat run scripts/deployNFTPotion.js --network localhost",
         "deployValidator": "npx hardhat run scripts/deployNFTValidator.js --network localhost",
+        "fastForward": "npx hardhat fastForward",
         "start": "react-scripts start",
         "build": "react-scripts build",
         "test": "react-scripts test",
