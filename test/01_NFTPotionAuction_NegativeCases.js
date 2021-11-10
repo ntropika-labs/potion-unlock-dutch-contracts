@@ -109,19 +109,6 @@ describe("NFTPotionAuction", function () {
                     "Bid cannot be higher than direct price",
                 );
             });
-            it("Call with a non-existing previous bid", async function () {
-                await auction.startBatch(1, 1500, 23, 4098, 2000);
-
-                await expect(auction.contract.setBid(34, 200, 123123)).to.be.revertedWith(
-                    "Previous bid not found in bid history",
-                );
-                await expect(auction.contract.setBid(92, 678, 8765)).to.be.revertedWith(
-                    "Previous bid not found in bid history",
-                );
-                await expect(auction.contract.setBid(1200, 23, 1)).to.be.revertedWith(
-                    "Previous bid not found in bid history",
-                );
-            });
             it("Send amount of cash different than needed", async function () {
                 await auction.startBatch(1, 1500, 1, 4098, 2000);
 

@@ -82,15 +82,12 @@ class NFTPotionAuctionHelper {
         }
 
         // Logic
-        const oldBid = await this.contract.getLatestBid(this.currentBatchId, signer.address);
-        const refund = await this.contract.refunds(signer.address);
+        const oldBid = await this.getLatestBid(signer.address);
+        const refund = await this.refunds(signer.address);
 
         const credit = refund + oldBid.numTokens * oldBid.pricePerToken;
         const payable = credit <= numTokens * pricePerToken ? numTokens * pricePerToken - credit : 0;
-
         const prevBid = await this.contract.getPreviousBid(this.currentBatchId, numTokens, pricePerToken);
-        //console.log(prevBid);
-        //console.log(oldBid);
 
         await expect(this.contract.connect(signer).setBid(numTokens, pricePerToken, prevBid, { value: payable }))
             .to.emit(this.contract, "SetBid")
@@ -112,6 +109,46 @@ class NFTPotionAuctionHelper {
         });
 
         this.bidId = this.bidId.sub(1);
+    }
+
+    async cancelBid(alsoRefund, signer = undefined) {
+        if (signer === undefined) {
+            signer = (await ethers.getSigners())[0];
+        }
+
+        const canceledBid = await this.getLatestBid(signer.address);
+        const refund = await this.refunds(signer.address);
+        const balance = await signer.getBalance();
+
+        // Logic
+        const tx = await this.contract.connect(signer).cancelBid(alsoRefund);
+        const receipt = await tx.wait();
+        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+
+        // Checks
+        const latestBid = await this.getLatestBid(signer.address);
+
+        expect(latestBid.bidId).to.be.equal("0");
+        expect(latestBid.numTokens).to.be.equal(0);
+        expect(latestBid.pricePerToken).to.be.equal(0);
+
+        const currentBalance = await signer.getBalance();
+        const currentRefund = await this.refunds(signer.address);
+        if (alsoRefund) {
+            expect(currentRefund).to.be.equal(0);
+            expect(currentBalance).to.be.equal(
+                balance
+                    .sub(gasCost)
+                    .add(refund)
+                    .add(canceledBid.numTokens * canceledBid.pricePerToken),
+            );
+        } else {
+            expect(currentRefund).to.be.equal(refund + canceledBid.numTokens * canceledBid.pricePerToken);
+            expect(currentBalance).to.be.equal(balance.sub(gasCost));
+        }
+
+        // Effects
+        this.bidsMap.delete(signer.address);
     }
 
     async purchase(numTokens, signer = undefined) {
@@ -157,6 +194,10 @@ class NFTPotionAuctionHelper {
         latestBid.pricePerToken = fromBN(latestBid.pricePerToken);
 
         return latestBid;
+    }
+
+    async refunds(bidder) {
+        return fromBN(await this.contract.refunds(bidder));
     }
 
     _calculateClearingPrice() {
