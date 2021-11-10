@@ -20,10 +20,12 @@ class NFTPotionAuctionHelper {
         await this.contract.deployed();
     }
 
-    async startBatch(firstTokenId, lastTokenId, minimumPricePerToken, directPurchasePrice, auctionEndDate) {
+    async startBatch(firstTokenId, lastTokenId, minimumPricePerToken, directPurchasePrice, auctionDuration) {
         this.bidsMap = new Map();
         this.bidId = toBN(2).pow(64).sub(1);
         this.numTokensSold = 0;
+
+        const auctionEndDate = await chainEpoch(auctionDuration);
 
         await expect(
             this.contract.startBatch(
@@ -79,6 +81,7 @@ class NFTPotionAuctionHelper {
             signer = (await ethers.getSigners())[0];
         }
 
+        // Logic
         const oldBid = await this.contract.getLatestBid(this.currentBatchId, signer.address);
         const refund = await this.contract.refunds(signer.address);
 
@@ -86,11 +89,21 @@ class NFTPotionAuctionHelper {
         const payable = credit <= numTokens * pricePerToken ? numTokens * pricePerToken - credit : 0;
 
         const prevBid = await this.contract.getPreviousBid(this.currentBatchId, numTokens, pricePerToken);
+        //console.log(prevBid);
+        //console.log(oldBid);
 
         await expect(this.contract.connect(signer).setBid(numTokens, pricePerToken, prevBid, { value: payable }))
             .to.emit(this.contract, "SetBid")
             .withArgs(this.currentBatchId, signer.address, numTokens, pricePerToken);
 
+        // Checks
+        const latestBid = await this.getLatestBid(signer.address);
+
+        expect(latestBid.bidId).to.be.equal(fromBNStr(this.bidId));
+        expect(latestBid.numTokens).to.be.equal(numTokens);
+        expect(latestBid.pricePerToken).to.be.equal(pricePerToken);
+
+        // Effects
         this.bidsMap.set(signer.address, {
             bidder: signer.address,
             bidId: fromBNStr(this.bidId),
@@ -132,6 +145,18 @@ class NFTPotionAuctionHelper {
         currentBatch.numTokensClaimed = fromBN(currentBatch.numTokensClaimed);
 
         return currentBatch;
+    }
+
+    async getLatestBid(bidder) {
+        const latestBidBN = await this.contract.getLatestBid(this.currentBatchId, bidder);
+
+        const latestBid = Object.assign({}, latestBidBN);
+
+        latestBid.bidId = fromBNStr(latestBid.bidId);
+        latestBid.numTokens = fromBN(latestBid.numTokens);
+        latestBid.pricePerToken = fromBN(latestBid.pricePerToken);
+
+        return latestBid;
     }
 
     _calculateClearingPrice() {

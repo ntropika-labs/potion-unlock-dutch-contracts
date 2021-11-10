@@ -28,7 +28,12 @@ NFTAuctionPotion Test Cases
     - whitelistBidders: Call with gaps or overlaps in token IDs list
     - transferFunds: Call with non-owner account
 
-  - Basic Cases: Full cycle of basic auctions
+  - Auction Basic Cases
+    - Bidder rebids several times
+    - Bidder bids and cancels repeated times
+    - Bidder purchase
+
+  - Auction Full Cycle
     - Auction: 1 Batch, 20 bidders, 100 token IDs
     - Auction: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs
     - Auction: Several batches, 20 bidders, 10, 100, 50, 88, 34 tokenIDs
