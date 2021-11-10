@@ -218,6 +218,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         internally and used in future bids. It can also be requested later on by calling claimRefund
     */
     function cancelBid(uint256 batchId, bool alsoRefund) external {
+        require(batchId == currentBatchId, "Cannot cancel bid for a batch that is not active");
         address bidder = _msgSender();
 
         _cancelBid(batchId, bidder, true);
@@ -239,7 +240,10 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function purchase(uint64 numTokens) external payable checkAuctionActive {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
-        require(numTokens <= batchState.numTokensAuctioned, "Too many tokens for direct purchase");
+        require(
+            numTokens <= batchState.numTokensAuctioned - batchState.numTokensSold,
+            "Too many tokens for direct purchase"
+        );
 
         _purchase(currentBatchId, _msgSender(), numTokens, batchState.directPurchasePrice);
 
@@ -251,11 +255,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     //-----------------------
 
     /**
-        @notice Claims token IDs for the sender
+        @notice Claims token IDs for the sender if the sender won the auction
         @param batchId The ID of the batch to claim the token IDs for
         @param alsoRefund If true, the sender will be refunded the the current existing credit they have
+
+        @dev if the sender did not win the auction then the bid amount is credited to the bidder
+        and then the full refund is sent back if alsoRefund is true
     */
-    function claimTokenIds(uint256 batchId, bool alsoRefund) external {
+    function claim(uint256 batchId, bool alsoRefund) external {
         _claim(batchId, _msgSender(), alsoRefund);
     }
 
@@ -342,7 +349,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         @param bidder Address to claim the token IDs for
         @param alsoRefund If true, the sender will be refunded the the current existing credit they have
     */
-    function claimTokenIdsOnBehalf(
+    function claimOnBehalf(
         uint256 batchId,
         address bidder,
         bool alsoRefund
@@ -367,11 +374,15 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64[] calldata numTokensList,
         uint64[] calldata firstTokenIdList
     ) external onlyOwner checkAuctionInactive {
-        require(numTokensList.length == firstTokenIdList.length, "Mismatch in array size for direct whitelist");
+        require(biddersList.length == firstTokenIdList.length, "Mismatch in array sizes for direct whitelist");
+        require(biddersList.length == numTokensList.length, "Mismatch in array sizes for direct whitelist");
+
         for (uint256 i = 0; i < numTokensList.length; ++i) {
             require(firstTokenIdList[i] == nextFreeTokenId, "Cannot have gaps when whitelisting");
 
             _addWhitelist(biddersList[i], numTokensList[i], firstTokenIdList[i]);
+
+            emit Whitelist(0, biddersList[i]);
         }
     }
 
@@ -570,6 +581,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         address bidder,
         bool alsoRefund
     ) internal {
+        require(batchId < currentBatchId, "Cannot claim token IDs for a batch that has not ended");
+
         BatchState storage batchState = _getBatchState(batchId);
         uint256 bid = _getBatchBidByBidder(batchId, bidder);
         require(bid != 0, "Bidder has no claimable bid");
