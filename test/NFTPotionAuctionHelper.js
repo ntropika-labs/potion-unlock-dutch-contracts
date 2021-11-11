@@ -156,13 +156,18 @@ class NFTPotionAuctionHelper {
             signer = (await ethers.getSigners())[0];
         }
 
+        const credit = await this.refunds(signer.address);
+
+        const payable =
+            credit <= numTokens * this.currentBatch.directPurchasePrice
+                ? numTokens * this.currentBatch.directPurchasePrice - credit
+                : 0;
+
         const balance = await signer.getBalance();
         const whitelistRanges = await this.contract.getWhitelistRanges(signer.address);
 
         // Logic
-        const tx = await this.contract
-            .connect(signer)
-            .purchase(numTokens, { value: numTokens * this.currentBatch.directPurchasePrice });
+        const tx = await this.contract.connect(signer).purchase(numTokens, { value: payable });
 
         await expect(tx).to.emit(this.contract, "Purchase").withArgs(this.currentBatchId, signer.address, numTokens);
 
@@ -172,7 +177,7 @@ class NFTPotionAuctionHelper {
         // Checks
         const currentBalance = await signer.getBalance();
 
-        expect(currentBalance).to.be.equal(balance.sub(gasCost).sub(numTokens * this.currentBatch.directPurchasePrice));
+        expect(currentBalance).to.be.equal(balance.sub(gasCost).sub(payable));
 
         const currentWhitelistRanges = await this.contract.getWhitelistRanges(signer.address);
         expect(currentWhitelistRanges.length).to.be.equal(whitelistRanges.length + 1);

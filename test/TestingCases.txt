@@ -32,23 +32,20 @@ NFTAuctionPotion Test Cases
     - Bidder bids and cancels repeated times, no refund
     - Bidder bids and cancels repeated times, with refund
     - Bidder bids and cancels repeated times, sometimes with refund
-    
     - Bidder purchase some tokens once
     - Bidder purchase some tokens several times
     - Bidder purchase all tokens at once
     - Bidder purchase all tokens in several purchases
 
   - Auction Full Cycle
-    - Auction: 1 Batch, 20 bidders, 100 token IDs
-    - Auction: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs
-    - Auction: Several batches, 20 bidders, 10, 100, 50, 88, 34 tokenIDs
-    - Purchase: 1 Batch, 20 tokens, 1 bidder purchases 5 tokens, no bids
-    - Purchase: 1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each, no bids
-    - Purchase: 1 Batch, 100 tokens, 10 bidders purchase 1 to 6 tokens each, no bids
+    - Simple: 1 Batch, 20 bidders, 100 token IDs
+    - Simple: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs
+    - Simple: Several batches, 20 bidders, 10, 100, 50, 88, 34 tokenIDs
+    - Purchase: 1 Batch, 20 tokens, 1 bidder purchases 5 tokens
+    - Purchase: 1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each
+    - Purchase: 1 Batch, 100 tokens, 10 bidders purchase 1 to 6 tokens each
     - Auction+Purchase: 1 Batch, 129 tokens, 12 bidders, 5 purchasers
-    - Auction+Purchase: 3 Batches, 83 tokens, 6 bidders, 13 purchasers
     - Cancel Bid: 1 Batch, 876 tokens, previous bid is cancelled before new bid is mined
-    - Cancel Bid: 3 Batches, 4, 67, 1298 tokens, previous 8 bids are cancelled before new bid is mined
     - Cancel Bid: 1 Batch, 18 tokens, previous 10 bids are cancelled before new bid is mined
 
   - Owner Cases

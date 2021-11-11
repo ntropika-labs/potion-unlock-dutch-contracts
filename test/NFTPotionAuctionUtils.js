@@ -48,6 +48,10 @@ function getBidderAddress(bidderNumber) {
     return "0x" + bidderNumber.toString().padStart(40, "0");
 }
 
+function generatePrice(minimumPrice, purchasePrice, factor, index) {
+    return ((minimumPrice + factor * index) % (purchasePrice - minimumPrice)) + minimumPrice;
+}
+
 module.exports = {
     chainEpoch,
     getEventTimestamp,
@@ -56,4 +60,5 @@ module.exports = {
     fromBNStr,
     toBN,
     getBidderAddress,
+    generatePrice,
 };
