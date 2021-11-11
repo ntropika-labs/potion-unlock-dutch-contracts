@@ -143,6 +143,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function endBatch(uint256 numBidsToProcess) external {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
+        require(numBidsToProcess > 0, "Call with at least 1 bid to process");
         require(batchState.auctionEndDate != 0, "Auction has not been started yet");
         require(
             block.timestamp > batchState.auctionEndDate || batchState.numTokensAuctioned == batchState.numTokensSold,
@@ -150,11 +151,16 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         );
 
         StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
-        uint256 bid = bidders.iterEnd();
 
         uint64 numTokensLeft = batchState.numTokensAuctioned - batchState.numTokensSold;
 
-        while (numBidsToProcess > 0 && bid != 0 && numTokensLeft > 0) {
+        uint256 bid;
+        while (numBidsToProcess > 0 && numTokensLeft > 0) {
+            bid = bidders.popBack();
+            if (bid == 0) {
+                break;
+            }
+
             (uint64 bidId, uint64 numRequestedTokens, uint128 pricePerToken) = _decodeBid(bid);
 
             if (numRequestedTokens >= numTokensLeft) {
@@ -173,8 +179,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             claimableFunds += numRequestedTokens * pricePerToken;
             numTokensLeft -= numRequestedTokens;
             numBidsToProcess--;
-
-            bid = bidders.iterPrev(bid);
         }
 
         batchState.numTokensSold = batchState.numTokensAuctioned - numTokensLeft;
