@@ -175,82 +175,127 @@ describe("NFTPotionAuction", function () {
                     currentTokenId += purchases[i];
                 }
             });
-            describe("Auction+Purchase", function () {
-                it("1 Batch, 129 tokens, 12 bidders, 5 purchasers", async function () {
-                    const NUM_BIDDERS = 12;
-                    const START_TOKEN_ID = 1;
-                    const END_TOKEN_ID = 129;
-                    const MINIMUM_PRICE = 1;
-                    const PURCHASE_PRICE = 200;
+        });
+        /**
+         * Auction + Purchase
+         */
+        describe("Auction + Purchase", function () {
+            it("1 Batch, 129 tokens, 12 bidders, 5 purchasers", async function () {
+                const NUM_BIDDERS = 12;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 129;
+                const MINIMUM_PRICE = 1;
+                const PURCHASE_PRICE = 200;
 
-                    const signers = await ethers.getSigners();
-                    const purchases = [13, 44, 4, 7, 9];
+                const signers = await ethers.getSigners();
+                const purchases = [13, 44, 4, 7, 9];
 
-                    await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
 
-                    for (let i = 0; i < NUM_BIDDERS / 2; i++) {
-                        await auction.setBid(
-                            (i + 1) * 3,
-                            generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 2, i),
-                            signers[i],
-                        );
-                    }
+                for (let i = 0; i < NUM_BIDDERS / 2; i++) {
+                    await auction.setBid((i + 1) * 3, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 2, i), signers[i]);
+                }
 
-                    await auction.purchase(purchases[0], signers[0]);
+                await auction.purchase(purchases[0], signers[0]);
 
-                    for (let i = NUM_BIDDERS / 2; i < NUM_BIDDERS; i++) {
-                        await auction.setBid(
-                            (i + 1) * 4,
-                            generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 6, i),
-                            signers[i],
-                        );
-                    }
+                for (let i = NUM_BIDDERS / 2; i < NUM_BIDDERS; i++) {
+                    await auction.setBid((i + 1) * 4, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 6, i), signers[i]);
+                }
 
-                    await auction.purchase(purchases[1], signers[1]);
+                await auction.purchase(purchases[1], signers[1]);
 
-                    for (let i = 0; i < NUM_BIDDERS; i++) {
-                        await auction.setBid(
-                            (i + 1) * 5,
-                            generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i),
-                            signers[i],
-                        );
-                    }
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid((i + 1) * 5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i), signers[i]);
+                }
 
-                    await auction.purchase(purchases[2], signers[2]);
+                await auction.purchase(purchases[2], signers[2]);
 
-                    for (let i = 0; i < NUM_BIDDERS; i++) {
-                        await auction.setBid(
-                            (i + 1) * 2,
-                            generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 101, i),
-                            signers[i],
-                        );
-                    }
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid((i + 1) * 2, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 101, i), signers[i]);
+                }
 
-                    await auction.purchase(purchases[3], signers[3]);
-                    await auction.purchase(purchases[4], signers[4]);
+                await auction.purchase(purchases[3], signers[3]);
+                await auction.purchase(purchases[4], signers[4]);
 
-                    for (let i = 0; i < NUM_BIDDERS; i++) {
-                        await auction.setBid(
-                            (i + 1) * 8,
-                            generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 102, i),
-                            signers[i],
-                        );
-                    }
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid((i + 1) * 8, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 102, i), signers[i]);
+                }
 
-                    await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+                await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
 
-                    // Checks
-                    let currentTokenId = START_TOKEN_ID;
-                    for (let i = 0; i < purchases.length; i++) {
-                        const whitelistRanges = await auction.contract.getWhitelistRanges(signers[i].address);
+                // Checks
+                let currentTokenId = START_TOKEN_ID;
+                for (let i = 0; i < purchases.length; i++) {
+                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[i].address);
 
-                        expect(whitelistRanges.length).to.be.equal(1);
-                        expect(whitelistRanges[0].firstId).to.be.equal(currentTokenId);
-                        expect(whitelistRanges[0].lastId).to.be.equal(currentTokenId + purchases[i] - 1);
+                    expect(whitelistRanges.length).to.be.equal(1);
+                    expect(whitelistRanges[0].firstId).to.be.equal(currentTokenId);
+                    expect(whitelistRanges[0].lastId).to.be.equal(currentTokenId + purchases[i] - 1);
 
-                        currentTokenId += purchases[i];
-                    }
-                });
+                    currentTokenId += purchases[i];
+                }
+            });
+        });
+        /**
+         * Cancel Bid
+         */
+        describe("Cancel Bid", function () {
+            it("1 Batch, 876 tokens, previous bid is cancelled before new bid is mined", async function () {
+                const NUM_BIDDERS = 30;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 876;
+                const MINIMUM_PRICE = 1;
+                const PURCHASE_PRICE = 200;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, MINIMUM_PRICE + 5 * i, signers[i]);
+                }
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    const prevBid = await auction.contract.getPreviousBid(
+                        auction.currentBatchId,
+                        5,
+                        MINIMUM_PRICE + 5 * (i + 1) + 1,
+                    );
+
+                    await auction.cancelBid(false, signers[(i + 1) % NUM_BIDDERS]);
+                    await auction.setBid(5, MINIMUM_PRICE + 5 * (i + 1) + 1, signers[i], prevBid);
+                }
+            });
+            it("1 Batch, 18 tokens, previous 10 bids are cancelled before new bid is mined", async function () {
+                const NUM_BIDDERS = 40;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 18;
+                const MINIMUM_PRICE = 1;
+                const PURCHASE_PRICE = 200;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(
+                        (i % (END_TOKEN_ID - START_TOKEN_ID + 1)) + 1,
+                        MINIMUM_PRICE + 4 * i,
+                        signers[i],
+                    );
+                }
+
+                const prevBid = await auction.contract.getPreviousBid(
+                    auction.currentBatchId,
+                    20,
+                    MINIMUM_PRICE + 4 * 10 + 1,
+                );
+
+                for (let i = 0; i < 10; i++) {
+                    await auction.cancelBid(false, signers[i]);
+                }
+
+                await auction.setBid(5, MINIMUM_PRICE + 4 * 10 + 1, signers[NUM_BIDDERS], prevBid);
             });
         });
     });

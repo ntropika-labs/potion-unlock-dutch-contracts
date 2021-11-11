@@ -26,6 +26,10 @@ NFTAuctionPotion Test Cases
     - whitelistBidders: Call with different length for input arrays
     - whitelistBidders: Call with gaps or overlaps in token IDs list
     - transferFunds: Call with non-owner account
+    * Pagination: set a bid between paginated endBatch
+    * Pagination: cancel a bid between paginated endBatch
+    * Pagination: claim a bid between paginated endBatch
+    * Pagination: call with 0 bids to process
 
   - Auction Basic Cases
     - Bidder rebids several times
@@ -37,7 +41,7 @@ NFTAuctionPotion Test Cases
     - Bidder purchase all tokens at once
     - Bidder purchase all tokens in several purchases
 
-  - Auction Full Cycle
+  - Auction Full Cycle ADD CLAIMING!
     - Simple: 1 Batch, 20 bidders, 100 token IDs
     - Simple: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs
     - Simple: Several batches, 20 bidders, 10, 100, 50, 88, 34 tokenIDs
@@ -56,35 +60,25 @@ NFTAuctionPotion Test Cases
     - transferFunds: transfer funds after first auction and after second auction
     - transferFunds: transfer funds only after 3 successful auctions
 
-  - User Funds
-    - Auction: Several batches, leave funds locked
-    - Auction: Several batches, unlock funds before new batch starts
-    - Auction: Several batches, unlock funds after new batch starts
-    - Auction: Several batches, unlock some funds before and some after batch starts
-
- - Deterministic Cases:
-    - Auction: 1 Batch, 143 tokens, Unique bids in ascending order
-    - Auction: 1 Batch, 32 tokens, Unique bids in descending order
-    - Auction: 1 Batch, 38 tokens, Unique bids in random order
-    - Auction: 1 Batch, 921 tokens, Duplicate bids in ascending order
-    - Auction: 1 Batch, 1021 tokens, Duplicate bids in descending order
-    - Auction: 1 Batch, 983 tokens, Duplicate bids in random order
-
-  - Full Auction (Random):
-    - Several batches, Bid+Cancel+Purchase+Claim, random distribution
+  - User Refunds
+    - Several batches, claim refunds before new batch starts
+    - Several batches, claim refunds after new batch starts
+    - Several batches, claim some refunds before and some after batch starts
 
   - Edge cases
-    - startBatch: minimum price equal to direct purchase price
-    - endBatch: pagination
-    - whitelistBidders: call with empty arrays
-    - cancelBid: cancel a bid for the next auction to start before it starts
-    - Rebidding with same number of tokens, different price
-    - Rebidding with different number of tokens, same price  
-    - Purchase: 1 Batch, 100 tokens, 6 purchasers buy all tokens
-    - Purchase: 3 Batches, 10,20,76 tokens, several purchasers buy all tokens
-    - Purchase: 3 Batches, 10,20,76 tokens, 1 purchaser buy all tokens
-    - Calling cancelBid when bidder has won tokens
-    - Calling claimTokenIds before any batch has been configured
-    - Calling claimRefund before any batch has been configured
-    - Calling transferFunds before bidders have claimed their tokens
-    - All bids are cancelled before new bid can be mined
+    * Rebidding with same number of tokens, different price
+    * Rebidding with different number of tokens, same price  
+    * Purchase: 1 Batch, 100 tokens, 6 purchasers buy all tokens
+    * Purchase: 3 Batches, 10,20,76 tokens, several purchasers buy all tokens
+    * Purchase: 3 Batches, 10,20,76 tokens, 1 purchaser buy all tokens
+    * Calling cancelBid when bidder has won tokens
+    * Calling claimTokenIds before any batch has been configured
+    * Calling claimRefund before any batch has been configured
+    * Calling transferFunds before bidders have claimed their tokens
+    * All bids are cancelled before new bid can be mined
+    - Misc: minimum price equal to direct purchase price
+    - Misc: endBatch pagination
+    - Misc: call whitelistBidders with empty arrays
+
+  - Full Auction (Random):
+    * Several batches, 1000 bidders, Bid+Cancel+Purchase+Claim, random distribution

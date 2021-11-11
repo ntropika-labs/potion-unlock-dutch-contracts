@@ -9,9 +9,13 @@ class NFTPotionAuctionHelper {
     bidsMap;
     bids;
     bidId;
+    whitelistMap;
 
     constructor() {
         this.currentBatchId = 1;
+        this.claimableFunds = 0;
+        this.numBidsToBeProcessed = 0;
+        this.whitelistMap = new Map();
     }
 
     async initialize() {
@@ -24,6 +28,8 @@ class NFTPotionAuctionHelper {
         this.bidsMap = new Map();
         this.bidId = toBN(2).pow(64).sub(1);
         this.numTokensSold = 0;
+        this.numBidsAlreadyProcessed = 0;
+        this.numBidsToBeProcessed = 0;
 
         const auctionEndDate = await chainEpoch(auctionDuration);
 
@@ -60,23 +66,30 @@ class NFTPotionAuctionHelper {
             await fastForwardChain(fastForward);
         }
 
-        // Get the bids before they disappear
-        const contractBids = await this._getAllBids();
+        if (this.numBidsAlreadyProcessed === 0) {
+            this._processBids();
+            this._calculateClearingPrice();
+            this.contractBids = await this._getAllBids();
+        }
+
+        if (this.numBidsAlreadyProcessed + numBidsToProcess < this.numBidsToBeProcessed) {
+            await expect(this.contract.endBatch(numBidsToProcess)).to.not.emit(this.contract, "BatchEnded");
+
+            this.numBidsAlreadyProcessed += numBidsToProcess;
+            return;
+        }
 
         await expect(this.contract.endBatch(numBidsToProcess))
             .to.emit(this.contract, "BatchEnded")
             .withArgs(this.currentBatchId);
 
-        this._processBids();
-        this._validateBids(contractBids);
-
-        this._calculateClearingPrice();
+        this._validateBids(this.contractBids);
         await this._validateEndState();
 
         this.currentBatchId++;
     }
 
-    async setBid(numTokens, pricePerToken, signer = undefined) {
+    async setBid(numTokens, pricePerToken, signer = undefined, overridePrevBid = undefined) {
         if (signer === undefined) {
             signer = (await ethers.getSigners())[0];
         }
@@ -87,7 +100,13 @@ class NFTPotionAuctionHelper {
 
         const credit = refund + oldBid.numTokens * oldBid.pricePerToken;
         const payable = credit <= numTokens * pricePerToken ? numTokens * pricePerToken - credit : 0;
-        const prevBid = await this.contract.getPreviousBid(this.currentBatchId, numTokens, pricePerToken);
+
+        let prevBid;
+        if (overridePrevBid !== undefined) {
+            prevBid = overridePrevBid;
+        } else {
+            prevBid = await this.contract.getPreviousBid(this.currentBatchId, numTokens, pricePerToken);
+        }
 
         await expect(this.contract.connect(signer).setBid(numTokens, pricePerToken, prevBid, { value: payable }))
             .to.emit(this.contract, "SetBid")
@@ -191,6 +210,7 @@ class NFTPotionAuctionHelper {
         // Effects
         this.currentBatch.numTokensSold += numTokens;
         this.currentBatch.numTokensClaimed += numTokens;
+        this.claimableFunds += numTokens * this.currentBatch.directPurchasePrice;
     }
     async getPreviousBatch() {
         return this.getBatch(this.currentBatchId - 1);
@@ -229,12 +249,75 @@ class NFTPotionAuctionHelper {
         return fromBN(await this.contract.refunds(bidder));
     }
 
+    async transferFunds(recipient, signer = undefined) {
+        if (signer === undefined) {
+            signer = (await ethers.getSigners())[0];
+        }
+
+        // Logic
+        const balance = await recipient.getBalance();
+        const funds = await this.contract.claimableFunds();
+
+        const tx = await this.contract.connect(signer).transferFunds(recipient.address);
+        const receipt = await tx.wait();
+        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+
+        // Checks
+        const currentBalance = await recipient.getBalance();
+        if (recipient.address === signer.address) {
+            expect(currentBalance).to.be.equal(balance.sub(gasCost).add(funds));
+        } else {
+            expect(currentBalance).to.be.equal(balance.add(funds));
+        }
+
+        // Efects
+        this.claimableFunds = 0;
+    }
+
+    async whitelistBidders(bidders, numTokens, tokenIds, signer = undefined) {
+        if (signer === undefined) {
+            signer = (await ethers.getSigners())[0];
+        }
+
+        // Logic
+        await this.contract.connect(signer).whitelistBidders(bidders, numTokens, tokenIds);
+
+        // Checks: TODO
+
+        // Effects: TODO
+    }
+
+    async claimRefund(signer = undefined) {
+        if (signer === undefined) {
+            signer = (await ethers.getSigners())[0];
+        }
+
+        // Logic
+        const balance = await signer.getBalance();
+        const refunds = await this.refunds(signer.address);
+        if (refunds === 0) {
+            return;
+        }
+
+        const tx = await this.contract.connect(signer).claimRefund();
+        const receipt = await tx.wait();
+        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+
+        // Checks
+        const currentBalance = await signer.getBalance();
+        expect(currentBalance).to.be.equal(balance.sub(gasCost).add(refunds));
+    }
+
     _calculateClearingPrice() {
         if (this.currentBatch.numTokensSold >= this.currentBatch.numTokensAuctioned) {
             this.clearingPrice = 0;
+            this.numBidsToBeProcessed = 0;
+            return;
         }
 
         for (const bid of this.bids) {
+            this.numBidsToBeProcessed++;
+
             if (this.currentBatch.numTokensSold + bid.numTokens >= this.currentBatch.numTokensAuctioned) {
                 this.currentBatch.clearingPrice = bid.pricePerToken;
                 this.currentBatch.clearingBidId = bid.bidId;
@@ -242,9 +325,13 @@ class NFTPotionAuctionHelper {
                 this.currentBatch.lastBidderNumAssignedTokens =
                     this.currentBatch.numTokensAuctioned - this.currentBatch.numTokensSold;
                 this.currentBatch.numTokensSold = this.currentBatch.numTokensAuctioned;
+
+                this.claimableFunds += this.currentBatch.lastBidderNumAssignedTokens * bid.pricePerToken;
+
                 return;
             }
 
+            this.claimableFunds += bid.numTokens * bid.pricePerToken;
             this.currentBatch.numTokensSold += bid.numTokens;
         }
     }
@@ -296,6 +383,10 @@ class NFTPotionAuctionHelper {
         expect(this.currentBatch.lastBidderNumAssignedTokens).to.equal(contractState.lastBidderNumAssignedTokens);
         expect(this.currentBatch.numTokensSold).to.equal(contractState.numTokensSold);
         expect(this.currentBatch.numTokensClaimed).to.equal(contractState.numTokensClaimed);
+
+        const claimableFunds = await this.contract.claimableFunds();
+
+        expect(this.claimableFunds).to.equal(fromBN(claimableFunds));
     }
 }
 

@@ -203,7 +203,7 @@ describe("NFTPotionAuction", function () {
          */
         describe("End Batch", function () {
             it("End batch when no batch is started", async function () {
-                await expect(auction.contract.endBatch(0)).to.be.revertedWith("Auction has not been started yet");
+                await expect(auction.contract.endBatch(1)).to.be.revertedWith("Auction has not been started yet");
                 await expect(auction.contract.endBatch(100)).to.be.revertedWith("Auction has not been started yet");
 
                 await auction.startBatch(1, 50, 10, 400, 2000);
