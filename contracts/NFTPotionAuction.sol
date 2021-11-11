@@ -615,6 +615,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         _whitelistBidder(batchId, bidder, numTokens);
         _chargeBidder(bidder, pricePerToken * numTokens);
+
+        claimableFunds += numTokens * pricePerToken;
     }
 
     /**
