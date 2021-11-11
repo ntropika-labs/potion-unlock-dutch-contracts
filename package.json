@@ -10,7 +10,10 @@
         "start": "react-scripts start",
         "build": "react-scripts build",
         "test": "react-scripts test",
-        "eject": "react-scripts eject"
+        "eject": "react-scripts eject",
+        "contracts-test": "npx hardhat test",
+        "contracts-coverage": "npx hardhat coverage",
+        "contracts-size": "npx hardhat compile; npx hardhat size-contracts"
     },
     "repository": {
         "type": "git",
@@ -67,6 +70,7 @@
         "ethereumjs-util": "^7.1.2",
         "fs": "^0.0.1-security",
         "hardhat-abi-exporter": "^2.3.1",
+        "hardhat-contract-sizer": "^2.1.1",
         "hardhat-gas-reporter": "^1.0.4",
         "keccak256": "^1.0.3",
         "merkletreejs": "^0.2.24",

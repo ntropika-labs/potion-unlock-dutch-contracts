@@ -3,6 +3,7 @@ require("@nomiclabs/hardhat-waffle");
 require("hardhat-abi-exporter");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
+require("hardhat-contract-sizer");
 
 require("dotenv").config();
 
