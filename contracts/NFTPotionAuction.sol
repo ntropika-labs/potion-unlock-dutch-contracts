@@ -380,6 +380,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
             _addWhitelist(biddersList[i], numTokensList[i], firstTokenIdList[i]);
 
+            nextFreeTokenId += numTokensList[i];
+
             emit Whitelist(0, biddersList[i]);
         }
     }
