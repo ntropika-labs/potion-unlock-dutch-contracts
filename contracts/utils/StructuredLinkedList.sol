@@ -24,20 +24,6 @@ library StructuredLinkedList {
     }
 
     /**
-     * @dev Checks if the list exists
-     * @param self stored linked list from contract
-     * @return bool true if list exists, false otherwise
-     */
-    function listExists(List storage self) internal view returns (bool) {
-        // if the head nodes previous or next pointers both point to itself, then there are no items in the list
-        if (self.list[_HEAD][_PREV] != _HEAD || self.list[_HEAD][_NEXT] != _HEAD) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * @dev Checks if the node exists
      * @param self stored linked list from contract
      * @param _node a node to search for
@@ -62,28 +48,6 @@ library StructuredLinkedList {
      */
     function sizeOf(List storage self) internal view returns (uint256) {
         return self.size;
-    }
-
-    /**
-     * @dev Returns the links of a node as a tuple
-     * @param self stored linked list from contract
-     * @param _node id of the node to get
-     * @return bool, uint256, uint256 true if node exists or false otherwise, previous node, next node
-     */
-    function getNode(List storage self, uint256 _node)
-        internal
-        view
-        returns (
-            bool,
-            uint256,
-            uint256
-        )
-    {
-        if (!nodeExists(self, _node)) {
-            return (false, 0, 0);
-        } else {
-            return (true, self.list[_node][_PREV], self.list[_node][_NEXT]);
-        }
     }
 
     /**
@@ -125,17 +89,6 @@ library StructuredLinkedList {
         return getAdjacent(self, _node, _PREV);
     }
 
-    //--------------
-    // Iterators
-    //--------------
-    function iterEnd(List storage self) internal view returns (uint256) {
-        return self.list[_HEAD][_PREV];
-    }
-
-    function iterPrev(List storage self, uint256 _node) internal view returns (uint256) {
-        return self.list[_node][_PREV];
-    }
-
     /**
      * @dev Can be used before `insert` to build an ordered list.
      * @dev Get the node and then `insertBefore` or `insertAfter` basing on your list order.
@@ -169,21 +122,6 @@ library StructuredLinkedList {
             next = self.list[next][_NEXT];
         }
         prev = self.list[next][_PREV];
-    }
-
-    /**
-     * @dev Insert node `_new` beside existing node `_node` in direction `_NEXT`.
-     * @param self stored linked list from contract
-     * @param _node existing node
-     * @param _new  new node to insert
-     * @return bool true if success, false otherwise
-     */
-    function insertAfter(
-        List storage self,
-        uint256 _node,
-        uint256 _new
-    ) internal returns (bool) {
-        return _insert(self, _node, _new, _NEXT);
     }
 
     /**
@@ -243,81 +181,12 @@ library StructuredLinkedList {
     }
 
     /**
-     * @dev Updates an entry value without resorting it
-     * @param self stored linked list from contract
-     * @param _node node to update in the list
-     * @param _newNode new node value
-     * @return uint256 the new node
-     */
-    function update(
-        List storage self,
-        uint256 _node,
-        uint256 _newNode
-    ) internal returns (uint256) {
-        if ((_node == _NULL) || (!nodeExists(self, _node))) {
-            return 0;
-        }
-
-        self.list[_newNode][_PREV] = self.list[_node][_PREV];
-        self.list[_newNode][_NEXT] = self.list[_node][_NEXT];
-
-        delete self.list[_node][_PREV];
-        delete self.list[_node][_NEXT];
-
-        return _newNode;
-    }
-
-    /**
-     * @dev Pushes an entry to the head of the linked list
-     * @param self stored linked list from contract
-     * @param _node new entry to push to the head
-     * @return bool true if success, false otherwise
-     */
-    function pushFront(List storage self, uint256 _node) internal returns (bool) {
-        return _push(self, _node, _NEXT);
-    }
-
-    /**
-     * @dev Pushes an entry to the tail of the linked list
-     * @param self stored linked list from contract
-     * @param _node new entry to push to the tail
-     * @return bool true if success, false otherwise
-     */
-    function pushBack(List storage self, uint256 _node) internal returns (bool) {
-        return _push(self, _node, _PREV);
-    }
-
-    /**
-     * @dev Pops the first entry from the head of the linked list
-     * @param self stored linked list from contract
-     * @return uint256 the removed node
-     */
-    function popFront(List storage self) internal returns (uint256) {
-        return _pop(self, _NEXT);
-    }
-
-    /**
      * @dev Pops the first entry from the tail of the linked list
      * @param self stored linked list from contract
      * @return uint256 the removed node
      */
     function popBack(List storage self) internal returns (uint256) {
         return _pop(self, _PREV);
-    }
-
-    /**
-     * @dev Pushes an entry to the head of the linked list
-     * @param self stored linked list from contract
-     * @param _node new entry to push to the head
-     * @param _direction push to the head (_NEXT) or tail (_PREV)
-     * @return bool true if success, false otherwise
-     */
-    function _push(
-        List storage self,
-        uint256 _node,
-        bool _direction
-    ) private returns (bool) {
-        return _insert(self, _HEAD, _node, _direction);
     }
 
     /**
