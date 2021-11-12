@@ -400,6 +400,25 @@ class NFTPotionAuctionHelper {
         expect(currentBalance).to.be.equal(balance.sub(gasCost).add(refunds));
     }
 
+    getNumBidsToProcessForEndBatch() {
+        this._processBids();
+
+        let numBidsToProcess = 1;
+        let numTokensSold = this.currentBatch.numTokensSold;
+        let numTokensAuctioned = this.currentBatch.numTokensAuctioned;
+
+        for (const bid of this.bids) {
+            if (numTokensSold + bid.numTokens >= numTokensAuctioned) {
+                break;
+            }
+
+            numBidsToProcess++;
+            numTokensSold += bid.numTokens;
+        }
+
+        return numBidsToProcess;
+    }
+
     _parseBatch(batch) {
         let parsedBatch = Object.assign({}, batch);
 

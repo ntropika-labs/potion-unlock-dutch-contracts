@@ -65,7 +65,7 @@ describe("NFTPotionAuction", function () {
     const getRandomFloat = seedrandom(RANDOM_SEED);
     const getRandom = () => Math.floor(getRandomFloat() * Number.MAX_SAFE_INTEGER);
 
-    describe(`Full Auction (Random, Seed=${RANDOM_SEED})`, function () {
+    describe(`Full Auction (RandomSeed = ${RANDOM_SEED})`, function () {
         let auction;
 
         // Initialize the contract
@@ -74,7 +74,7 @@ describe("NFTPotionAuction", function () {
             await auction.initialize();
         });
 
-        it.skip("3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution", async function () {
+        it.only("3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution", async function () {
             const batches = [
                 {
                     NUM_BIDDERS: 200,
@@ -83,6 +83,7 @@ describe("NFTPotionAuction", function () {
                     MINIMUM_PRICE: 200,
                     PURCHASE_PRICE: 50000,
                     NUM_ROUNDS: 3,
+                    NUM_BIDS_END_BATCH: 5,
                 },
                 {
                     NUM_BIDDERS: 200,
@@ -91,12 +92,14 @@ describe("NFTPotionAuction", function () {
                     MINIMUM_PRICE: 1,
                     PURCHASE_PRICE: 45600,
                     NUM_ROUNDS: 3,
+                    NUM_BIDS_END_BATCH: 7000,
                 },
             ];
 
             let baseTokenId = 0;
 
             for (let i = 0; i < batches.length; i++) {
+                console.log(`\t[Batch ${i + 1}/${batches.length}]`);
                 const START_TOKEN_ID = baseTokenId + batches[i].START_TOKEN_ID;
                 const END_TOKEN_ID = baseTokenId + batches[i].END_TOKEN_ID;
 
@@ -114,9 +117,9 @@ describe("NFTPotionAuction", function () {
                 for (let j = 0; j < batches[i].NUM_ROUNDS; j++) {
                     for (let k = 0; k < batches[i].NUM_BIDDERS; k++) {
                         process.stdout.write(
-                            `Batch ${i + 1}/${batches.length}, Round ${j + 1}/${batches[i].NUM_ROUNDS}: ${
-                                (100 * k) / batches[i].NUM_BIDDERS
-                            }%                   \r`,
+                            `\t   [Round ${j + 1}/${batches[i].NUM_ROUNDS}]: ${Math.floor(
+                                (100 * k) / batches[i].NUM_BIDDERS,
+                            )}%                   \r`,
                         );
 
                         await userAction(
@@ -129,10 +132,13 @@ describe("NFTPotionAuction", function () {
                             END_TOKEN_ID,
                         );
                     }
+
+                    process.stdout.write(`\t   [Round ${j + 1}/${batches[i].NUM_ROUNDS}]: 100%                   \n`);
                 }
 
-                for (let j = 0; j < (END_TOKEN_ID - START_TOKEN_ID + 1) / 100; j++) {
-                    await auction.endBatch(100);
+                const numBidsToProcess = auction.getNumBidsToProcessForEndBatch();
+                for (let j = 0; j < numBidsToProcess; j += batches[i].NUM_BIDS_END_BATCH) {
+                    await auction.endBatch(batches[i].NUM_BIDS_END_BATCH);
                 }
 
                 for (let j = 0; j < batches[i].NUM_BIDDERS; j++) {
