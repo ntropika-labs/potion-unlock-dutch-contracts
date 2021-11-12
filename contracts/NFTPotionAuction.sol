@@ -330,36 +330,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     //-------------------
 
     /**
-        @notice Sets a bid for the current batch on behalf of the given bidder
-        @param numTokens The number of tokens to bid for
-        @param pricePerToken The price per token to bid for
-
-        @dev Only owner can set bids on behalf of other users
-     */
-    function setBidOnBehalf(
-        address bidder,
-        uint64 numTokens,
-        uint128 pricePerToken,
-        uint256 prevBid
-    ) external payable onlyOwner checkAuctionActive {
-        _setBid(bidder, numTokens, pricePerToken, prevBid);
-    }
-
-    /**
-        @notice Claims token IDs on behalf of a bidder
-        @param batchId The ID of the batch to claim the token IDs for
-        @param bidder Address to claim the token IDs for
-        @param alsoRefund If true, the sender will be refunded the the current existing credit they have
-    */
-    function claimOnBehalf(
-        uint256 batchId,
-        address bidder,
-        bool alsoRefund
-    ) external onlyOwner {
-        _claim(batchId, bidder, alsoRefund);
-    }
-
-    /**
         @notice Directly whitelists bidders for the given tokenIDs ranges
         @param biddersList The list of bidders to whitelist
         @param numTokensList The list of number of tokens to assign to each bidder
