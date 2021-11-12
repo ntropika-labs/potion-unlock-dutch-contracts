@@ -1,4 +1,3 @@
-const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { generatePrice } = require("./NFTPotionAuctionUtils");
 
@@ -37,6 +36,12 @@ describe("NFTPotionAuction", function () {
                 }
 
                 await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.claim(auction.currentBatchId - 1, i % 3 === 0, signers[i]);
+                }
+
+                await auction.transferFunds(signers[0]);
             });
             it("2 Batches, 20 bidders, 10 token IDs, then 100 token IDs", async function () {
                 {
@@ -58,6 +63,12 @@ describe("NFTPotionAuction", function () {
                     }
 
                     await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.claim(auction.currentBatchId - 1, true, signers[i]);
+                    }
+
+                    await auction.transferFunds(signers[0]);
                 }
                 {
                     const NUM_BIDDERS = 20;
@@ -78,6 +89,12 @@ describe("NFTPotionAuction", function () {
                     }
 
                     await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                    await auction.transferFunds(signers[0]);
+
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.claim(auction.currentBatchId - 1, true, signers[i]);
+                    }
                 }
             });
         });
@@ -100,10 +117,7 @@ describe("NFTPotionAuction", function () {
 
                 await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
 
-                const whitelistRanges = await auction.contract.getWhitelistRanges(signers[NUM_BIDDERS].address);
-                expect(whitelistRanges.length).to.be.equal(1);
-                expect(whitelistRanges[0].firstId).to.be.equal(START_TOKEN_ID);
-                expect(whitelistRanges[0].lastId).to.be.equal(START_TOKEN_ID + 4);
+                await auction.transferFunds(signers[0]);
             });
             it("1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each", async function () {
                 const NUM_BIDDERS = 40;
@@ -122,27 +136,7 @@ describe("NFTPotionAuction", function () {
 
                 await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
 
-                // Purchaser of 7
-                {
-                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[NUM_BIDDERS].address);
-                    expect(whitelistRanges.length).to.be.greaterThanOrEqual(1);
-                    expect(whitelistRanges[0].firstId).to.be.equal(START_TOKEN_ID);
-                    expect(whitelistRanges[0].lastId).to.be.equal(START_TOKEN_ID + 6);
-                }
-                // Purchaser of 2
-                {
-                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[NUM_BIDDERS + 1].address);
-                    expect(whitelistRanges.length).to.be.greaterThanOrEqual(1);
-                    expect(whitelistRanges[0].firstId).to.be.equal(START_TOKEN_ID + 7);
-                    expect(whitelistRanges[0].lastId).to.be.equal(START_TOKEN_ID + 8);
-                }
-                // Purchaser of 3
-                {
-                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[0].address);
-                    expect(whitelistRanges.length).to.be.greaterThanOrEqual(1);
-                    expect(whitelistRanges[0].firstId).to.be.equal(START_TOKEN_ID + 9);
-                    expect(whitelistRanges[0].lastId).to.be.equal(START_TOKEN_ID + 11);
-                }
+                await auction.transferFunds(signers[0]);
             });
             it("1 Batch, 100 tokens, 10 bidders purchase 1 to 6 tokens each", async function () {
                 const START_TOKEN_ID = 1;
@@ -162,18 +156,7 @@ describe("NFTPotionAuction", function () {
 
                 await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
 
-                // Checks
-                let currentTokenId = START_TOKEN_ID;
-
-                for (let i = 0; i < purchases.length; i++) {
-                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[i].address);
-
-                    expect(whitelistRanges.length).to.be.equal(1);
-                    expect(whitelistRanges[0].firstId).to.be.equal(currentTokenId);
-                    expect(whitelistRanges[0].lastId).to.be.equal(currentTokenId + purchases[i] - 1);
-
-                    currentTokenId += purchases[i];
-                }
+                await auction.transferFunds(signers[0]);
             });
         });
         /**
@@ -223,17 +206,11 @@ describe("NFTPotionAuction", function () {
 
                 await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
 
-                // Checks
-                let currentTokenId = START_TOKEN_ID;
-                for (let i = 0; i < purchases.length; i++) {
-                    const whitelistRanges = await auction.contract.getWhitelistRanges(signers[i].address);
-
-                    expect(whitelistRanges.length).to.be.equal(1);
-                    expect(whitelistRanges[0].firstId).to.be.equal(currentTokenId);
-                    expect(whitelistRanges[0].lastId).to.be.equal(currentTokenId + purchases[i] - 1);
-
-                    currentTokenId += purchases[i];
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.claim(auction.currentBatchId - 1, true, signers[i]);
                 }
+
+                await auction.transferFunds(signers[0]);
             });
         });
         /**
@@ -262,8 +239,16 @@ describe("NFTPotionAuction", function () {
                         MINIMUM_PRICE + 5 * (i + 1) + 1,
                     );
 
-                    await auction.cancelBid(false, signers[(i + 1) % NUM_BIDDERS]);
+                    await auction.cancelBid(i % 3 === 0, signers[(i + 1) % NUM_BIDDERS]);
                     await auction.setBid(5, MINIMUM_PRICE + 5 * (i + 1) + 1, signers[i], prevBid);
+                }
+
+                await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                await auction.transferFunds(signers[0]);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.claim(auction.currentBatchId - 1, true, signers[i]);
                 }
             });
             it("1 Batch, 18 tokens, previous 10 bids are cancelled before new bid is mined", async function () {
@@ -292,10 +277,18 @@ describe("NFTPotionAuction", function () {
                 );
 
                 for (let i = 0; i < 10; i++) {
-                    await auction.cancelBid(false, signers[i]);
+                    await auction.cancelBid(true, signers[i]);
                 }
 
                 await auction.setBid(5, MINIMUM_PRICE + 4 * 10 + 1, signers[NUM_BIDDERS], prevBid);
+
+                await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.claim(auction.currentBatchId - 1, true, signers[i]);
+                }
+
+                await auction.transferFunds(signers[0]);
             });
         });
     });

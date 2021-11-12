@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { fastForwardChain, chainEpoch } = require("./NFTPotionAuctionUtils");
+const { fastForwardChain, chainEpoch, generatePrice } = require("./NFTPotionAuctionUtils");
 const { NFTPotionAuctionHelper } = require("./NFTPotionAuctionHelper");
 
 describe("NFTPotionAuction", function () {
@@ -385,6 +385,103 @@ describe("NFTPotionAuction", function () {
                 await expect(auction.contract.connect(signers[2]).transferFunds(signers[2].address)).to.be.revertedWith(
                     "Ownable: caller is not the owner",
                 );
+            });
+        });
+
+        /**
+         * Pagination
+         */
+        describe("Pagination", function () {
+            it("Set a bid between paginated endBatch", async function () {
+                const NUM_BIDDERS = 20;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 100;
+                const MINIMUM_PRICE = 3;
+                const PURCHASE_PRICE = 9876;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i), signers[i]);
+                }
+
+                await auction.endBatch(10);
+
+                // Try to set a bid
+                await expect(auction.contract.setBid(5, MINIMUM_PRICE, 0)).to.be.revertedWith("Auction already ended");
+
+                await auction.endBatch(10);
+            });
+            it("Cancel a bid between paginated endBatch", async function () {
+                const NUM_BIDDERS = 20;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 100;
+                const MINIMUM_PRICE = 3;
+                const PURCHASE_PRICE = 9876;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i), signers[i]);
+                }
+
+                await auction.endBatch(10);
+
+                // Try to cancel a bid
+                await expect(auction.contract.cancelBid(true)).to.be.revertedWith("Auction already ended");
+                await expect(auction.contract.cancelBid(false)).to.be.revertedWith("Auction already ended");
+
+                // All bids should be outstanding
+                await auction.endBatch(10);
+            });
+            it("Claim a bid between paginated endBatch", async function () {
+                const NUM_BIDDERS = 20;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 100;
+                const MINIMUM_PRICE = 3;
+                const PURCHASE_PRICE = 9876;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i), signers[i]);
+                }
+
+                await auction.endBatch(10);
+
+                // Try to cancel a bid
+                await expect(auction.contract.claim(auction.currentBatchId, true)).to.be.revertedWith(
+                    "Cannot claim token IDs for a batch that has not ended",
+                );
+                await expect(auction.contract.claim(auction.currentBatchId, false)).to.be.revertedWith(
+                    "Cannot claim token IDs for a batch that has not ended",
+                );
+
+                // All bids should be outstanding
+                await auction.endBatch(10);
+            });
+            it("Call with bids to process equal to 0", async function () {
+                const NUM_BIDDERS = 20;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 100;
+                const MINIMUM_PRICE = 3;
+                const PURCHASE_PRICE = 9876;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 99, i), signers[i]);
+                }
+
+                await expect(auction.contract.endBatch(0)).to.be.revertedWith("Call with at least 1 bid to process");
             });
         });
     });

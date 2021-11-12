@@ -183,10 +183,12 @@ describe("NFTPotionAuction", function () {
                         signers[j],
                     );
 
+                    await auction.cancelBid(false, signers[(j * 5 + 3) % batches[i].NUM_BIDDERS]);
                     await auction.claimRefund(signers[(j * 5 + 3) % batches[i].NUM_BIDDERS]);
                 }
 
                 for (let j = batches[i].NUM_BIDDERS / 3; j < (2 * batches[i].NUM_BIDDERS) / 3; j++) {
+                    await auction.cancelBid(false, signers[j]);
                     await auction.claimRefund(signers[j]);
                 }
 
