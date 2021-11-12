@@ -79,3 +79,9 @@ NFTAuctionPotion Test Cases
 
   - Full Auction:
     - 2 Batches, 3000, 7000, 1000 bidders, random distribution
+
+  
+  Full Auctions to check
+  ----------------------
+    - Seed=6532324628317009, 1000 bidders
+    - Seed=5357734502159639, 200 bidders
