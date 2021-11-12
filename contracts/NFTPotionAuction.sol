@@ -597,11 +597,13 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             (pricePerToken == batchState.clearingPrice && bidId > batchState.clearingBidId)
         ) {
             _whitelistBidder(batchId, bidder, numTokens);
+            _cancelBid(batchId, bidder, false);
         } else if (pricePerToken == batchState.clearingPrice && bidId == batchState.clearingBidId) {
             _whitelistBidder(batchId, bidder, batchState.lastBidderNumAssignedTokens);
+            _cancelBid(batchId, bidder, false);
+        } else {
+            _cancelBid(batchId, bidder, true);
         }
-
-        _cancelBid(batchId, bidder, false);
 
         if (alsoRefund) {
             _claimRefund(bidder);
