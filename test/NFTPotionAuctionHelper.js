@@ -1,3 +1,4 @@
+const { splitSignature } = require("@ethersproject/bytes");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch } = require("./NFTPotionAuctionUtils");
@@ -88,8 +89,8 @@ class NFTPotionAuctionHelper {
             .withArgs(this.currentBatchId);
 
         // Checks
-        this._validateBids(this.contractBids);
         await this._validateEndState();
+        this._validateBids(this.contractBids);
 
         const newNextTokenId = fromBN(await this.contract.nextFreeTokenId());
         expect(newNextTokenId).to.be.equal(nextTokenId + this.currentBatch.numTokensSold);
@@ -470,7 +471,7 @@ class NFTPotionAuctionHelper {
             if (a.pricePerToken !== b.pricePerToken) {
                 return b.pricePerToken - a.pricePerToken;
             } else {
-                return a.bidId - b.bidId;
+                return b.bidId.localeCompare(a.bidId);
             }
         });
     }

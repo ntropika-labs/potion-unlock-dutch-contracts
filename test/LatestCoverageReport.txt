@@ -41,114 +41,114 @@ Network Info
   NFTPotionAuction
     Negative Cases
       Start Batch
-        ✓ Start batch when another batch is started (113ms)
-        ✓ Start batch with end date in the past
-        ✓ Start batch with incorrect start token ID (513ms)
+        ✓ Start batch when another batch is started (124ms)
+        ✓ Start batch with end date in the past (42ms)
+        ✓ Start batch with incorrect start token ID (568ms)
         ✓ Start batch with direct price less than minimum price
       Set Bid
-        ✓ Call when batch is not active (77ms)
-        ✓ Call with price less than minimum (53ms)
-        ✓ Call with price higher or equal than purchase price (48ms)
-        ✓ Send amount of cash different than needed (137ms)
+        ✓ Call when batch is not active (87ms)
+        ✓ Call with price less than minimum (61ms)
+        ✓ Call with price higher or equal than purchase price (56ms)
+        ✓ Send amount of cash different than needed (148ms)
       Cancel Bid
-        ✓ Call when batch is not active (66ms)
+        ✓ Call when batch is not active (78ms)
       Purchase
-        ✓ Call when batch is not active (67ms)
-        ✓ Call with more tokens that are auctioned
-        ✓ Call with more tokens that are auctioned
-        ✓ Purchase some and call with more tokens that are left (335ms)
-        ✓ Send less cash that needed (100ms)
+        ✓ Call when batch is not active (83ms)
+        ✓ Call with more tokens that are auctioned (50ms)
+        ✓ Call with more tokens that are auctioned (42ms)
+        ✓ Purchase some and call with more tokens that are left (190ms)
+        ✓ Send less cash that needed (293ms)
       End Batch
-        ✓ End batch when no batch is started (71ms)
-        ✓ End batch before end date
+        ✓ End batch when no batch is started (88ms)
+        ✓ End batch before end date (41ms)
       Claim
-        ✓ Call before the batch is started (84ms)
-        ✓ Call when bidder has no active bids (140ms)
+        ✓ Call before the batch is started (96ms)
+        ✓ Call when bidder has no active bids (165ms)
       Claim Refund
-        ✓ Call when refundable cash is 0 (66ms)
+        ✓ Call when refundable cash is 0 (76ms)
       Whitelist Bidders
-        ✓ Call from non-owner account (96ms)
-        ✓ Call when batch is active (91ms)
-        ✓ Call with different length for input arrays (43ms)
-        ✓ Call with gaps or overlaps in token IDs list (65ms)
+        ✓ Call from non-owner account (107ms)
+        ✓ Call when batch is active (96ms)
+        ✓ Call with different length for input arrays (49ms)
+        ✓ Call with gaps or overlaps in token IDs list (72ms)
       Transfer Funds
-        ✓ Call with non-owner account (96ms)
+        ✓ Call with non-owner account (111ms)
       Pagination
-        ✓ Set a bid between paginated endBatch (2024ms)
-        ✓ Cancel a bid between paginated endBatch (1997ms)
-        ✓ Claim a bid between paginated endBatch (2146ms)
-        ✓ Call with bids to process equal to 0 (1888ms)
+        ✓ Set a bid between paginated endBatch (2498ms)
+        ✓ Cancel a bid between paginated endBatch (2418ms)
+        ✓ Claim a bid between paginated endBatch (2208ms)
+        ✓ Call with bids to process equal to 0 (1915ms)
 
   NFTPotionAuction
     Auction Basic Cases
-      ✓ Bidder rebids several times (994ms)
-      ✓ Bidder bids and cancels repeated times, no refund (1179ms)
-      ✓ Bidder bids and cancels repeated times, with refund (1080ms)
-      ✓ Bidder bids and cancels repeated times, sometimes with refund (1607ms)
-      ✓ Bidder purchase some tokens once (192ms)
-      ✓ Bidder purchase some tokens several times (464ms)
-      ✓ Bidder purchase all tokens at once (189ms)
-      ✓ Bidder purchase all tokens in several purchases (853ms)
+      ✓ Bidder rebids several times (1054ms)
+      ✓ Bidder bids and cancels repeated times, no refund (1221ms)
+      ✓ Bidder bids and cancels repeated times, with refund (1308ms)
+      ✓ Bidder bids and cancels repeated times, sometimes with refund (1576ms)
+      ✓ Bidder purchase some tokens once (207ms)
+      ✓ Bidder purchase some tokens several times (484ms)
+      ✓ Bidder purchase all tokens at once (195ms)
+      ✓ Bidder purchase all tokens in several purchases (1110ms)
 
   NFTPotionAuction
     Auction Full Cycle
       Simple
-        ✓ 1 Batch, 20 bidders, 100 token IDs (5029ms)
-        ✓ 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs (9004ms)
+        ✓ 1 Batch, 20 bidders, 100 token IDs (5541ms)
+        ✓ 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs (10402ms)
       Purchase
-        ✓ 1 Batch, 20 tokens, 1 bidder purchases 5 tokens (267ms)
-        ✓ 1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each (484ms)
-        ✓ 1 Batch, 100 tokens, 10 bidders purchase 1 to 6 tokens each (505ms)
+        ✓ 1 Batch, 20 tokens, 1 bidder purchases 5 tokens (297ms)
+        ✓ 1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each (353ms)
+        ✓ 1 Batch, 100 tokens, 10 bidders purchase 1 to 6 tokens each (724ms)
       Auction + Purchase
-        ✓ 1 Batch, 129 tokens, 12 bidders, 5 purchasers (4412ms)
+        ✓ 1 Batch, 129 tokens, 12 bidders, 5 purchasers (5128ms)
       Cancel Bid
-        ✓ 1 Batch, 876 tokens, previous bid is cancelled before new bid is mined (9199ms)
-        ✓ 1 Batch, 18 tokens, previous 10 bids are cancelled before new bid is mined (6622ms)
+        ✓ 1 Batch, 876 tokens, previous bid is cancelled before new bid is mined (10474ms)
+        ✓ 1 Batch, 18 tokens, previous 10 bids are cancelled before new bid is mined (7582ms)
 
   NFTPotionAuction
     Owner Cases
       Whitelist Bidders
-        ✓ Whitelist before very first batch (236ms)
-        ✓ Whitelist after very first batch (121ms)
-        ✓ Whitelist after selling some tokens in normal auction (2026ms)
+        ✓ Whitelist before very first batch (154ms)
+        ✓ Whitelist after very first batch (134ms)
+        ✓ Whitelist after selling some tokens in normal auction (2347ms)
       Transfer Funds
-        ✓ Transfer funds after very first auction (2059ms)
-        ✓ Transfer funds after first auction and after second auction (6986ms)
-        ✓ Transfer funds only after 3 successful auctions (6471ms)
+        ✓ Transfer funds after very first auction (2215ms)
+        ✓ Transfer funds after first auction and after second auction (8003ms)
+        ✓ Transfer funds only after 3 successful auctions (7596ms)
 
   NFTPotionAuction
     User Refunds
-      ✓ Several batches, claim refunds before new batch starts (6629ms)
-      ✓ Several batches, claim refunds after new batch starts (6408ms)
-      ✓ Several batches, claim some refunds before, during and after batch (11651ms)
+      ✓ Several batches, claim refunds before new batch starts (7445ms)
+      ✓ Several batches, claim refunds after new batch starts (7523ms)
+      ✓ Several batches, claim some refunds before, during and after batch (12885ms)
 
   NFTPotionAuction
     Edge Cases
       Rebidding
-        ✓ With same number of tokens, different price (3945ms)
-        ✓ With different number of tokens, same price (3941ms)
+        ✓ With same number of tokens, different price (4477ms)
+        ✓ With different number of tokens, same price (4502ms)
       Purchase
-        ✓ 1 Batch, 600 tokens, 6 purchasers buy all tokens (289ms)
-        ✓ 3 Batches, 1440,4624,10350 tokens, several purchasers buy all tokens (2635ms)
-        ✓ 3 Batches, 1440,4624,10350 tokens, 1 purchaser buy all tokens (711ms)
+        ✓ 1 Batch, 600 tokens, 6 purchasers buy all tokens (330ms)
+        ✓ 3 Batches, 1440,4624,10350 tokens, several purchasers buy all tokens (3196ms)
+        ✓ 3 Batches, 1440,4624,10350 tokens, 1 purchaser buy all tokens (785ms)
       Misc
-        ✓ Calling transferFunds before bidders have claimed their tokens (2890ms)
-        ✓ All bids are cancelled before new bid can be mined (2727ms)
-        ✓ Minimum price equal to direct purchase price (652ms)
-        ✓ End Batch pagination (2213ms)
-        ✓ Call whitelistBidders with empty arrays (100ms)
+        ✓ Calling transferFunds before bidders have claimed their tokens (3320ms)
+        ✓ All bids are cancelled before new bid can be mined (3136ms)
+        ✓ Minimum price equal to direct purchase price (746ms)
+        ✓ End Batch pagination (2520ms)
+        ✓ Call whitelistBidders with empty arrays (108ms)
 
   NFTPotionAuction
-    Full Auction (Random Seed = 8698777449603351)
+    Full Auction (RandomSeed = 5459416217074519)
         [Batch 1/2]
            [Round 1/3]: 100%                   
            [Round 2/3]: 100%                   
            [Round 3/3]: 100%                   
         [Batch 2/2]
            [Round 1/3]: 100%                   
-           [Round 2/3]: 100%                                 
+           [Round 2/3]: 100%                   
            [Round 3/3]: 100%                   
-      ✓ 3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution (126953ms)
+      ✓ 3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution (128399ms)
 
 
   64 passing (4m)
@@ -169,3 +169,4 @@ All files                  |    99.48 |    98.65 |      100 |     99.5 |        
 ---------------------------|----------|----------|----------|----------|----------------|
 
 > Istanbul reports written to ./coverage/ and ./coverage.json
+Done in 274.38s.

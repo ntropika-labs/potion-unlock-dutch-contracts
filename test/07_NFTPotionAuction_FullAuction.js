@@ -74,7 +74,7 @@ describe("NFTPotionAuction", function () {
             await auction.initialize();
         });
 
-        it.skip("3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution", async function () {
+        it("3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution", async function () {
             const batches = [
                 {
                     NUM_BIDDERS: 200,
