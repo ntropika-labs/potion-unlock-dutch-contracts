@@ -1,5 +1,6 @@
-//const { expect } = require("chai");
+const { expect } = require("chai").use(require("chai-bytes"));
 const { ethers } = require("hardhat");
+const { bufferToHex } = require("ethereumjs-util");
 const { deployPotionNFTGame } = require("../scripts/deployUtils");
 const { getMerkleProof } = require("../scripts/merkleUtils");
 const { getSecretPieceFromId, getPotionGenesis, getRaritiesConfig } = require("../scripts/lib/utils");
@@ -29,9 +30,9 @@ describe("NFTPotioValidator", function () {
             ({ NFTAuction, NFTPotion, NFTValidator } = await deployPotionNFTGame(false, false));
         });
 
-        it("Merkle Single Validation (Several)", async function () {
+        it.only("Merkle Single Validation (Several)", async function () {
             const firstTokenId = 1;
-            const numTokens = 20;
+            const numTokens = 127;
 
             const signers = await ethers.getSigners();
 
@@ -42,13 +43,31 @@ describe("NFTPotioValidator", function () {
             const rarityConfig = getRaritiesConfig();
 
             const tokenList = range(firstTokenId, firstTokenId + numTokens - 1);
+
+            // Validate
             for (let i = 0; i < tokenList.length; i++) {
                 const proof = getMerkleProof(tokenList[i]);
                 const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
 
+                console.log(tokenList[i]);
                 await NFTValidator.validate(tokenList[i], secretPiece, proof);
+
+                const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
             }
-        });
+
+            // Check
+            const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+
+            for (let i = 0; i < tokenList.length; i++) {
+                const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
+                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
+            }
+        }).timeout(200000);
 
         it("Merkle List Validation", async function () {
             const firstTokenId = 1;
