@@ -32,7 +32,7 @@ describe("NFTPotioValidator", function () {
 
         it.only("Merkle Single Validation (Several)", async function () {
             const firstTokenId = 1;
-            const numTokens = 127;
+            const numTokens = 1073;
 
             const signers = await ethers.getSigners();
 
@@ -49,7 +49,7 @@ describe("NFTPotioValidator", function () {
                 const proof = getMerkleProof(tokenList[i]);
                 const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
 
-                console.log(tokenList[i]);
+                //console.log(tokenList[i]);
                 await NFTValidator.validate(tokenList[i], secretPiece, proof);
 
                 const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
