@@ -1,4 +1,3 @@
-const { splitSignature } = require("@ethersproject/bytes");
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch } = require("./NFTPotionAuctionUtils");
@@ -17,6 +16,7 @@ class NFTPotionAuctionHelper {
         this.claimableFunds = 0;
         this.numBidsToBeProcessed = 0;
         this.whitelistMap = new Map();
+        this.bidId = toBN(2).pow(64).sub(1);
     }
 
     async initialize() {
@@ -27,7 +27,6 @@ class NFTPotionAuctionHelper {
 
     async startBatch(firstTokenId, lastTokenId, minimumPricePerToken, directPurchasePrice, auctionDuration) {
         this.bidsMap = new Map();
-        this.bidId = toBN(2).pow(64).sub(1);
         this.numTokensSold = 0;
         this.numBidsAlreadyProcessed = 0;
         this.numBidsToBeProcessed = 0;
