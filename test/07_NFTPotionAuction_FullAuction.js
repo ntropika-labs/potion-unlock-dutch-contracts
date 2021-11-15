@@ -95,7 +95,7 @@ describe("NFTPotionAuction", function () {
         it("3 Batches, 3000, 7000 tokens, 1000 bidders, random distribution", async function () {
             const batches = [
                 {
-                    NUM_BIDDERS: 200,
+                    NUM_BIDDERS: 1000,
                     START_TOKEN_ID: 1,
                     END_TOKEN_ID: 3000,
                     MINIMUM_PRICE: 200,
@@ -104,7 +104,7 @@ describe("NFTPotionAuction", function () {
                     NUM_BIDS_END_BATCH: 5,
                 },
                 {
-                    NUM_BIDDERS: 200,
+                    NUM_BIDDERS: 1000,
                     START_TOKEN_ID: 1,
                     END_TOKEN_ID: 7000,
                     MINIMUM_PRICE: 1,

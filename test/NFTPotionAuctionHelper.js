@@ -233,7 +233,7 @@ class NFTPotionAuctionHelper {
         this.claimableFunds += numTokens * this.currentBatch.directPurchasePrice;
 
         this._addToWhitelist(
-            signer,
+            signer.address,
             this.currentBatch.startTokenId + this.currentBatch.numTokensSold,
             this.currentBatch.startTokenId + this.currentBatch.numTokensSold + numTokens - 1,
         );
@@ -302,9 +302,27 @@ class NFTPotionAuctionHelper {
         // Logic
         await this.contract.connect(signer).whitelistBidders(bidders, numTokens, tokenIds);
 
-        // Checks: TODO
+        // Checks
+        for (let i = 0; i < bidders.length; i++) {
+            const currentWhitelistRanges = await this.contract.getWhitelistRanges(bidders[i]);
+            let previousWhitelistRanges = await this.whitelistMap.get(bidders[i]);
 
-        // Effects: TODO
+            if (previousWhitelistRanges === undefined) {
+                previousWhitelistRanges = [];
+            }
+
+            expect(currentWhitelistRanges.length).to.be.equal(previousWhitelistRanges.length + 1);
+
+            expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].firstId).to.be.equal(tokenIds[i]);
+            expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].lastId).to.be.equal(
+                tokenIds[i] + numTokens[i] - 1,
+            );
+        }
+
+        // Effects
+        for (let i = 0; i < bidders.length; i++) {
+            this._addToWhitelist(bidders[i], tokenIds[i], tokenIds[i] + numTokens[i] - 1);
+        }
     }
 
     async claim(batchId, alsoRefund, signer = undefined) {
@@ -378,7 +396,7 @@ class NFTPotionAuctionHelper {
         bidsMap.delete(signer.address);
         if (numTokensToBeClaimed > 0) {
             this._addToWhitelist(
-                signer,
+                signer.address,
                 batchState.startTokenId + batchState.numTokensClaimed,
                 batchState.startTokenId + batchState.numTokensClaimed + numTokensToBeClaimed - 1,
             );
@@ -524,14 +542,14 @@ class NFTPotionAuctionHelper {
         expect(this.claimableFunds).to.equal(fromBN(claimableFunds));
     }
 
-    _addToWhitelist(signer, firstId, lastId) {
-        if (this.whitelistMap.has(signer.address)) {
-            this.whitelistMap.get(signer.address).push({
+    _addToWhitelist(bidder, firstId, lastId) {
+        if (this.whitelistMap.has(bidder)) {
+            this.whitelistMap.get(bidder).push({
                 firstId,
                 lastId,
             });
         } else {
-            this.whitelistMap.set(signer.address, [
+            this.whitelistMap.set(bidder, [
                 {
                     firstId,
                     lastId,

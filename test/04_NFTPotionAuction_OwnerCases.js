@@ -31,7 +31,7 @@ describe("NFTPotionAuction", function () {
                 const numTokens = [5, 8, 10, 3, 4, 8, 9];
                 const firstTokenIDs = [1, 6, 14, 24, 27, 31, 39];
 
-                await auction.contract.whitelistBidders(bidders, numTokens, firstTokenIDs);
+                await auction.whitelistBidders(bidders, numTokens, firstTokenIDs);
 
                 for (let i = 0; i < bidders.length; i++) {
                     const whitelist = await auction.contract.getWhitelistRanges(bidders[i]);
@@ -65,7 +65,7 @@ describe("NFTPotionAuction", function () {
                 const numTokens = [5, 8, 10, 3, 4, 8, 9];
                 const firstTokenIDs = [1, 6, 14, 24, 27, 31, 39];
 
-                await auction.contract.whitelistBidders(bidders, numTokens, firstTokenIDs);
+                await auction.whitelistBidders(bidders, numTokens, firstTokenIDs);
 
                 for (let i = 0; i < bidders.length; i++) {
                     const whitelist = await auction.contract.getWhitelistRanges(bidders[i]);
@@ -107,7 +107,7 @@ describe("NFTPotionAuction", function () {
                 const numTokens = [5, 8, 10, 3, 4, 8, 9];
                 const firstTokenIDs = [121, 126, 134, 144, 147, 151, 159];
 
-                await auction.contract.whitelistBidders(bidders, numTokens, firstTokenIDs);
+                await auction.whitelistBidders(bidders, numTokens, firstTokenIDs);
 
                 for (let i = 0; i < bidders.length; i++) {
                     const whitelist = await auction.contract.getWhitelistRanges(bidders[i]);
