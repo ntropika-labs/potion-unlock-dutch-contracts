@@ -32,7 +32,7 @@ describe("NFTPotioValidator", function () {
 
         it.only("Merkle Single Validation (Several)", async function () {
             const firstTokenId = 1;
-            const numTokens = 127;
+            const numTokens = 1073;
 
             const signers = await ethers.getSigners();
 

@@ -89,9 +89,19 @@ function encryptSecret(secret) {
 /**
  * Merkle Tree
  */
+ const conv = num => {
+    let b = new ArrayBuffer(4);
+    new DataView(b).setUint32(0, num);
+    return Buffer.from(new Uint8Array(b));
+  }
+
+  
  function getPieceHash(piece, tokenId, encrypted = true) {
-    const tokenIdData = Buffer.from(String.fromCharCode(tokenId));
-    const padding = Buffer.from("00000000000000000000000000000000000000000000000000000000000000", "hex");
+    let tempArray = new ArrayBuffer(4);
+    new DataView(tempArray).setUint32(0, tokenId);
+    const tokenIdData = Buffer.from(new Uint8Array(tempArray));
+
+    const padding = Buffer.from("00000000000000000000000000000000000000000000000000000000", "hex");
     const data = Buffer.concat([padding, tokenIdData, piece]);
 
     if (encrypted) {
