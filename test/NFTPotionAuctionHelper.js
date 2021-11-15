@@ -4,19 +4,28 @@ const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch } = require("./NFT
 
 class NFTPotionAuctionHelper {
     contract;
-    currentBatch;
+
+    // Globals
     currentBatchId;
-    bidsMap;
-    bids;
-    bidId;
+    currentBidId;
     whitelistMap;
+
+    // Batch
+    batchMap;
+
+    // Validation
+    sortedBids;
+
+    // Contract State
+    currentBatch;
 
     constructor() {
         this.currentBatchId = 1;
         this.claimableFunds = 0;
         this.numBidsToBeProcessed = 0;
         this.whitelistMap = new Map();
-        this.bidId = toBN(2).pow(64).sub(1);
+        this.currentBidId = toBN(2).pow(64).sub(1);
+        this.batchMap = new Map();
     }
 
     async initialize() {
@@ -26,7 +35,7 @@ class NFTPotionAuctionHelper {
     }
 
     async startBatch(firstTokenId, lastTokenId, minimumPricePerToken, directPurchasePrice, auctionDuration) {
-        this.bidsMap = new Map();
+        this.batchMap.set(this.currentBatchId, new Map());
         this.numTokensSold = 0;
         this.numBidsAlreadyProcessed = 0;
         this.numBidsToBeProcessed = 0;
@@ -124,19 +133,20 @@ class NFTPotionAuctionHelper {
         // Checks
         const latestBid = await this.getLatestBid(this.currentBatchId, signer.address);
 
-        expect(latestBid.bidId).to.be.equal(fromBNStr(this.bidId));
+        expect(latestBid.bidId).to.be.equal(fromBNStr(this.currentBidId));
         expect(latestBid.numTokens).to.be.equal(numTokens);
         expect(latestBid.pricePerToken).to.be.equal(pricePerToken);
 
         // Effects
-        this.bidsMap.set(signer.address, {
+        const bidsMap = this.batchMap.get(this.currentBatchId);
+        bidsMap.set(signer.address, {
             bidder: signer.address,
-            bidId: fromBNStr(this.bidId),
+            bidId: fromBNStr(this.currentBidId),
             numTokens,
             pricePerToken,
         });
 
-        this.bidId = this.bidId.sub(1);
+        this.currentBidId = this.currentBidId.sub(1);
     }
 
     async cancelBid(alsoRefund, signer = undefined) {
@@ -176,7 +186,8 @@ class NFTPotionAuctionHelper {
         }
 
         // Effects
-        this.bidsMap.delete(signer.address);
+        const bidsMap = this.batchMap.get(this.currentBatchId);
+        bidsMap.delete(signer.address);
     }
 
     async purchase(numTokens, signer = undefined) {
@@ -221,19 +232,11 @@ class NFTPotionAuctionHelper {
         this.currentBatch.numTokensClaimed += numTokens;
         this.claimableFunds += numTokens * this.currentBatch.directPurchasePrice;
 
-        if (this.whitelistMap.has(signer.address)) {
-            this.whitelistMap.get(signer.address).push({
-                firstId: this.currentBatch.startTokenId + this.currentBatch.numTokensSold,
-                lastId: this.currentBatch.startTokenId + this.currentBatch.numTokensSold + numTokens - 1,
-            });
-        } else {
-            this.whitelistMap.set(signer.address, [
-                {
-                    firstId: this.currentBatch.startTokenId + this.currentBatch.numTokensSold,
-                    lastId: this.currentBatch.startTokenId + this.currentBatch.numTokensSold + numTokens - 1,
-                },
-            ]);
-        }
+        this._addToWhitelist(
+            signer,
+            this.currentBatch.startTokenId + this.currentBatch.numTokensSold,
+            this.currentBatch.startTokenId + this.currentBatch.numTokensSold + numTokens - 1,
+        );
     }
 
     async getCurrentBatch() {
@@ -309,7 +312,8 @@ class NFTPotionAuctionHelper {
             signer = (await ethers.getSigners())[0];
         }
 
-        if (!this.bidsMap.has(signer.address)) {
+        const bidsMap = this.batchMap.get(batchId);
+        if (!bidsMap.has(signer.address)) {
             const bid = await this.getLatestBid(batchId, signer.address);
 
             expect(bid.bidId).to.be.equal("0");
@@ -323,6 +327,7 @@ class NFTPotionAuctionHelper {
         const balance = await signer.getBalance();
         const refund = await this.refunds(signer.address);
         const whitelistRanges = await this.contract.getWhitelistRanges(signer.address);
+        const batchState = await this.getBatch(batchId);
 
         const tx = await this.contract.connect(signer).claim(batchId, alsoRefund);
         const receipt = await tx.wait();
@@ -332,51 +337,52 @@ class NFTPotionAuctionHelper {
         const currentBalance = await signer.getBalance();
         const currentRefund = await this.refunds(signer.address);
         const currentWhitelistRanges = await this.contract.getWhitelistRanges(signer.address);
-        const newBatchState = await this.contract.getBatch(batchId);
+        const newBatchState = await this.getBatch(batchId);
 
-        const bid = this.bidsMap.get(signer.address);
+        const bid = bidsMap.get(signer.address);
 
-        let tokenRefund = bid.numTokens * bid.pricePerToken;
-        let actualRefund = alsoRefund ? refund : 0;
+        let tokenCost = 0;
         let numTokensToBeClaimed = 0;
         if (
-            bid.pricePerToken > this.currentBatch.clearingPrice ||
-            (bid.pricePerToken === this.currentBatch.clearingPrice && bid.bidId > this.currentBatch.clearingBidId)
+            bid.pricePerToken > batchState.clearingPrice ||
+            (bid.pricePerToken === batchState.clearingPrice && bid.bidId > batchState.clearingBidId)
         ) {
-            tokenRefund = 0;
+            tokenCost = bid.numTokens * bid.pricePerToken;
             numTokensToBeClaimed = bid.numTokens;
-        } else if (
-            bid.pricePerToken === this.currentBatch.clearingPrice &&
-            bid.bidId === this.currentBatch.clearingBidId
-        ) {
-            tokenRefund = 0;
-            numTokensToBeClaimed = this.currentBatch.lastBidderNumAssignedTokens;
+        } else if (bid.pricePerToken === batchState.clearingPrice && bid.bidId === batchState.clearingBidId) {
+            tokenCost = bid.numTokens * bid.pricePerToken;
+            numTokensToBeClaimed = batchState.lastBidderNumAssignedTokens;
         }
 
-        expect(currentBalance).to.be.equal(balance.sub(gasCost).add(tokenRefund).add(actualRefund));
-        expect(currentRefund).to.be.equal(refund - actualRefund);
+        let tokenRefund = bid.numTokens * bid.pricePerToken - tokenCost;
+        let actualRefund = alsoRefund ? refund + tokenRefund : 0;
 
-        expect(newBatchState.numTokensClaimed).to.be.equal(this.currentBatch.numTokensClaimed + numTokensToBeClaimed);
+        expect(currentBalance).to.be.equal(balance.sub(gasCost).add(actualRefund));
+        expect(currentRefund).to.be.equal(refund + tokenRefund - actualRefund);
+
+        expect(newBatchState.numTokensClaimed).to.be.equal(batchState.numTokensClaimed + numTokensToBeClaimed);
 
         if (numTokensToBeClaimed > 0) {
             expect(currentWhitelistRanges.length).to.be.equal(whitelistRanges.length + 1);
             expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].firstId).to.be.equal(
-                this.currentBatch.startTokenId + this.currentBatch.numTokensClaimed,
+                batchState.startTokenId + batchState.numTokensClaimed,
             );
             expect(currentWhitelistRanges[currentWhitelistRanges.length - 1].lastId).to.be.equal(
-                this.currentBatch.startTokenId + this.currentBatch.numTokensClaimed + numTokensToBeClaimed - 1,
+                batchState.startTokenId + batchState.numTokensClaimed + numTokensToBeClaimed - 1,
             );
         } else {
             expect(currentWhitelistRanges.length).to.be.equal(whitelistRanges.length);
         }
 
         // Effects
-        this.bidsMap.delete(signer.address);
-        this.whitelistMap.set(signer.address, {
-            firstId: this.currentBatch.startTokenId + this.currentBatch.numTokensClaimed,
-            lastId: this.currentBatch.startTokenId + this.currentBatch.numTokensClaimed + numTokensToBeClaimed - 1,
-        });
-        this.currentBatch.numTokensClaimed += numTokensToBeClaimed;
+        bidsMap.delete(signer.address);
+        if (numTokensToBeClaimed > 0) {
+            this._addToWhitelist(
+                signer,
+                batchState.startTokenId + batchState.numTokensClaimed,
+                batchState.startTokenId + batchState.numTokensClaimed + numTokensToBeClaimed - 1,
+            );
+        }
     }
 
     async claimRefund(signer = undefined) {
@@ -407,7 +413,7 @@ class NFTPotionAuctionHelper {
         let numTokensSold = this.currentBatch.numTokensSold;
         let numTokensAuctioned = this.currentBatch.numTokensAuctioned;
 
-        for (const bid of this.bids) {
+        for (const bid of this.sortedBids) {
             if (numTokensSold + bid.numTokens >= numTokensAuctioned) {
                 break;
             }
@@ -443,7 +449,7 @@ class NFTPotionAuctionHelper {
             return;
         }
 
-        for (const bid of this.bids) {
+        for (const bid of this.sortedBids) {
             this.numBidsToBeProcessed++;
 
             if (this.currentBatch.numTokensSold + bid.numTokens >= this.currentBatch.numTokensAuctioned) {
@@ -465,8 +471,9 @@ class NFTPotionAuctionHelper {
     }
 
     _processBids() {
-        this.bids = Array.from(this.bidsMap.values());
-        this.bids.sort((a, b) => {
+        const bidsMap = this.batchMap.get(this.currentBatchId);
+        this.sortedBids = Array.from(bidsMap.values());
+        this.sortedBids.sort((a, b) => {
             if (a.pricePerToken !== b.pricePerToken) {
                 return b.pricePerToken - a.pricePerToken;
             } else {
@@ -489,13 +496,13 @@ class NFTPotionAuctionHelper {
     }
 
     _validateBids(contractBids) {
-        expect(contractBids.length).to.equal(this.bids.length);
+        expect(contractBids.length).to.equal(this.sortedBids.length);
 
         for (let i = 0; i < contractBids.length; i++) {
-            expect(contractBids[i].bidder).to.equal(this.bids[i].bidder);
-            expect(contractBids[i].bidId).to.equal(this.bids[i].bidId);
-            expect(contractBids[i].numTokens).to.equal(this.bids[i].numTokens);
-            expect(contractBids[i].pricePerToken).to.equal(this.bids[i].pricePerToken);
+            expect(contractBids[i].bidder).to.equal(this.sortedBids[i].bidder);
+            expect(contractBids[i].bidId).to.equal(this.sortedBids[i].bidId);
+            expect(contractBids[i].numTokens).to.equal(this.sortedBids[i].numTokens);
+            expect(contractBids[i].pricePerToken).to.equal(this.sortedBids[i].pricePerToken);
         }
     }
 
@@ -515,6 +522,22 @@ class NFTPotionAuctionHelper {
         const claimableFunds = await this.contract.claimableFunds();
 
         expect(this.claimableFunds).to.equal(fromBN(claimableFunds));
+    }
+
+    _addToWhitelist(signer, firstId, lastId) {
+        if (this.whitelistMap.has(signer.address)) {
+            this.whitelistMap.get(signer.address).push({
+                firstId,
+                lastId,
+            });
+        } else {
+            this.whitelistMap.set(signer.address, [
+                {
+                    firstId,
+                    lastId,
+                },
+            ]);
+        }
     }
 }
 

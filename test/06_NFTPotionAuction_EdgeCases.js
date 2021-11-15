@@ -15,6 +15,81 @@ describe("NFTPotionAuction", function () {
         });
 
         /**
+         * Same Price
+         */
+        describe("Same Price", function () {
+            it("2 Batches, 20 bidders, 100 token IDs, all bidders bid the same price", async function () {
+                {
+                    const NUM_BIDDERS = 20;
+                    const START_TOKEN_ID = 1;
+                    const END_TOKEN_ID = 10;
+                    const MINIMUM_PRICE = 20;
+                    const PURCHASE_PRICE = 300;
+
+                    const signers = await ethers.getSigners();
+
+                    await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.setBid(
+                            (i % (END_TOKEN_ID - START_TOKEN_ID + 1)) + 1,
+                            MINIMUM_PRICE * 3,
+                            signers[i],
+                        );
+                    }
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.setBid(
+                            (i % (END_TOKEN_ID - START_TOKEN_ID + 1)) + 1,
+                            MINIMUM_PRICE * 3,
+                            signers[i],
+                        );
+                    }
+
+                    await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                    await auction.transferFunds(signers[0]);
+                }
+                {
+                    const NUM_BIDDERS = 20;
+                    const START_TOKEN_ID = 11;
+                    const END_TOKEN_ID = 111;
+                    const MINIMUM_PRICE = 37;
+                    const PURCHASE_PRICE = 700;
+
+                    const signers = await ethers.getSigners();
+
+                    await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.setBid(
+                            (i % (END_TOKEN_ID - START_TOKEN_ID + 1)) + 1,
+                            MINIMUM_PRICE * 2,
+                            signers[i],
+                        );
+                    }
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.setBid(
+                            (i % (END_TOKEN_ID - START_TOKEN_ID + 1)) + 1,
+                            MINIMUM_PRICE * 2,
+                            signers[i],
+                        );
+                    }
+
+                    await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+                    await auction.transferFunds(signers[0]);
+
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.claim(auction.currentBatchId - 1, true, signers[i]);
+                    }
+                    for (let i = 0; i < NUM_BIDDERS; i++) {
+                        await auction.claim(auction.currentBatchId - 2, true, signers[i]);
+                    }
+                }
+            });
+        });
+
+        /**
          * Rebidding
          */
         describe("Rebidding", function () {

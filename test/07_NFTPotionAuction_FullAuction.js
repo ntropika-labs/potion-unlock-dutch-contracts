@@ -44,12 +44,30 @@ async function userAction(getRandom, signer, auction, minimumPrice, purchasePric
     }
 }
 
-async function afterBatchAction(getRandom, signer, auction, minimumPrice, purchasePrice, startTokenId, endTokenId) {
+async function afterBatchAction(
+    getRandom,
+    signer,
+    maxBatches,
+    auction,
+    minimumPrice,
+    purchasePrice,
+    startTokenId,
+    endTokenId,
+) {
     const action = getRandom() % 100;
     switch (true) {
         // Claim Refund
-        case action <= 80:
+        case action <= 20:
             await auction.claimRefund(signer);
+            break;
+        // Claim
+        case action <= 80:
+            if (maxBatches > 0) {
+                const batchId = (getRandom() % maxBatches) + 1;
+                const alsoRefund = getRandom() % 2 === 0;
+
+                await auction.claim(batchId, alsoRefund, signer);
+            }
             break;
 
         // No action
@@ -145,6 +163,7 @@ describe("NFTPotionAuction", function () {
                     await afterBatchAction(
                         getRandom,
                         signers[j],
+                        i,
                         auction,
                         batches[i].MINIMUM_PRICE,
                         batches[i].PURCHASE_PRICE,

@@ -44,6 +44,7 @@ NFTAuctionPotion Test Cases
   - Auction Full Cycle
     - Simple: 1 Batch, 20 bidders, 100 token IDs
     - Simple: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs
+    - Simple: 2 Batches, 20 bidders, 10 token IDs, then 100 token IDs, Claim all after second batch
     - Simple: Several batches, 20 bidders, 10, 100, 50, 88, 34 tokenIDs
     - Purchase: 1 Batch, 20 tokens, 1 bidder purchases 5 tokens
     - Purchase: 1 Batch, 20 tokens, 3 bidders purchase 7,2,3 tokens each
@@ -66,6 +67,7 @@ NFTAuctionPotion Test Cases
     - Several batches, claim some refunds before and some after batch starts
 
   - Edge cases
+    - Same Price: 2 Batches, 20 bidders, 100 token IDs, all bidders bid the same price
     - Rebidding: with same number of tokens, different price
     - Rebidding: with different number of tokens, same price  
     - Purchase: 1 Batch, 100 tokens, 6 purchasers buy all tokens
