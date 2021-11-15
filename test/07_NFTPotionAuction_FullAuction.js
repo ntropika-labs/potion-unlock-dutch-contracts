@@ -179,6 +179,6 @@ describe("NFTPotionAuction", function () {
 
                 baseTokenId += auction.currentBatch.numTokensSold;
             }
-        }).timeout(600000);
+        }).timeout(1000000);
     });
 });
