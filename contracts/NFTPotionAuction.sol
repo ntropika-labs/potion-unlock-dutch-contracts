@@ -101,8 +101,14 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         @notice Starts a new batch auction with the given parameters
 
-        @dev currentBatchId is not incremented here as it is incremented in endBatch instead.
-        This helps identify when a batch is already ended 
+        @param startTokenId The first token ID to be auctioned in this batch
+        @param endTokenId The last token ID to be auctioned in this batch
+        @param minimumPricePerToken The minimum price per token that a bidder can bid
+        @param directPurchasePrice The price to purchase a token directly
+        @param auctionEndDate The timestamp at which the auction ends
+
+        @dev currentBatchId is not incremented here. Instead it is incremented in endBatch which
+             helps identify when a batch has already ended 
         
     */
     function startBatch(
@@ -124,8 +130,11 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         batchState.directPurchasePrice = directPurchasePrice;
         batchState.auctionEndDate = auctionEndDate;
 
-        // clearingPrice, lastBidderNumAssignedTokens, numTokensSold and numTokensClaimed are left at 0
+        // @dev clearingPrice, clearingBidId lastBidderNumAssignedTokens, numTokensSold
+        // and numTokensClaimed are left at 0 on purpose
 
+        // Starting at uint64.maxValue makes the sorting algorithm sort the bids first by price,
+        // then by bid ID
         batches[currentBatchId].currentBidId = type(uint64).max;
 
         emit BatchStarted(currentBatchId);
@@ -133,6 +142,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     /**
         @notice Ends a batch and calculates the clearing price
+
         @param numBidsToProcess The maximum bids to process when calculating the clearing price
 
         @dev This function processes the standing bids from highest to lowest and calculates
@@ -313,6 +323,21 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         }
     }
 
+    /**
+        @notice Utility function that returns the bid that comes before the one specified
+                in the parameters
+
+        @param batchId The ID of the batch to search for the bid
+        @param numTokens The number of tokens of the new bid to be added
+        @param pricePerToken The price per token of the new bid to be added
+
+        @return prev The encoded bid that comes right before the one specified in the parameters
+
+        @dev This function helps optimize the search for the bid in setBid. Before calling setBid
+             the caller should call this function with the same number of tokens and price to find
+             the bid that comes right before the new one. Then the caller can use the returned value
+             as the prevBid parameter in setBid. See setBid for more details
+    */
     function getPreviousBid(
         uint256 batchId,
         uint64 numTokens,
@@ -362,6 +387,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     /**
         @notice Transfer the claimable funds to the recipient
+
+        @param recipient The address to transfer the funds to
 
         @dev Owner only
     */
@@ -435,6 +462,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     /**
         @notice Sets a bid for the current batch and the given bidder
+
         @param numTokens The number of tokens to bid for
         @param pricePerToken The price per token to bid for
         @param prevBid The bid that comes right after the new bid being set
@@ -476,6 +504,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     /**
         @notice Inserts a bid into the list of bids for the given batch
+        
         @param batchId The ID of the batch to insert the bid into
         @param bid The bid to insert
         @param prev The bid that comes right after the new bid being set

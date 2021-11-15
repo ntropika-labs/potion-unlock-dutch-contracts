@@ -5,23 +5,23 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "./INFTPotion.sol";
 
 contract NFTPotionValidator is Context {
-    /**
-        Storage
-     */
+    //------------
+    // Storage
+    //------------
     bytes32 public merkleRoot;
     INFTPotion public NFTContract;
     mapping(uint256 => bool) public isValidated;
     uint256 public partialSecretSize;
     bytes public finalMessage;
 
-    /**
-        Events
-     */
+    //------------
+    // Events
+    //------------
     event NFTValidated(address owner, uint256 tokenId);
 
-    /**
-        Constructor
-    */
+    //---------------
+    // Constructor
+    //---------------
     constructor(
         address _NFTContract,
         bytes32 _merkleRoot,
@@ -33,9 +33,18 @@ contract NFTPotionValidator is Context {
         finalMessage = new bytes(_secretSize);
     }
 
+    //---------------------
+    // Mutating functions
+    //---------------------
+
     /**
-        Mutating functions
-     */
+        @notice Validates the decrypted secret against the merkle root and stores it in the finalMessage
+                if validation is successful.
+
+        @param tokenId The token id of the NFT that is being validated
+        @param decryptedSecret The decrypted secret associated with the NFT
+        @param proof The merkle proof for the decrypted secret
+      */
     function validate(
         uint256 tokenId,
         bytes memory decryptedSecret,
@@ -54,16 +63,32 @@ contract NFTPotionValidator is Context {
         emit NFTValidated(_msgSender(), tokenId);
     }
 
+    /**
+        @notice Batch validation of multiple NFTs
+
+        @param tokenIds List of token Ids to be validated
+        @param decryptedSecrets List of decrypted secrets associated with the token Ids
+        @param proofs List of merkle proofs for the decrypted secrets
+
+        @dev See validate() for more details
+      */
     function validateList(
         uint256[] calldata tokenIds,
         bytes[] calldata decryptedSecrets,
-        bytes32[][] calldata proof
+        bytes32[][] calldata proofs
     ) external {
         for (uint256 i = 0; i < tokenIds.length; ++i) {
-            validate(tokenIds[i], decryptedSecrets[i], proof[i]);
+            validate(tokenIds[i], decryptedSecrets[i], proofs[i]);
         }
     }
 
+    /**
+        @notice Copies the decrypted secret into the finalMessage at the right location using
+                the rarities configuration
+
+        @param tokenId The token id of the NFT which decrypted secret is being copied
+        @param decryptedSecret The decrypted secret associated with the NFT
+    */
     function copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
         (uint256 start, uint256 length, bool found) = NFTContract.getSecretPositionLength(tokenId);
 
@@ -76,7 +101,13 @@ contract NFTPotionValidator is Context {
     }
 
     /**
-        Copied from https://github.com/miguelmota/merkletreejs-solidity
+        @notice Verifies the merkle proof for the given leaf
+
+        @param root The merkle root
+        @param leaf The leaf to be verified
+        @param proof The merkle proof for the leaf
+
+        @dev Copied from https://github.com/miguelmota/merkletreejs-solidity
      */
     function verifyMerkleProof(
         bytes32 root,
