@@ -77,7 +77,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     event Whitelist(uint256 indexed batchId, address indexed bidder);
 
     /**
-        Modifiers
+        Modifiers // RC: Using modifiers when I have to call them from different place
     */
     modifier checkAuctionActive() {
         require(block.timestamp <= _getBatchState(currentBatchId).auctionEndDate, "Auction already ended");
@@ -153,7 +153,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function endBatch(uint256 numBidsToProcess) external {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
-        require(numBidsToProcess > 0, "Call with at least 1 bid to process");
+        require(numBidsToProcess > 0, "Call with at least 1 bid to process"); // RC: Allows me to call popBack inside the while loop without compromising the bid==0 check at the bottom
         require(batchState.auctionEndDate != 0, "Auction has not been started yet");
         require(
             block.timestamp > batchState.auctionEndDate || batchState.numTokensAuctioned == batchState.numTokensSold,
@@ -199,7 +199,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
             emit BatchEnded(currentBatchId);
 
-            currentBatchId++;
+            currentBatchId++; // RC: With this you cannot call endBatch twice for the same batch
         }
     }
 
