@@ -38,7 +38,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         BatchState state;
         StructuredLinkedList.List bidders;
         mapping(address => uint256) bidByBidder;
-        uint64 currentBidId;
     }
 
     /**
@@ -55,6 +54,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     mapping(uint256 => Batch) internal batches;
     uint256 public currentBatchId = 1;
     uint64 public nextFreeTokenId = 1;
+    uint64 public currentBidId;
 
     // Global bidders info
     mapping(uint64 => address) public bidderById; // bidId -> bidder
@@ -77,7 +77,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     event Whitelist(uint256 indexed batchId, address indexed bidder);
 
     /**
-        Modifiers
+        Modifiers // RC: Using modifiers when I have to call them from different place
     */
     modifier checkAuctionActive() {
         require(block.timestamp <= _getBatchState(currentBatchId).auctionEndDate, "Auction already ended");
@@ -92,7 +92,11 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     /**
         Constructor
      */
-    constructor() {}
+    constructor() {
+        // Starting at uint64.maxValue makes the sorting algorithm sort the bids first by price,
+        // then by bid ID
+        currentBidId = type(uint64).max;
+    }
 
     //---------------------------
     // Auction management
@@ -133,10 +137,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         // @dev clearingPrice, clearingBidId lastBidderNumAssignedTokens, numTokensSold
         // and numTokensClaimed are left at 0 on purpose
 
-        // Starting at uint64.maxValue makes the sorting algorithm sort the bids first by price,
-        // then by bid ID
-        batches[currentBatchId].currentBidId = type(uint64).max;
-
         emit BatchStarted(currentBatchId);
     }
 
@@ -153,7 +153,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     function endBatch(uint256 numBidsToProcess) external {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
-        require(numBidsToProcess > 0, "Call with at least 1 bid to process");
+        require(numBidsToProcess > 0, "Call with at least 1 bid to process"); // RC: Allows me to call popBack inside the while loop without compromising the bid==0 check at the bottom
         require(batchState.auctionEndDate != 0, "Auction has not been started yet");
         require(
             block.timestamp > batchState.auctionEndDate || batchState.numTokensAuctioned == batchState.numTokensSold,
@@ -199,7 +199,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
             emit BatchEnded(currentBatchId);
 
-            currentBatchId++;
+            currentBatchId++; // RC: With this you cannot call endBatch twice for the same batch
         }
     }
 
@@ -345,8 +345,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     ) external view returns (uint256 prev) {
         StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
 
-        uint64 bidId = _getBatch(batchId).currentBidId;
-        uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
+        uint256 bid = _encodeBid(currentBidId, numTokens, pricePerToken);
         (prev, ) = bidders.getSortedSpot(address(this), getValue(bid));
     }
 
@@ -492,7 +491,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint128 pricePerToken,
         uint256 prev
     ) internal {
-        uint64 bidId = _getBatch(batchId).currentBidId--;
+        uint64 bidId = currentBidId--;
 
         uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
 
@@ -504,7 +503,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     /**
         @notice Inserts a bid into the list of bids for the given batch
-        
+
         @param batchId The ID of the batch to insert the bid into
         @param bid The bid to insert
         @param prev The bid that comes right after the new bid being set
