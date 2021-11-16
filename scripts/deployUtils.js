@@ -123,7 +123,7 @@ async function deployPotionNFTGame(showLogs = true, enableExport = true) {
 
     console.log = EnableConsoleLog;
 
-    return { NFTAuction, NFTPotion, NFTValidator };
+    return { NFTAuction, NFTPotion, NFTValidator, encryptedPassword };
 }
 
 module.exports = { deployAuction, deployNFTContract, deployNFTValidator, deployPotionNFTGame };
