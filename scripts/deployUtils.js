@@ -9,7 +9,7 @@ const {
     exportContract,
     getRaritiesConfig,
 } = require("./lib/utils");
-const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
+const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 const { BigNumber } = require("@ethersproject/bignumber");
 
 // Enable/disable console.log
@@ -50,7 +50,6 @@ async function deployNFTContract(NFTAuctionContract, secret, rarityConfig, enabl
         NFT_SYMBOL,
         IPFS_PREFIX,
         IPFS_SUFFIX,
-        NUM_NFTS,
         secret,
         NFTAuctionContract.address,
         rarityConfig,

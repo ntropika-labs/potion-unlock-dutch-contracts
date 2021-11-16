@@ -14,7 +14,6 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     string public ipfsPrefix;
     string public ipfsSuffix;
     uint256 public numMintedTokens;
-    uint256 public maxTokens;
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
     INFTPotionWhitelist whitelist;
@@ -28,15 +27,6 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         Modifiers
     */
-    modifier validatePublicKey(bytes calldata publicKey) {
-        require(address(uint160(uint256(keccak256(publicKey)))) == _msgSender(), "BPK"); // Bad Public Key
-        _;
-    }
-    modifier checkMaxNFTs() {
-        require(numMintedTokens < maxTokens, "TMN"); // Too Many NFTs
-        _;
-    }
-
     modifier checkWhitelist(uint256 tokenId) {
         INFTPotionWhitelist.WhitelistData[] memory ranges = whitelist.getWhitelistRanges(_msgSender());
 
@@ -59,14 +49,12 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         string memory _tokenSymbol,
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
-        uint256 _maxTokens,
         bytes memory _fullSecret,
         address _whitelist,
         RarityConfigItem[] memory _rarityConfig
     ) ERC721(_tokenName, _tokenSymbol) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
-        maxTokens = _maxTokens;
         fullSecret = _fullSecret;
         whitelist = INFTPotionWhitelist(_whitelist);
 
@@ -78,19 +66,10 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         Mutating functions
      */
-    function mint(uint256 tokenId, string calldata publicKey) public checkMaxNFTs checkWhitelist(tokenId) {
+    function mint(uint256 tokenId, string calldata publicKey) public checkWhitelist(tokenId) {
         _safeMint(msg.sender, tokenId);
 
-        string memory tokenIdStr = uint2str(tokenId);
-        string memory uri = string(abi.encodePacked(ipfsPrefix, tokenIdStr, ipfsSuffix));
-
-        _setTokenURI(tokenId, uri);
-
         encryptionKeys[tokenId] = publicKey;
-
-        numMintedTokens++;
-
-        emit Mint(tokenId, uri);
     }
 
     function mintList(uint256[] calldata tokenIds, string calldata publicKey) external {
@@ -102,6 +81,10 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     /**
         View functions
      */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        return string(abi.encodePacked(ipfsPrefix, uint2str(tokenId), ipfsSuffix));
+    }
+
     function getSecretPositionLength(uint256 tokenId)
         public
         view
