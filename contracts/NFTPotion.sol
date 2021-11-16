@@ -20,11 +20,6 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     RarityConfigItem[] public rarityConfig;
 
     /**
-        Events
-     */
-    event Mint(uint256 indexed tokenId, string tokenURI);
-
-    /**
         Modifiers
     */
     modifier checkWhitelist(uint256 tokenId) {
