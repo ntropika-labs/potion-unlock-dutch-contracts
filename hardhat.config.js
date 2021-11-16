@@ -51,6 +51,17 @@ module.exports = {
         artifacts: "./src/artifacts",
     },
     networks: {
+        rinkeby: {
+            accounts: {
+                count: 10,
+                mnemonic: process.env.DEPLOYER_MNEMONIC,
+                path: "m/44'/60'/0'/0",
+            },
+            chainId: 4,
+            gas: "auto",
+            gasPrice: "auto",
+            url: process.env.ALCHEMY_API_KEY_RINKEBY,
+        },
         hardhat: {
             chainId: 1337,
             gasPrice: 180000000000,
