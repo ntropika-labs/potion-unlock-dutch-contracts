@@ -2,7 +2,12 @@ const { expect } = require("chai").use(require("chai-bytes"));
 const { ethers } = require("hardhat");
 const { deployPotionNFTGame } = require("../scripts/deployUtils");
 const { getMerkleProof } = require("../scripts/merkleUtils");
-const { getSecretPieceFromId, getPotionGenesis, getRaritiesConfig } = require("../scripts/lib/utils");
+const {
+    getSecretPieceFromId,
+    getSecretStartAndLength,
+    getPotionGenesis,
+    getRaritiesConfig,
+} = require("../scripts/lib/utils");
 const { range } = require("./testUtils");
 
 async function mintTokens(NFTAuction, NFTPotion, firstId, lastId, owner, increment = 1, single = false) {
@@ -177,5 +182,55 @@ describe("NFTPotioValidator", function () {
 
             process.stdout.write(`\tProgress: 100%                   \r`);
         }).timeout(200000);
+
+        it("Check secret isolation", async function () {
+            const CHECK_BEFORE_BYTES = 10;
+            const CHECK_AFTER_BYTES = 10;
+
+            const rarityConfig = getRaritiesConfig();
+
+            const signers = await ethers.getSigners();
+
+            await NFTAuction.whitelistBidders([signers[0].address], [10000], [1]);
+
+            let tokenIds = [];
+            for (let i = 0; i < rarityConfig.length; i++) {
+                // Calculate a token in the middle of the range
+                const tokenId = Math.floor((rarityConfig[i].endTokenId + rarityConfig[i].startTokenId) / 2);
+
+                tokenIds.push(tokenId);
+            }
+
+            await NFTPotion.mintList(tokenIds, "TestPubKeyMagic");
+
+            // Validate
+            const potionGenesis = getPotionGenesis();
+
+            for (let i = 0; i < tokenIds.length; i++) {
+                const proof = getMerkleProof(tokenIds[i]);
+                const secretPiece = getSecretPieceFromId(tokenIds[i], potionGenesis, rarityConfig);
+
+                await NFTValidator.validate(tokenIds[i], secretPiece, proof);
+
+                const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+                const { start, length } = getSecretStartAndLength(tokenIds[i], rarityConfig);
+
+                const decryptedPiece = finalMessage.slice(start, start + length);
+
+                const preStart = start > CHECK_BEFORE_BYTES ? start - CHECK_BEFORE_BYTES : 0;
+                const postEnd =
+                    start + length < finalMessage.length ? start + length + CHECK_AFTER_BYTES : finalMessage.length;
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
+                expect(finalMessage.slice(preStart, start)).to.be.equalBytes(Buffer.alloc(start - preStart));
+                expect(finalMessage.slice(postEnd, finalMessage.length)).to.be.equalBytes(
+                    Buffer.alloc(finalMessage.length - postEnd),
+                );
+
+                process.stdout.write(`\tProgress: ${Math.floor((100 * i) / tokenIds.length)}%                   \r`);
+            }
+
+            process.stdout.write(`\tProgress: 100%                   \r`);
+        });
     });
 });

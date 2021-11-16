@@ -165,6 +165,22 @@ function getSecretPieceFromId(tokenId, secret, raritiesConfig, batchFragments=fa
     throw Error("Invalid token ID for rarity config when calculated secret fragment");
 }
 
+function getSecretStartAndLength(tokenId, raritiesConfig)
+{
+    for (let i = 0; i < raritiesConfig.length; ++i) {
+        const config = raritiesConfig[i];
+
+        if (tokenId >= config.startTokenId && tokenId <= config.endTokenId) {
+            let fragmentNumPieces = config.secretSegmentLength / config.bytesPerPiece;
+            let pieceIndex = (tokenId - config.startTokenId) % fragmentNumPieces;
+
+            return { start:config.secretSegmentStart + pieceIndex * config.bytesPerPiece, length: config.bytesPerPiece };
+        }
+    }
+
+    return { start: 0, length: 0 };
+}
+
 function getRaritiesConfig() {
     let totalNFTs = 0;
     let totalSecretLength = 0;
@@ -214,5 +230,6 @@ module.exports = {
     decryptPassword,
     exportContract,
     getRaritiesConfig,
-    getSecretPieceFromId
+    getSecretPieceFromId,
+    getSecretStartAndLength
 };
