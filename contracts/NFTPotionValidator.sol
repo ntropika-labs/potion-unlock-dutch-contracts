@@ -123,8 +123,8 @@ contract NFTPotionValidator is Context {
             }
         }
 
-        // Mid copy
-        for (uint256 i = 32; i < length; i += 32) {
+        // Copy middle bytes
+        for (; length > 32; length -= 32) {
             assembly {
                 let value := mload(src)
                 sstore(dst, value)
@@ -133,7 +133,7 @@ contract NFTPotionValidator is Context {
             }
         }
 
-        // Last copy
+        // Copy trailing bytes
         assembly {
             if gt(length, 0) {
                 let value2 := sload(dst)
