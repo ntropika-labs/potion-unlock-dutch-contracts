@@ -9,7 +9,7 @@ const {
     exportContract,
     getRaritiesConfig,
 } = require("./lib/utils");
-const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, SOURCE_CODE_PASSWORD, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
+const { NFT_NAME, NFT_SYMBOL, NUM_NFTS, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
 const { BigNumber } = require("@ethersproject/bignumber");
 
 // Enable/disable console.log
@@ -66,7 +66,7 @@ async function deployNFTContract(NFTAuctionContract, secret, rarityConfig, enabl
     return NFTPotion;
 }
 
-async function deployNFTValidator(NFTContractAddress, merkleTree, secret, exportContracts = true) {
+async function deployNFTValidator(NFTContractAddress, merkleTree, secret, enableExport = true) {
     const merkleRoot = merkleTree.getHexRoot();
 
     const NFTValidatorFactory = await ethers.getContractFactory("NFTPotionValidator");
@@ -75,14 +75,14 @@ async function deployNFTValidator(NFTContractAddress, merkleTree, secret, export
     await NFTValidator.deployed();
 
     console.log(`Validator Contract deployed to: ${NFTValidator.address}`);
-    if (exportContract) {
+    if (enableExport) {
         exportContract("NFTPotionValidator", NFTValidator.address);
     }
 
     return NFTValidator;
 }
 
-async function deployPotionNFTGame(showLogs = true, exportContracts = true) {
+async function deployPotionNFTGame(showLogs = true, enableExport = true) {
     if (showLogs) {
         console.log = EnableConsoleLog;
     } else {
@@ -97,7 +97,7 @@ async function deployPotionNFTGame(showLogs = true, exportContracts = true) {
     const potionGenesis = getPotionGenesis();
 
     // Source code password
-    const encryptedPassword = encryptPassword(SOURCE_CODE_PASSWORD);
+    const encryptedPassword = encryptPassword(process.env.PASSWORD_GENESIS);
     const encryptedPasswordLength = Buffer.from(encryptedPassword.slice(2), "hex").length;
 
     if (encryptedPasswordLength !== potionGenesis.length) {
@@ -114,13 +114,13 @@ async function deployPotionNFTGame(showLogs = true, exportContracts = true) {
     console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // Auction contract
-    const NFTAuction = await deployAuction(exportContracts);
+    const NFTAuction = await deployAuction(enableExport);
 
     // NFT contract
-    const NFTPotion = await deployNFTContract(NFTAuction, encryptedPassword, raritiesConfigSolidity, exportContracts);
+    const NFTPotion = await deployNFTContract(NFTAuction, encryptedPassword, raritiesConfigSolidity, enableExport);
 
     // Validator contract
-    const NFTValidator = await deployNFTValidator(NFTPotion.address, merkleTree, potionGenesis, exportContracts);
+    const NFTValidator = await deployNFTValidator(NFTPotion.address, merkleTree, potionGenesis, enableExport);
 
     console.log = EnableConsoleLog;
 

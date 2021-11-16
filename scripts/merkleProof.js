@@ -1,8 +1,13 @@
 const { NUM_NFTS } = require("./config");
 
 const yargs = require("yargs");
-const { bufferToHex } = require("ethereumjs-util");
-const { buildMerkleTree, getMerkleLeaves, getPotionGenesis, getRaritiesConfig } = require("./lib/utils");
+const {
+    buildMerkleTree,
+    getMerkleLeaves,
+    getPotionGenesis,
+    getRaritiesConfig,
+    getSecretPieceFromId,
+} = require("./lib/utils");
 
 async function main() {
     const argv = await yargs
@@ -45,16 +50,12 @@ async function main() {
     const decryptedSecretList = [];
     const proofList = [];
 
-    const subkeyLength = potionGenesis.length / NUM_NFTS;
-
     for (let i = 0; i < argv.numElements; ++i) {
         const proofHex = merkleTree.getHexProof(leaves[tokenId + i - 1]);
         const proofSolidity = '["' + proofHex.join('", "') + '"]';
 
         tokenIDList.push(tokenId + i);
-        decryptedSecretList.push(
-            bufferToHex(potionGenesis.subarray((tokenId + i - 1) * subkeyLength, (tokenId + i) * subkeyLength)),
-        );
+        decryptedSecretList.push(getSecretPieceFromId(tokenId + i, potionGenesis, rarityConfig));
         proofList.push(proofSolidity);
     }
 
