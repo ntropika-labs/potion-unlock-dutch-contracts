@@ -89,13 +89,6 @@ function encryptSecret(secret) {
 /**
  * Merkle Tree
  */
- const conv = num => {
-    let b = new ArrayBuffer(4);
-    new DataView(b).setUint32(0, num);
-    return Buffer.from(new Uint8Array(b));
-  }
-
-  
  function getPieceHash(piece, tokenId, encrypted = true) {
     let tempArray = new ArrayBuffer(4);
     new DataView(tempArray).setUint32(0, tokenId);
@@ -200,7 +193,7 @@ function getRaritiesConfig() {
             `Secret length defined in rarity config (${totalSecretLength}) is different from Genesis length (${genesisLength}) `,
         );
     }
-
+    //console.log(JSON.stringify(RARITIES_CONFIG));
     return RARITIES_CONFIG;
 }
 
@@ -214,7 +207,7 @@ module.exports = {
     signMetamaskMessage,
     encryptSecret,
     buildMerkleTree,
-    getDataFromSecret: getPieceHash,
+    getPieceHash,
     getMerkleLeaves,
     getMetamaskPublicKey,
     encryptPassword,
