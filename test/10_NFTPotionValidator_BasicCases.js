@@ -56,7 +56,7 @@ describe("NFTPotioValidator", function () {
             const rarityConfig = getRaritiesConfig();
 
             // Validate
-            for (let i = 0; i < tokenList.length; i++) {
+            for (let i = 0; i < tokenList.length; i += INCREMENT) {
                 const proof = getMerkleProof(tokenList[i]);
                 const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
 
