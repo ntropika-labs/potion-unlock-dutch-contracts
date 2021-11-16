@@ -13,16 +13,10 @@ contract NFTPotion is ERC721URIStorage, Ownable {
      */
     string public ipfsPrefix;
     string public ipfsSuffix;
-    uint256 public numMintedTokens;
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
     INFTPotionWhitelist whitelist;
     RarityConfigItem[] public rarityConfig;
-
-    /**
-        Events
-     */
-    event Mint(uint256 indexed tokenId, string tokenURI);
 
     /**
         Modifiers
@@ -82,6 +76,10 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         View functions
      */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        if (ownerOf(tokenId) == address(0)) {
+            return "";
+        }
+
         return string(abi.encodePacked(ipfsPrefix, uint2str(tokenId), ipfsSuffix));
     }
 
