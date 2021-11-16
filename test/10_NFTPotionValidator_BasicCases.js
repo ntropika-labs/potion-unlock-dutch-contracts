@@ -1,6 +1,5 @@
 const { expect } = require("chai").use(require("chai-bytes"));
 const { ethers } = require("hardhat");
-const { bufferToHex } = require("ethereumjs-util");
 const { deployPotionNFTGame } = require("../scripts/deployUtils");
 const { getMerkleProof } = require("../scripts/merkleUtils");
 const { getSecretPieceFromId, getPotionGenesis, getRaritiesConfig } = require("../scripts/lib/utils");
@@ -22,7 +21,7 @@ async function mintTokens(NFTAuction, NFTPotion, firstId, lastId, owner, single 
 }
 
 describe("NFTPotioValidator", function () {
-    describe.only("Basic Cases", function () {
+    describe("Basic Cases", function () {
         let NFTAuction, NFTPotion, NFTValidator;
 
         // Initialize the contract
@@ -30,7 +29,7 @@ describe("NFTPotioValidator", function () {
             ({ NFTAuction, NFTPotion, NFTValidator } = await deployPotionNFTGame(false, false));
         });
 
-        it.only("Merkle Single Validation (Several)", async function () {
+        it("Merkle single validation, first to last", async function () {
             const firstTokenId = 1;
             const numTokens = 1073;
 
@@ -69,9 +68,48 @@ describe("NFTPotioValidator", function () {
             }
         }).timeout(200000);
 
-        it("Merkle List Validation", async function () {
+        it("Merkle single validation, last to first", async function () {
             const firstTokenId = 1;
-            const numTokens = 10;
+            const numTokens = 1073;
+
+            const signers = await ethers.getSigners();
+
+            await mintTokens(NFTAuction, NFTPotion, firstTokenId, firstTokenId + numTokens - 1, signers[0], true);
+
+            // Validate token ID
+            const potionGenesis = getPotionGenesis();
+            const rarityConfig = getRaritiesConfig();
+
+            const tokenList = range(firstTokenId, firstTokenId + numTokens - 1).reverse();
+
+            // Validate
+            for (let i = 0; i < tokenList.length; i++) {
+                const proof = getMerkleProof(tokenList[i]);
+                const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
+
+                //console.log(tokenList[i]);
+                await NFTValidator.validate(tokenList[i], secretPiece, proof);
+
+                const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
+            }
+
+            // Check
+            const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+
+            for (let i = 0; i < tokenList.length; i++) {
+                const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
+                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
+            }
+        }).timeout(200000);
+
+        it("Merkle multiple validation", async function () {
+            const firstTokenId = 1;
+            const numTokens = 12;
 
             const signers = await ethers.getSigners();
 

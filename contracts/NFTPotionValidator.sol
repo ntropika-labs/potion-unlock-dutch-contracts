@@ -95,6 +95,13 @@ contract NFTPotionValidator is Context {
         require(found, "CRITICAL!! Token ID could not be found in rarity config");
         require(start + length <= finalMessage.length, "CRITICAL!! Decrypted secret position exceeds secret length");
 
+        if (length < 32) {
+            for (uint256 i = 0; i < length; ++i) {
+                finalMessage[start + i] = decryptedSecret[i];
+            }
+            return;
+        }
+
         uint256 dst;
         uint256 src;
 

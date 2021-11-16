@@ -1,5 +1,5 @@
-NFTAuctionPotion Test Cases
---------------------------
+NFTPotionAuction Test Cases
+---------------------------
 
   - Negative Cases
     - Start batch when another batch is started
@@ -81,3 +81,12 @@ NFTAuctionPotion Test Cases
 
   - Full Auction:
     - 2 Batches, 3000, 7000, 1000 bidders, random distribution
+
+ NFTPotionValidator Test Cases
+ -----------------------------
+
+  - Basic Cases:
+    - Merkle single validation, first to last
+    - Merkle single validation, last to first
+    - Merkle multiple validation
+
