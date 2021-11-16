@@ -26,7 +26,7 @@ async function mintTokens(NFTAuction, NFTPotion, firstId, lastId, owner, increme
 }
 
 describe("NFTPotioValidator", function () {
-    describe.only("Basic Cases", function () {
+    describe("Basic Cases", function () {
         let NFTAuction, NFTPotion, NFTValidator;
 
         // Initialize the contract
