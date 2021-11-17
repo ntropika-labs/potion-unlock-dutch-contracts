@@ -368,7 +368,7 @@ class NFTPotionAuctionHelper {
             tokenCost = bid.numTokens * bid.pricePerToken;
             numTokensToBeClaimed = bid.numTokens;
         } else if (bid.pricePerToken === batchState.clearingPrice && bid.bidId === batchState.clearingBidId) {
-            tokenCost = bid.numTokens * bid.pricePerToken;
+            tokenCost = batchState.lastBidderNumAssignedTokens * bid.pricePerToken;
             numTokensToBeClaimed = batchState.lastBidderNumAssignedTokens;
         }
 

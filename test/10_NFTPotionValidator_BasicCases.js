@@ -30,7 +30,7 @@ async function mintTokens(NFTAuction, NFTPotion, firstId, lastId, owner, increme
     return mintedTokenList;
 }
 
-describe("NFTPotioValidator", function () {
+describe("NFTPotionValidator", function () {
     describe("Basic Cases", function () {
         let NFTAuction, NFTPotion, NFTValidator;
 

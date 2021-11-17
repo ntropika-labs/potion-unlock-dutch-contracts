@@ -304,9 +304,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     }
 
     function getLatestBid(uint256 batchId, address bidder) public view returns (Bid memory bid) {
-        uint256 encodedBid = _getBatchBidByBidder(batchId, bidder);
         bid.bidder = bidder;
-        (bid.bidId, bid.numTokens, bid.pricePerToken) = _decodeBid(encodedBid);
+        (bid.bidId, bid.numTokens, bid.pricePerToken, ) = _getBidInfo(batchId, bidder);
     }
 
     function getAllBids() external view returns (Bid[] memory bids) {
@@ -412,10 +411,6 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         return batches[batchId].bidders;
     }
 
-    function _getBatchBidByBidder(uint256 batchId, address bidder) internal view returns (uint256) {
-        return batches[batchId].bidByBidder[bidder];
-    }
-
     function _getBidInfo(uint256 batchId, address bidder)
         internal
         view
@@ -426,10 +421,8 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
             uint256 bid
         )
     {
-        StructuredLinkedList.List storage bidders = _getBatchBidders(batchId);
-
         bid = batches[batchId].bidByBidder[bidder];
-        if (bid != 0 && bidders.nodeExists(bid)) {
+        if (bid != 0) {
             (bidId, numTokens, pricePerToken) = _decodeBid(bid);
         }
     }
@@ -585,22 +578,21 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         require(batchId < currentBatchId, "Cannot claim token IDs for a batch that has not ended");
 
         BatchState storage batchState = _getBatchState(batchId);
-        uint256 bid = _getBatchBidByBidder(batchId, bidder);
+
+        (uint64 bidId, uint64 numTokens, uint128 pricePerToken, uint256 bid) = _getBidInfo(batchId, bidder);
         require(bid != 0, "Bidder has no claimable bid");
 
-        (uint64 bidId, uint64 numTokens, uint128 pricePerToken) = _decodeBid(bid);
+        _cancelBid(batchId, bidder, true);
 
         if (
             pricePerToken > batchState.clearingPrice ||
             (pricePerToken == batchState.clearingPrice && bidId > batchState.clearingBidId)
         ) {
             _whitelistBidder(batchId, bidder, numTokens);
-            _cancelBid(batchId, bidder, false);
+            _chargeBidder(bidder, numTokens * pricePerToken);
         } else if (pricePerToken == batchState.clearingPrice && bidId == batchState.clearingBidId) {
             _whitelistBidder(batchId, bidder, batchState.lastBidderNumAssignedTokens);
-            _cancelBid(batchId, bidder, false);
-        } else {
-            _cancelBid(batchId, bidder, true);
+            _chargeBidder(bidder, batchState.lastBidderNumAssignedTokens * pricePerToken);
         }
 
         if (alsoRefund) {

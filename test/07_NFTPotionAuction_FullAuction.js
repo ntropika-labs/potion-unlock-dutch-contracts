@@ -83,7 +83,7 @@ describe("NFTPotionAuction", function () {
     const getRandomFloat = seedrandom(RANDOM_SEED);
     const getRandom = () => Math.floor(getRandomFloat() * Number.MAX_SAFE_INTEGER);
 
-    describe.skip(`Full Auction (RandomSeed = ${RANDOM_SEED})`, function () {
+    describe(`Full Auction (RandomSeed = ${RANDOM_SEED})`, function () {
         let auction;
 
         // Initialize the contract
