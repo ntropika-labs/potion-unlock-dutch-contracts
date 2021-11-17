@@ -20,8 +20,6 @@ async function main() {
 
     const encryptedPasswordGenesis = encryptPassword(passwordGenesis.substr(2));
 
-    console.log(encryptedPasswordGenesis);
-
     if (originalGenesis.length !== encryptedPasswordGenesis.length) {
         throw new Error("Cannot generate a proper password genesis for the given genesis size");
     }
