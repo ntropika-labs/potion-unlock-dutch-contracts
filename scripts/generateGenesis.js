@@ -16,9 +16,12 @@ async function main() {
         .alias("help", "h").argv;
 
     const originalGenesis = bufferToHex(randomBytes(argv.genesisSize));
-    const passwordGenesis = bufferToHex(randomBytes((argv.genesisSize - 72) / 2));
+    const passwordGenesis = bufferToHex(randomBytes(argv.genesisSize - 40));
 
     const encryptedPasswordGenesis = encryptPassword(passwordGenesis.substr(2));
+
+    console.log(originalGenesis.length);
+    console.log(encryptedPasswordGenesis.length);
 
     if (originalGenesis.length !== encryptedPasswordGenesis.length) {
         throw new Error("Cannot generate a proper password genesis for the given genesis size");

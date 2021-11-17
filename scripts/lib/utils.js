@@ -5,7 +5,7 @@ const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 
 const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, RARITIES_CONFIG, NUM_NFTS } = require("../config");
-const { encrypt, decrypt, getPublicKey, getPrivateKey } = require("./nacl");
+const { encrypt, decrypt, encryptSymmetric, decryptSymmetric, getPublicKey, getPrivateKey } = require("./nacl");
 const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
 
 require("dotenv").config();
@@ -21,25 +21,10 @@ function getPotionSecretKey() {
     return keccak256(keccak256(keccak256(getPotionGenesis())));
 }
 
-function encryptPassword(password) {
-    const encryptedMessage = signPotionMessage(password);
-    return bufferToHex(decodeBase64(encryptedMessage));
-}
-
-function decryptPassword(encryptedPassword, privateKey) {
-    const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
-    const key = Buffer.from(privateKey.slice(2), "hex");
-
-    const encryptedMessage = encodeBase64(encryptedData);
-
-    const decryptedData = decrypt(encryptedMessage, key);
-    return encodeUTF8(decryptedData);
-}
-
 /**
- * Potion public/private key utils
+ * Asymmetric key functions
  */
-function getPotionPrivateKey() {
+ function getPotionPrivateKey() {
     return getPrivateKey(getPotionSecretKey());
 }
 
@@ -61,6 +46,31 @@ function decryptPotionMessage(encryptedMessage) {
 }
 
 /**
+ * Symmetric key functions
+ */
+function encryptDataSymmetric(data) {
+    return encryptSymmetric(getPotionSecretKey(), data);
+}
+
+function decryptDataSymmetric(encryptedData) {
+    return decryptSymmetric(getPotionSecretKey(), encryptedData);
+}
+
+/**
+ * Password encryption functions
+ */
+
+function encryptPassword(password) {
+    const passwordBuffer = Buffer.from(password, "hex");
+    return bufferToHex(encryptDataSymmetric(passwordBuffer));
+}
+
+function decryptPassword(encryptedPassword) {
+    const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
+   return decryptSymmetric(encryptedData);
+}
+
+/**
  * Metamask Encryption
  */
 function getMetamaskPublicKey() {
@@ -73,17 +83,6 @@ function signMetamaskMessage(publicKey, data) {
     const encryptedString = JSON.stringify(encryptedData);
     const encryptedBuffer = Buffer.from(encryptedString, "utf8");
     return bufferToHex(encryptedBuffer);
-}
-
-function encryptSecret(secret) {
-    let encryptedSecret = "";
-
-    for (let i = 0; i < secret.length; ++i) {
-        const encryptedChar = String.fromCharCode(secret.charCodeAt(i) + 1);
-        encryptedSecret += encryptedChar;
-    }
-
-    return encryptedSecret;
 }
 
 /**
@@ -214,22 +213,31 @@ function getRaritiesConfig() {
 }
 
 module.exports = {
+    // Key management
     getPotionGenesis,
     getPotionSecretKey,
     getPotionPublicKey,
     getPotionPrivateKey,
+    // Asymmetric key encryption
     signPotionMessage,
     decryptPotionMessage,
+    // Symmentric key encryption
+    encryptDataSymmetric,
+    decryptDataSymmetric,
+    // Password encryption
+    encryptPassword,
+    decryptPassword,
+    // Metamask encryption
     signMetamaskMessage,
-    encryptSecret,
+    getMetamaskPublicKey,
+    // Merkle Tree
     buildMerkleTree,
     getPieceHash,
     getMerkleLeaves,
-    getMetamaskPublicKey,
-    encryptPassword,
-    decryptPassword,
-    exportContract,
+    // Rarities
     getRaritiesConfig,
     getSecretPieceFromId,
-    getSecretStartAndLength
+    getSecretStartAndLength,
+    // Misc
+    exportContract,
 };

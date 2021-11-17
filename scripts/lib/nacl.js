@@ -55,6 +55,41 @@ function decrypt(encryptedData, privateKey) {
     return nacl.box.open(ciphertext, nonce, publicKey, privateKey);
 }
 
+function encryptSymmetric(symmetricKey, data) {
+    if (isNullish(symmetricKey)) {
+        throw new Error("Missing symmetricKey parameter");
+    } else if (isNullish(data)) {
+        throw new Error("Missing data parameter");
+    }
+
+    // generate ephemeral keypair
+    const nonce = nacl.randomBytes(nacl.box.nonceLength);
+
+    // encrypt
+    const encryptedMessage = nacl.secretbox(data, nonce, symmetricKey);
+
+    const noncePublicEncrypted = new Uint8Array(nonce.length + encryptedMessage.length);
+    noncePublicEncrypted.set(nonce, 0);
+    noncePublicEncrypted.set(encryptedMessage, nonce.length);
+
+    return noncePublicEncrypted;
+}
+
+function decryptSymmetric(symmetricKey, encryptedData) {
+    if (isNullish(encryptedData)) {
+        throw new Error("Missing encryptedData parameter");
+    } else if (isNullish(symmetricKey)) {
+        throw new Error("Missing symmetricKey parameter");
+    }
+
+    // assemble decryption parameters
+    const nonce = encryptedData.subarray(0, nacl.box.nonceLength);
+    const ciphertext = encryptedData.subarray(nacl.box.nonceLength);
+
+    // decrypt
+    return nacl.secretbox.open(ciphertext, nonce, symmetricKey);
+}
+
 function randomBytes(length) {
     return nacl.randomBytes(length);
 }
@@ -62,6 +97,8 @@ function randomBytes(length) {
 module.exports = {
     encrypt,
     decrypt,
+    encryptSymmetric,
+    decryptSymmetric,
     getPublicKey,
     getPrivateKey,
     randomBytes,
