@@ -486,6 +486,12 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
     ) internal {
         uint64 bidId = currentBidId--;
 
+        (uint64 prevBidId, , uint128 prevPricePerToken) = _decodeBid(prev);
+        require(
+            prev == 0 || (prevBidId > bidId && prevPricePerToken <= pricePerToken),
+            "Bid sent to optimize search seems malformed"
+        );
+
         uint256 bid = _encodeBid(bidId, numTokens, pricePerToken);
 
         _insertBid(batchId, bid, prev);

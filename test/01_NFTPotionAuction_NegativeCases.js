@@ -122,6 +122,38 @@ describe("NFTPotionAuction", function () {
                     "Sent incorrect amount of cash",
                 );
             });
+            it("Send a previous bid that is the highest to get the new bid sorted as highest", async function () {
+                const NUM_BIDDERS = 20;
+                const START_TOKEN_ID = 1;
+                const END_TOKEN_ID = 100;
+                const MINIMUM_PRICE = 20;
+                const PURCHASE_PRICE = 12333;
+
+                const signers = await ethers.getSigners();
+
+                await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    await auction.setBid(5, 1000 + 77 * i, signers[i]);
+                }
+
+                // Ask for the highest bid
+                for (let i = 0; i < NUM_BIDDERS; i++) {
+                    const wrongPreviousBid = await auction.contract.getPreviousBid(
+                        auction.currentBatchId,
+                        5,
+                        1000 + 77 * (i + 1) + 10,
+                    );
+
+                    await expect(auction.contract.setBid(5, MINIMUM_PRICE, wrongPreviousBid)).to.be.revertedWith(
+                        "Bid sent to optimize search seems malformed",
+                    );
+                }
+                const highestBid = await auction.contract.getPreviousBid(auction.currentBatchId, 5, PURCHASE_PRICE);
+                await expect(auction.contract.setBid(5, MINIMUM_PRICE, highestBid)).to.be.revertedWith(
+                    "Bid sent to optimize search seems malformed",
+                );
+            });
         });
 
         /**
