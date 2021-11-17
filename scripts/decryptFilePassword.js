@@ -1,4 +1,5 @@
 const { decryptPassword } = require("./lib/utils");
+const { bufferToHex } = require("ethereumjs-util");
 const yargs = require("yargs");
 
 async function main() {
@@ -8,17 +9,12 @@ async function main() {
             description: "Secret to be decrypted",
             type: "string",
         })
-        .option("privateKey", {
-            alias: "k",
-            description: "Private key for decryption",
-            type: "string",
-        })
-        .demandOption(["secret", "privateKey"])
+        .demandOption(["secret"])
         .help()
         .alias("help", "h").argv;
 
-    const decryptedPassword = decryptPassword(argv.secret, argv.privateKey);
-    console.log(decryptedPassword);
+    const decryptedPassword = decryptPassword(argv.secret);
+    console.log(bufferToHex(decryptedPassword));
 }
 
 main()
