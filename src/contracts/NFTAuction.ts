@@ -156,7 +156,7 @@ export class NFTAuction {
         return this.contract.getLatestBid(currentBatchId, this.myAccount);
     }
     async getAllBids() {
-        return this.contract.getAllBids();
+        return this.contract.getAllBids(0);
     }
 
     async getWhitelistRanges() {

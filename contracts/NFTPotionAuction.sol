@@ -308,13 +308,17 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         (bid.bidId, bid.numTokens, bid.pricePerToken, ) = _getBidInfo(batchId, bidder);
     }
 
-    function getAllBids() external view returns (Bid[] memory bids) {
+    function getAllBids(uint256 maxBids) external view returns (Bid[] memory bids) {
         StructuredLinkedList.List storage bidders = _getBatchBidders(currentBatchId);
 
-        bids = new Bid[](bidders.sizeOf());
+        if (maxBids == 0) {
+            maxBids = bidders.sizeOf();
+        }
+
+        bids = new Bid[](maxBids);
 
         (, uint256 bid) = bidders.getPreviousNode(0);
-        for (uint256 i = 0; i < bidders.sizeOf(); ++i) {
+        for (uint256 i = 0; i < maxBids; ++i) {
             (bids[i].bidId, bids[i].numTokens, bids[i].pricePerToken) = _decodeBid(bid);
             bids[i].bidder = bidderById[bids[i].bidId];
 

@@ -501,7 +501,7 @@ class NFTPotionAuctionHelper {
     }
 
     async _getAllBids() {
-        const allBidsBN = await this.contract.getAllBids();
+        const allBidsBN = await this.contract.getAllBids(0);
 
         return allBidsBN.map(bid => {
             return {
