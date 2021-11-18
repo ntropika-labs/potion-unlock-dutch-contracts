@@ -52,6 +52,18 @@ function generatePrice(minimumPrice, purchasePrice, factor, index) {
     return ((minimumPrice + factor * index) % (purchasePrice - minimumPrice)) + minimumPrice;
 }
 
+function sortBids(bidsMap) {
+    const sortedBids = Array.from(bidsMap.values());
+    sortedBids.sort((a, b) => {
+        if (a.pricePerToken !== b.pricePerToken) {
+            return b.pricePerToken - a.pricePerToken;
+        } else {
+            return b.bidId.localeCompare(a.bidId);
+        }
+    });
+    return sortedBids;
+}
+
 module.exports = {
     chainEpoch,
     getEventTimestamp,
@@ -61,4 +73,5 @@ module.exports = {
     toBN,
     getBidderAddress,
     generatePrice,
+    sortBids,
 };

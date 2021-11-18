@@ -1,5 +1,7 @@
 const { expect } = require("chai");
+const { ethers } = require("hardhat");
 const { NFTPotionAuctionHelper } = require("./NFTPotionAuctionHelper");
+const { generatePrice } = require("./NFTPotionAuctionUtils");
 
 describe("NFTPotionAuction", function () {
     describe("Auction Basic Cases", function () {
@@ -187,6 +189,36 @@ describe("NFTPotionAuction", function () {
 
             expect(batch.numTokensSold).to.be.equal(END_TOKEN_ID - START_TOKEN_ID + 1);
             expect(batch.numTokensClaimed).to.be.equal(END_TOKEN_ID - START_TOKEN_ID + 1);
+        });
+        it("Test getAllBids() with different number of bids", async function () {
+            const NUM_BIDDERS = 20;
+            const START_TOKEN_ID = 1;
+            const END_TOKEN_ID = 100;
+            const MINIMUM_PRICE = 20;
+            const PURCHASE_PRICE = 12333;
+
+            const signers = await ethers.getSigners();
+
+            await auction.startBatch(START_TOKEN_ID, END_TOKEN_ID, MINIMUM_PRICE, PURCHASE_PRICE, 2000);
+
+            for (let i = 0; i < NUM_BIDDERS; i++) {
+                await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 2, i), signers[i]);
+
+                await auction.getAllBids((i * 3) % (NUM_BIDDERS + 5));
+            }
+            for (let i = 0; i < NUM_BIDDERS; i++) {
+                await auction.setBid(5, generatePrice(MINIMUM_PRICE, PURCHASE_PRICE, 3, i), signers[i]);
+
+                await auction.getAllBids((i * 7) % (NUM_BIDDERS + 3));
+            }
+
+            await auction.endBatch(END_TOKEN_ID - START_TOKEN_ID + 1);
+
+            for (let i = 0; i < NUM_BIDDERS; i++) {
+                await auction.claim(auction.currentBatchId - 1, i % 3 === 0, signers[i]);
+            }
+
+            await auction.transferFunds(signers[0]);
         });
     });
 });

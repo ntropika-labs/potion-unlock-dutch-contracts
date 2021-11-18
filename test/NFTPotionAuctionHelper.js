@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch } = require("./NFTPotionAuctionUtils");
+const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch, sortBids } = require("./NFTPotionAuctionUtils");
 
 class NFTPotionAuctionHelper {
     contract;
@@ -80,7 +80,7 @@ class NFTPotionAuctionHelper {
             // Effects
             this._processBids();
             this._calculateClearingPrice();
-            this.contractBids = await this._getAllBids();
+            this.contractBids = await this.getAllBids();
         }
 
         if (this.numBidsAlreadyProcessed + numBidsToProcess < this.numBidsToBeProcessed) {
@@ -490,20 +490,13 @@ class NFTPotionAuctionHelper {
 
     _processBids() {
         const bidsMap = this.batchMap.get(this.currentBatchId);
-        this.sortedBids = Array.from(bidsMap.values());
-        this.sortedBids.sort((a, b) => {
-            if (a.pricePerToken !== b.pricePerToken) {
-                return b.pricePerToken - a.pricePerToken;
-            } else {
-                return b.bidId.localeCompare(a.bidId);
-            }
-        });
+        this.sortedBids = sortBids(bidsMap);
     }
 
-    async _getAllBids() {
-        const allBidsBN = await this.contract.getAllBids(0);
+    async getAllBids(maxBids = 0) {
+        const topBidsBN = await this.contract.getAllBids(maxBids);
 
-        return allBidsBN.map(bid => {
+        const topBids = topBidsBN.map(bid => {
             return {
                 bidder: bid.bidder,
                 bidId: fromBNStr(bid.bidId),
@@ -511,6 +504,15 @@ class NFTPotionAuctionHelper {
                 pricePerToken: fromBN(bid.pricePerToken),
             };
         });
+
+        const bidsMap = this.batchMap.get(this.currentBatchId);
+        const sortedBids = sortBids(bidsMap);
+
+        for (let i = 0; i < topBids.length; i++) {
+            expect(sortedBids[i]).to.be.eql(topBids[i]);
+        }
+
+        return topBids;
     }
 
     _validateBids(contractBids) {
