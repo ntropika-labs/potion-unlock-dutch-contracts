@@ -4,11 +4,11 @@ const NFT_SYMBOL = "PNFT1";
 
 const METAMASK_PUBLIC_KEY = "mtrHp1WHZM9rxF2Ilot9Hie5XmQcKCf7oDQ1DpGkTSI=";
 const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
-const IPFS_SUFFIX = ".svg";
 
 // Demo Config
 const NUM_NFTS = 10000;
 const IPFS_PREFIX = "https://ipfs.io/ipfs/QmWkrqWXgF7yiXyVDsHegoZdZmGcfJaUmWP4eVKoZM1gnW/";
+const IPFS_SUFFIX = ".jpg";
 
 const RARITIES_CONFIG = [
     {
