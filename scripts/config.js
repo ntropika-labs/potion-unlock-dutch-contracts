@@ -8,7 +8,8 @@ const IPFS_SUFFIX = ".svg";
 
 // Demo Config
 const NUM_NFTS = 10000;
-const IPFS_PREFIX = "http://ipfs.io/ipfs/QmR6316ZX1uigpkbWryeUi8y7vsCLfMNNgPCfrrWKM51dp/";
+const IPFS_PREFIX = "https://ipfs.io/ipfs/QmWkrqWXgF7yiXyVDsHegoZdZmGcfJaUmWP4eVKoZM1gnW/";
+
 const RARITIES_CONFIG = [
     {
         // Seed Round (1450 tokens)
