@@ -4,11 +4,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 
 import "./utils/StructuredLinkedList.sol";
 import "./INFTPotionWhitelist.sol";
 
-contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
+contract NFTPotionAuction is Ownable, Pausable, INFTPotionWhitelist, IStructureInterface {
     using SafeERC20 for IERC20;
     using StructuredLinkedList for StructuredLinkedList.List;
 
@@ -151,7 +152,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         bids are processed at a time, in case the amount of gas needed to process all winning
         exceeds the gas limit
     */
-    function endBatch(uint256 numBidsToProcess) external {
+    function endBatch(uint256 numBidsToProcess) external whenNotPaused {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
         require(numBidsToProcess > 0, "Call with at least 1 bid to process");
@@ -220,7 +221,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint64 numTokens,
         uint128 pricePerToken,
         uint256 prevBid
-    ) external payable checkAuctionActive {
+    ) external payable checkAuctionActive whenNotPaused {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
         require(pricePerToken >= batchState.minimumPricePerToken, "Bid must reach minimum amount");
@@ -242,7 +243,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         @dev If the bidder does not request a refund to be sent back, the amount will be credited
         internally and used in future bids. It can also be requested later on by calling claimRefund
     */
-    function cancelBid(bool alsoRefund) external checkAuctionActive {
+    function cancelBid(bool alsoRefund) external checkAuctionActive whenNotPaused {
         address bidder = _msgSender();
 
         _cancelBid(currentBatchId, bidder, true);
@@ -261,7 +262,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         to send the rest to cover the purchase. The amount of tokens to purchase must be less than
         the currently available tokens in the batch
      */
-    function purchase(uint64 numTokens) external payable checkAuctionActive {
+    function purchase(uint64 numTokens) external payable checkAuctionActive whenNotPaused {
         BatchState storage batchState = _getBatchState(currentBatchId);
 
         require(
@@ -293,7 +294,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         no token IDs have been won this function behaves exactly like cancelBid. Any amount credited
         after the bid has been processed will be send back to the caller if alsoRefund is set to true
     */
-    function claim(uint256 batchId, bool alsoRefund) external {
+    function claim(uint256 batchId, bool alsoRefund) external whenNotPaused {
         require(batchId < currentBatchId, "Cannot claim token IDs for a batch that has not ended");
 
         address bidder = _msgSender();
@@ -325,7 +326,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         @dev This function can be called at any time, during an active batch or in-between batches
     */
-    function claimRefund() external {
+    function claimRefund() external whenNotPaused {
         require(refunds[_msgSender()] > 0, "No refundable cash");
         _claimRefund(_msgSender());
     }
@@ -454,6 +455,24 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
         uint256 transferAmount = unrequestedFundsReceived;
         unrequestedFundsReceived = 0;
         Address.sendValue(recipient, transferAmount);
+    }
+
+    /**
+        @notice Pauses the contract not accepting any non-owner calls
+
+        @dev Owner only
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+        @notice Unpauses the contract accepting again any non-owner calls
+
+        @dev Owner only
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     //-------------------

@@ -220,7 +220,7 @@ describe("NFTPotionAuction", function () {
 
             await auction.transferFunds(signers[0]);
         });
-        it.only("Send unrequested ether and claim it back", async function () {
+        it("Send unrequested ether and claim it back", async function () {
             const signers = await ethers.getSigners();
             const provider = auction.contract.provider;
 
@@ -232,7 +232,7 @@ describe("NFTPotionAuction", function () {
                 value: 10000,
             });
 
-            const receipt = await transaction.wait();
+            await transaction.wait();
 
             expect(await auction.contract.unrequestedFundsReceived()).to.be.equal(10000);
             expect(await provider.getBalance(auction.contract.address)).to.be.equal(10000);

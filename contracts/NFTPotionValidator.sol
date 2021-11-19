@@ -2,9 +2,11 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./INFTPotion.sol";
 
-contract NFTPotionValidator is Context {
+contract NFTPotionValidator is Context, Ownable, Pausable {
     //------------
     // Storage
     //------------
@@ -34,7 +36,7 @@ contract NFTPotionValidator is Context {
     }
 
     //---------------------
-    // Mutating functions
+    // Validate functions
     //---------------------
 
     /**
@@ -49,16 +51,16 @@ contract NFTPotionValidator is Context {
         uint256 tokenId,
         bytes memory decryptedSecret,
         bytes32[] memory proof
-    ) public {
+    ) public whenNotPaused {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
         require(!isValidated[tokenId], "TAV"); // Token Already Validated
 
         bytes memory data = abi.encodePacked(tokenId, decryptedSecret);
         bytes32 leaf = keccak256(data);
 
-        require(verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation
+        require(_verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation
 
-        copyDecryptedSecret(tokenId, decryptedSecret);
+        _copyDecryptedSecret(tokenId, decryptedSecret);
 
         emit NFTValidated(_msgSender(), tokenId);
     }
@@ -82,6 +84,32 @@ contract NFTPotionValidator is Context {
         }
     }
 
+    //------------------
+    // Owner functions
+    //------------------
+
+    /**
+        @notice Pauses the contract by stopping the validation functionality
+
+        @dev Owner only
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+        @notice Unpauses the contract allowing validation again
+
+        @dev Owner only
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    //------------------
+    // Internal functions
+    //------------------
+
     /**
         @notice Copies the decrypted secret into the finalMessage at the right location using
                 the rarities configuration
@@ -89,7 +117,7 @@ contract NFTPotionValidator is Context {
         @param tokenId The token id of the NFT which decrypted secret is being copied
         @param decryptedSecret The decrypted secret associated with the NFT
     */
-    function copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
+    function _copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
         (uint256 start, uint256 length, bool found) = NFTContract.getSecretPositionLength(tokenId);
 
         require(found, "CRITICAL!! Token ID could not be found in rarity config");
@@ -160,7 +188,7 @@ contract NFTPotionValidator is Context {
 
         @dev Copied from https://github.com/miguelmota/merkletreejs-solidity
      */
-    function verifyMerkleProof(
+    function _verifyMerkleProof(
         bytes32 root,
         bytes32 leaf,
         bytes32[] memory proof

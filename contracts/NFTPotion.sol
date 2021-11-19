@@ -3,14 +3,14 @@ pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "./NFTPotionAuction.sol";
 import "./RarityConfigItem.sol";
 
-contract NFTPotion is ERC721URIStorage, Ownable {
-    /**
-        Storage
-     */
+contract NFTPotion is ERC721URIStorage, Ownable, Pausable {
+    //--------------
+    // Storage
+    //--------------
     string public ipfsPrefix;
     string public ipfsSuffix;
     bytes public fullSecret;
@@ -18,9 +18,9 @@ contract NFTPotion is ERC721URIStorage, Ownable {
     INFTPotionWhitelist whitelist;
     RarityConfigItem[] public rarityConfig;
 
-    /**
-        Modifiers
-    */
+    //--------------
+    // Modifiers
+    //--------------
     modifier checkWhitelist(uint256 tokenId) {
         INFTPotionWhitelist.WhitelistData[] memory ranges = whitelist.getWhitelistRanges(_msgSender());
 
@@ -35,9 +35,9 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         _;
     }
 
-    /**
-        Constructor
-     */
+    //---------------
+    // Constructor
+    //---------------
     constructor(
         string memory _tokenName,
         string memory _tokenSymbol,
@@ -57,32 +57,85 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         }
     }
 
+    //--------------------
+    // Minting functions
+    //--------------------
+
     /**
-        Mutating functions
+        @notice Mints a new token if it's been whitelisted for the caller
+
+        @param tokenId The ID of the token to mint
+        @param publicKey The public key to be used for genesis encryption
      */
-    function mint(uint256 tokenId, string calldata publicKey) public checkWhitelist(tokenId) {
+    function mint(uint256 tokenId, string calldata publicKey) public checkWhitelist(tokenId) whenNotPaused {
         _safeMint(msg.sender, tokenId);
 
         encryptionKeys[tokenId] = publicKey;
     }
 
+    /**
+        @notice Mints a batch of tokenIDs
+
+        @param tokenIds List of token IDs to be minted
+        @param publicKey The public key to be used for genesis encryption
+     */
     function mintList(uint256[] calldata tokenIds, string calldata publicKey) external {
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             mint(tokenIds[i], publicKey);
         }
     }
 
+    //------------------
+    // Owner functions
+    //------------------
+
     /**
-        View functions
+        @notice Pauses the contract by stopping the minting functionality
+
+        @dev Owner only
      */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+        @notice Unpauses the contract allowing minting again
+
+        @dev Owner only
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    //------------------
+    // View functions
+    //------------------
+
+    /**
+        @notice returns the NFT artwork for the given token ID
+
+        @param tokenId ID of the token to get the artwork for
+
+        @return the artwork for the given token ID
+    */
     function tokenURI(uint256 tokenId) public view override returns (string memory) {
         if (ownerOf(tokenId) == address(0)) {
             return "";
         }
 
-        return string(abi.encodePacked(ipfsPrefix, uint2str(tokenId), ipfsSuffix));
+        return string(abi.encodePacked(ipfsPrefix, _uint2str(tokenId), ipfsSuffix));
     }
 
+    /**
+        @notice Calculates the position and length of the fragment of fullSecret associated
+        with the given token ID
+
+        @param tokenId ID of the token to get the fragment for
+
+        @return start Position of the fragment in fullSecret
+        @return length Length of the fragment
+        @return found Whether the position and length were found
+     */
     function getSecretPositionLength(uint256 tokenId)
         public
         view
@@ -108,6 +161,13 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         }
     }
 
+    /**
+        @notice Returns the fragment of fullSecret associated with the given token ID
+
+        @param tokenId ID of the token to get the secret for
+
+        @return The fragment of fullSecret associated with the given token ID
+     */
     function secret(uint256 tokenId) external view returns (bytes memory) {
         if (ownerOf(tokenId) == address(0)) {
             return new bytes(0);
@@ -127,7 +187,14 @@ contract NFTPotion is ERC721URIStorage, Ownable {
         return out;
     }
 
-    function uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
+    //---------------------
+    // Internal functions
+    //---------------------
+
+    /**
+        @notice Converts a number to its string representation
+     */
+    function _uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
         if (_i == 0) {
             return "0";
         }

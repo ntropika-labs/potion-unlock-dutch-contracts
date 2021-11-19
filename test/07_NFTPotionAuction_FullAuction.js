@@ -76,7 +76,7 @@ async function afterBatchAction(
     }
 }
 
-describe.skip("NFTPotionAuction", function () {
+describe("NFTPotionAuction", function () {
     // The random seed is generated randomly and printed to the console. In case the test
     // fails you can use this seed to reproduce the problem.
     const RANDOM_SEED = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
