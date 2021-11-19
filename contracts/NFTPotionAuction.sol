@@ -62,6 +62,7 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
     // Global funds info
     uint256 public claimableFunds;
+    uint256 public unrequestedFundsReceived;
 
     // Whitelist
     mapping(address => WhitelistData[]) public whitelist;
@@ -433,12 +434,33 @@ contract NFTPotionAuction is Ownable, INFTPotionWhitelist, IStructureInterface {
 
         @param recipient The address to transfer the funds to
 
-        @dev Owner only
+        @dev Owner only. Claimable funds come from succesful auctions
     */
     function transferFunds(address payable recipient) external onlyOwner {
         uint256 transferAmount = claimableFunds;
         claimableFunds = 0;
         Address.sendValue(recipient, transferAmount);
+    }
+
+    /**
+        @notice Transfer the unrequested funds to the recipient
+
+        @param recipient The address to transfer the funds to
+
+        @dev Owner only. Unrequested funds come from the ether received
+        spontaneously in the receive() function
+    */
+    function transferUnrequestedFunds(address payable recipient) external onlyOwner {
+        uint256 transferAmount = unrequestedFundsReceived;
+        unrequestedFundsReceived = 0;
+        Address.sendValue(recipient, transferAmount);
+    }
+
+    //-------------------
+    // Receive function
+    //-------------------
+    receive() external payable {
+        unrequestedFundsReceived += msg.value;
     }
 
     /**

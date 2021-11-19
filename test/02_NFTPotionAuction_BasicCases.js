@@ -220,5 +220,29 @@ describe("NFTPotionAuction", function () {
 
             await auction.transferFunds(signers[0]);
         });
+        it.only("Send unrequested ether and claim it back", async function () {
+            const signers = await ethers.getSigners();
+            const provider = auction.contract.provider;
+
+            expect(await provider.getBalance(auction.contract.address)).to.be.equal(0);
+
+            const transaction = await signers[1].sendTransaction({
+                from: signers[1].address,
+                to: auction.contract.address,
+                value: 10000,
+            });
+
+            const receipt = await transaction.wait();
+
+            expect(await auction.contract.unrequestedFundsReceived()).to.be.equal(10000);
+            expect(await provider.getBalance(auction.contract.address)).to.be.equal(10000);
+
+            const balance = await signers[1].getBalance();
+            await auction.contract.connect(signers[0]).transferUnrequestedFunds(signers[1].address);
+            const newBalance = await signers[1].getBalance();
+
+            expect(newBalance).to.be.equal(balance.add(10000));
+            expect(await provider.getBalance(auction.contract.address)).to.be.equal(0);
+        });
     });
 });
