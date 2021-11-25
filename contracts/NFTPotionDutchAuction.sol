@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "./NFTPotionCredit.sol";
 import "./NFTPotionKYC.sol";
 import "./RarityConfigItem.sol";
+import "./utils/Utils.sol";
 
 contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
     // Auction state
@@ -70,11 +71,8 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         checkNotSoldOut
         onlyKnownCustomer
     {
-        // Check the amount of items that can still be bought
-        uint256 remainingItems = numAuctionedItems - numSoldItems;
-        if (amount > remainingItems) {
-            amount = remainingItems;
-        }
+        // Calculate the amount of items that can still be bought
+        amount = Utils.min(amount, numAuctionedItems - numSoldItems);
 
         // Get the credited amount of items of the buyer and calculate how many items must be paid for.
         // Then consume the used amount of credit
