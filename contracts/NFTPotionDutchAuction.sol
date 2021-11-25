@@ -14,6 +14,9 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
     uint256 public numSoldItems;
     bool public isAuctionActive;
 
+    // Used to track unrequested cash received in the receive() function
+    uint256 public unrequestedFundsReceived;
+
     // Modifiers
     modifier checkAuctionActive() {
         require(isAuctionActive, "Auction is not active");
@@ -108,6 +111,15 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
     */
     function transferFunds(address payable recipient) external onlyOwner {
         Address.sendValue(recipient, address(this).balance);
+
+        unrequestedFundsReceived = 0;
+    }
+
+    /**
+        Added to track unrequested sending of cash to the contract
+    */
+    receive() external payable {
+        unrequestedFundsReceived += msg.value;
     }
 
     // Delegate
