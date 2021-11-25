@@ -6,10 +6,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
     @notice Allows buyer to purchase items for free
 */
 contract NFTPotionCredit is Ownable {
-    // Whitelist
+    // Buyer's credit (buyer's address, credit)
     mapping(address => uint256) public credit;
-
-    constructor() {}
 
     /**
         @notice Adds credit to a list of buyers

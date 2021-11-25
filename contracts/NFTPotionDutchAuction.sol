@@ -22,9 +22,6 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         _;
     }
 
-    // Constructor
-    constructor() {}
-
     // Auction management
 
     /**
