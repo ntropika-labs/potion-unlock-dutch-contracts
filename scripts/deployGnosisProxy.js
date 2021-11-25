@@ -14,7 +14,7 @@ async function main() {
         "Rarity1",
         "PR1",
         1,
-        1000,
+        3,
         NFTPotionWhitelist.address,
         "0xC5992c0e0A3267C7F75493D0F717201E26BE35f7",
     );
@@ -23,7 +23,9 @@ async function main() {
 
     exportContract("NFTGnosisWhitelist", NFTGnosisProxy.address);
 
-    console.log("Potion NFT ERC20 Whitelist Contract deployed to:", NFTGnosisProxy.address);
+    await NFTPotionWhitelist.addOperator(NFTGnosisProxy.address);
+
+    console.log("Potion NFT ERC20 Proxy Contract deployed to:", NFTGnosisProxy.address);
 }
 
 main()
