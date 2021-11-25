@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
     @notice Handles KYC for accessing the contract functions
  */
 contract NFTPotionKYC is Ownable {
+    // KYC list (customer address, KYC status)
     mapping(address => bool) public isKnownCustomer;
 
     // Events
@@ -17,8 +18,6 @@ contract NFTPotionKYC is Ownable {
         require(isKnownCustomer[_msgSender()], "KYC: Caller not known");
         _;
     }
-
-    constructor() {}
 
     /**
         @notice Adds a new customer to the KYC list

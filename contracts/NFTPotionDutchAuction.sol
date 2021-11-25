@@ -7,12 +7,13 @@ import "./NFTPotionKYC.sol";
 import "./RarityConfigItem.sol";
 
 contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
-    // Dutch auction
+    // Auction state
     uint256 public purchasePrice;
     uint256 public numAuctionedItems;
     uint256 public numSoldItems;
     bool public isAuctionActive;
 
+    // Modifiers
     modifier checkAuctionActive() {
         require(isAuctionActive, "Auction is not active");
         _;
@@ -21,9 +22,6 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         require(numSoldItems < numAuctionedItems, "Auction is sold out");
         _;
     }
-
-    // Constructor
-    constructor() {}
 
     // Auction management
 
@@ -50,6 +48,16 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
     }
 
     /**
+        @notice Changes the purchase price of the auction
+
+        @param newPrice The new purchase price
+     */
+    function changePrice(uint256 newPrice) external onlyOwner checkAuctionActive {
+        require(newPrice > 0, "New price must be greater than 0");
+        purchasePrice = newPrice;
+    }
+
+    /**
         @notice Mints a batch of tokenIDs
 
         @param amount The amount of assets to buy
@@ -62,6 +70,12 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         checkNotSoldOut
         onlyKnownCustomer
     {
+        // Check the amount of items that can still be bought
+        uint256 remainingItems = numAuctionedItems - numSoldItems;
+        if (amount > remainingItems) {
+            amount = remainingItems;
+        }
+
         // Get the credited amount of items of the buyer and calculate how many items must be paid for.
         // Then consume the used amount of credit
         uint256 creditAmount = getCredit(_msgSender());
@@ -81,6 +95,8 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
 
         // Finally purchase the items
         _purchaseItems(amount, publicKey);
+
+        numSoldItems += amount;
     }
 
     // Funds
