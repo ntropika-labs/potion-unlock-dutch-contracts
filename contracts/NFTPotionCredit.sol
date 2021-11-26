@@ -43,7 +43,7 @@ contract NFTPotionCredit is Ownable {
         @param buyer The buyer to consume credit from
         @param amount The amount of credit to consume
      */
-    function consumeCredit(address buyer, uint256 amount) internal {
+    function _consumeCredit(address buyer, uint256 amount) internal {
         require(credit[buyer] >= amount, "Not enough credit to consume");
 
         credit[buyer] -= amount;
