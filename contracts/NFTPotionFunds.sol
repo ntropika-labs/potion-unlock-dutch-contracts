@@ -2,10 +2,7 @@
 pragma solidity 0.8.9;
 
 import "@openzeppelin/contracts/utils/Address.sol";
-import "./NFTPotionCredit.sol";
-import "./NFTPotionKYC.sol";
-import "./RarityConfigItem.sol";
-import "./utils/Utils.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
     Manual Dutch Auction to sell items at a changing price

@@ -10,9 +10,6 @@ contract NFTPotionKYC is Ownable {
     // KYC list (customer address, KYC status)
     mapping(address => bool) public isKnownCustomer;
 
-    // Events
-    event CustomerKnown(address indexed customer);
-
     // Modifiers
     modifier onlyKnownCustomer() {
         require(isKnownCustomer[_msgSender()], "KYC: Caller not known");

@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Address.sol";
 import "./NFTPotionCredit.sol";
 import "./NFTPotionKYC.sol";
 import "./NFTPotionFunds.sol";
-import "./RarityConfigItem.sol";
 import "./utils/Utils.sol";
 
 /**
@@ -22,7 +20,7 @@ import "./utils/Utils.sol";
 
 contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit {
     // Auction state
-    uint256 itemsId;
+    uint256 public itemsId;
     uint256 public purchasePrice;
     bool public isAuctionActive;
 
