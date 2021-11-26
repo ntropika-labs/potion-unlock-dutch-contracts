@@ -20,25 +20,25 @@ contract NFTPotionAccessList is Ownable {
         @notice Adds a new caller to the access list
 
         @param caller The address of the caller
-        @param access True if the caller has access, false otherwise
+        @param allow True if the caller has access, false otherwise
 
         @dev Only admin
     */
-    function setAccess(address caller, bool access) external onlyOwner {
-        canAccess[caller] = access;
+    function setAccess(address caller, bool allow) external onlyOwner {
+        canAccess[caller] = allow;
     }
 
     /**
         @notice Adds a list of callers to the access list
 
         @param callers The list of addresses of the callers
-        @param access True if the caller has access, false otherwise
+        @param allow True if the caller has access, false otherwise
 
         @dev Only admin
     */
-    function setAccess(address[] calldata callers, bool access) external onlyOwner {
+    function setAccess(address[] calldata callers, bool allow) external onlyOwner {
         for (uint256 i = 0; i < callers.length; i++) {
-            canAccess[callers[i]] = access;
+            canAccess[callers[i]] = allow;
         }
     }
 }

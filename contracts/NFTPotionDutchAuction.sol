@@ -20,20 +20,17 @@ import "./utils/Utils.sol";
 
 contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotionCredit {
     // Auction state
-    uint256 public itemsId;
+    uint256 public currentId;
     uint256 public purchasePrice;
     bool public isAuctionActive;
 
     // Events
-    event Purchase(uint256 indexed itemsId, address indexed buyer, uint64 numTokens);
+    event Purchase(uint256 indexed id, address indexed buyer, uint64 numTokens);
 
     // Modifiers
-    modifier checkAuctionActive() {
+    modifier checkAuctionActive(uint256 id) {
         require(isAuctionActive, "Auction is not active");
-        _;
-    }
-    modifier checkNotSoldOut() {
-        require(_getRemainingItems(itemsId) > 0, "Auction is sold out");
+        require(id == currentId, "Active auction ID mismatch");
         _;
     }
 
@@ -42,14 +39,14 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     /**
         @notice Starts a new auction starting at the given price, for the given number of items.
 
-        @param _itemsId The identifier of the items to be auctioned
+        @param id The identifier of the items to be auctioned
         @param _purchasePrice The starting price of the tokens.
     */
-    function startAuction(uint256 _itemsId, uint256 _purchasePrice) external onlyOwner {
+    function startAuction(uint256 id, uint256 _purchasePrice) external onlyOwner {
         require(!isAuctionActive, "Auction is already active");
-        require(_getRemainingItems(_itemsId) > 0, "Items are already sold out");
+        require(_getRemainingItems(id) > 0, "Items are already sold out");
 
-        itemsId = _itemsId;
+        currentId = id;
         purchasePrice = _purchasePrice;
         isAuctionActive = true;
     }
@@ -66,7 +63,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
 
         @param newPrice The new purchase price
      */
-    function changePrice(uint256 newPrice) external onlyOwner checkAuctionActive {
+    function changePrice(uint256 id, uint256 newPrice) external onlyOwner checkAuctionActive(id) {
         require(newPrice > 0, "New price must be greater than 0");
         purchasePrice = newPrice;
     }
@@ -74,29 +71,39 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     /**
         @notice Mints a batch of tokenIDs
 
+        @param id The identifier of the items set being auctioned
         @param amount The amount of assets to buy
+        @param limitPrice The maximum price the buyer is willing to pay
         @param publicKey The public key of the buyer
+
+        @dev The auction id is sent in case the auction ends an another auction starts while
+        the tx is in flight. This ensures that the purchase happens for the intended batch.
+
+        @dev limitPrice is used to ensure that the buyer is not overpaying, in case the purchase price
+        goes up, or that the auction ends and a new start is started while the tx is in flight.
 
         @dev The function ensures that no more than the maximum number of items will be purchased,
         so the implementer of the delegator function does not need to check for this.
      */
-    function purchase(uint256 amount, string calldata publicKey)
-        external
-        payable
-        checkAuctionActive
-        checkNotSoldOut
-        checkCallerAccess
-    {
+    function purchase(
+        uint256 id,
+        uint256 amount,
+        uint256 limitPrice,
+        string calldata publicKey
+    ) external payable checkAuctionActive(id) checkCallerAccess {
+        require(_getRemainingItems(id) > 0, "Auction is sold out");
+        require(purchasePrice <= limitPrice, "Current price is higher than limit price");
+
         // Calculate the amount of items that can still be bought
-        amount = Utils.min(amount, _getRemainingItems(itemsId));
+        amount = Utils.min(amount, _getRemainingItems(id));
 
         // Get the credited amount of items of the buyer and calculate how many items
         // must be paid for. Then consume the used amount of credit
-        uint256 creditAmount = getCredit(_msgSender(), itemsId);
+        uint256 creditAmount = getCredit(_msgSender(), id);
         uint256 payableAmount = creditAmount < amount ? amount - creditAmount : 0;
 
-        _consumeCredit(_msgSender(), itemsId, amount - payableAmount);
-        _purchaseItems(itemsId, amount, publicKey);
+        _consumeCredit(_msgSender(), id, amount - payableAmount);
+        _purchaseItems(id, amount, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference

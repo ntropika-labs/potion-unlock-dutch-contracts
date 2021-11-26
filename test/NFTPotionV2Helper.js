@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { fastForwardChain, fromBN, fromBNStr, toBN, chainEpoch, sortBids } = require("./NFTPotionAuctionUtils");
+const { toBN } = require("./NFTPotionAuctionUtils");
 const { NFTPotionDutchAuctionHelper } = require("./NFTPotionDutchAuctionHelper");
 
 class NFTPotionV2Helper {
