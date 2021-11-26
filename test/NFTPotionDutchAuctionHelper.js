@@ -5,32 +5,28 @@ const { fromBN } = require("./NFTPotionAuctionUtils");
 const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
 const { NFTPotionAccessListHelper } = require("./NFTPotionAccessListHelper");
 const { NFTPotionCreditHelper } = require("./NFTPotionCreditHelper");
+const { send } = require("process");
 
 class NFTPotionDutchAuctionHelper {
     parent;
     contract;
     owner;
 
-    NFTPotionFunds;
-    NFTPotionAccessList;
-    NFTPotionCredit;
-
     currentId;
     purchasePrice;
     isAuctionActive;
 
-    async initialize(parent) {
+    constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
-        this.owner = await ethers.getSigners()[0];
-
-        this.NFTPotionFunds = new NFTPotionFundsHelper(this);
-        this.NFTPotionAccessList = new NFTPotionAccessListHelper(this);
-        this.NFTPotionCredit = new NFTPotionCreditHelper(this);
 
         this.currentId = 0;
         this.purchasePrice = 0;
         this.isAuctionActive = false;
+    }
+
+    async initialize() {
+        this.owner = (await ethers.getSigners())[0];
     }
 
     async startAuction(id, purchasePrice, signer = undefined) {
@@ -40,36 +36,36 @@ class NFTPotionDutchAuctionHelper {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         if (this.isAuctionActive) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Auction is already active",
             );
-            return;
+            throw new Error("Auction is already active");
         }
 
-        if (this.parent._getRemainingItems(id) <= 0) {
+        if ((await this.parent.getRemainingItems(id)) <= 0) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Items are already sold out",
             );
-            return;
+            throw new Error("Items are already sold out");
         }
 
         if (!this.parent._isValidId(id)) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Invalid rarity ID",
             );
-            return;
+            throw new Error("Invalid rarity ID");
         }
 
         // Logic
         await this.contract.connect(signer).startAuction(id, purchasePrice);
 
         // Checks and effects
-        this.currentId = await this.contract.currentId();
-        this.purchasePrice = await this.contract.purchasePrice();
+        this.currentId = fromBN(await this.contract.currentId());
+        this.purchasePrice = fromBN(await this.contract.purchasePrice());
         this.isAuctionActive = await this.contract.isAuctionActive();
 
         expect(this.currentId).to.be.equal(id);
@@ -84,7 +80,7 @@ class NFTPotionDutchAuctionHelper {
             await expect(this.contract.connect(signer).stopAuction()).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         // Logic
@@ -103,21 +99,21 @@ class NFTPotionDutchAuctionHelper {
             await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         if (!this.isAuctionActive) {
             await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
                 "Auction is not active",
             );
-            return;
+            throw new Error("Auction is not active");
         }
 
         if (id !== this.currentId) {
             await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
                 "Active auction ID mismatch",
             );
-            return;
+            throw new Error("Active auction ID mismatch");
         }
 
         // Logic
@@ -129,7 +125,7 @@ class NFTPotionDutchAuctionHelper {
         expect(this.purchasePrice).to.be.equal(newPrice);
     }
 
-    async purchase(id, amount, limitPrice, publicKey, sendValue, signer = undefined) {
+    async purchase(id, amount, limitPrice, publicKey, sendValue = undefined, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         }
@@ -138,51 +134,55 @@ class NFTPotionDutchAuctionHelper {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "Auction is not active",
             );
-            return;
+            throw new Error("Auction is not active");
         }
 
-        const remainingItemsBefore = await this.parent._getRemainingItems(this.currentId);
+        const remainingItemsBefore = await this.parent.getRemainingItems(this.currentId);
         if (remainingItemsBefore <= 0) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "Auction is sold out",
             );
-            return;
+            throw new Error("Auction is sold out");
         }
 
-        const callerHasAccess = await this.NFTPotionAccessList.canAccess(signer.address);
+        const callerHasAccess = await this.parent.NFTPotionAccessList.canAccess(signer.address);
         if (!callerHasAccess) {
+            console.log(id, amount, limitPrice, publicKey);
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "AccessList: Caller doesn't have access",
             );
-            return;
+            throw new Error("AccessList: Caller doesn't have access");
         }
 
         if (id !== this.currentId) {
+            console.log(id, this.currentId);
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "Active auction ID mismatch",
             );
-            return;
+            throw new Error("Active auction ID mismatch");
         }
 
-        const currentCreditBefore = fromBN(await this.NFTPotionCredit.getCredit(signer.address, this.currentId));
+        const currentCreditBefore = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));
         const amountToPurchase = amount > remainingItemsBefore ? remainingItemsBefore : amount;
         const amountToPay = amountToPurchase > currentCreditBefore ? amountToPurchase - currentCreditBefore : 0;
         const toPay = amountToPay * this.purchasePrice;
+
+        if (sendValue === undefined) {
+            sendValue = toPay;
+        }
 
         if (sendValue < toPay) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "Didn't send enough cash for payment",
             );
-            return;
+            throw new Error("Didn't send enough cash for payment");
         }
 
         // Logic
-        await this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey);
-
-        await this.parent._purchaseItems(this.currentId, amountToPurchase, publicKey);
+        await this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey, { value: sendValue });
 
         // Checks and effects
-        const remainingItemsAfter = await this.parent._getRemainingItems(this.currentId);
+        const remainingItemsAfter = await this.contract.getRemainingItems(this.currentId);
 
         expect(remainingItemsAfter).to.be.equal(remainingItemsBefore - amountToPurchase);
 

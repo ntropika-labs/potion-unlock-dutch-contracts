@@ -6,6 +6,8 @@ import "./NFTPotionAccessList.sol";
 import "./NFTPotionFunds.sol";
 import "./utils/Utils.sol";
 
+import "hardhat/console.sol";
+
 /**
     Manual Dutch Auction to sell items at a changing price
 
@@ -44,7 +46,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     */
     function startAuction(uint256 id, uint256 _purchasePrice) external onlyOwner {
         require(!isAuctionActive, "Auction is already active");
-        require(_getRemainingItems(id) > 0, "Items are already sold out");
+        require(getRemainingItems(id) > 0, "Items are already sold out");
 
         currentId = id;
         purchasePrice = _purchasePrice;
@@ -91,11 +93,11 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         uint256 limitPrice,
         string calldata publicKey
     ) external payable checkAuctionActive(id) checkCallerAccess {
-        require(_getRemainingItems(id) > 0, "Auction is sold out");
+        require(getRemainingItems(id) > 0, "Auction is sold out");
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
         // Calculate the amount of items that can still be bought
-        amount = Utils.min(amount, _getRemainingItems(id));
+        amount = Utils.min(amount, getRemainingItems(id));
 
         // Get the credited amount of items of the buyer and calculate how many items
         // must be paid for. Then consume the used amount of credit
@@ -123,7 +125,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         @dev The function must be overriden by the child contract and return the
         number of items that can still be sold for the given id.
      */
-    function _getRemainingItems(uint256 id) internal virtual returns (uint256) {
+    function getRemainingItems(uint256 id) public virtual returns (uint256) {
         // Empty on purpose
     }
 

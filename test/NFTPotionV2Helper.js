@@ -1,13 +1,23 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { toBN } = require("./NFTPotionAuctionUtils");
+const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("../scripts/config");
+const { encryptPassword, getRaritiesConfig, encodeRarityConfig } = require("../scripts/lib/utils");
+
 const { NFTPotionDutchAuctionHelper } = require("./NFTPotionDutchAuctionHelper");
+const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
+const { NFTPotionAccessListHelper } = require("./NFTPotionAccessListHelper");
+const { NFTPotionCreditHelper } = require("./NFTPotionCreditHelper");
 
 class NFTPotionV2Helper {
     contract;
     owner;
 
+    NFTPotionV2;
     NFTPotionDutchAuction;
+    NFTPotionFunds;
+    NFTPotionAccessList;
+    NFTPotionCredit;
 
     ipfsPrefix;
     ipfsSuffix;
@@ -24,19 +34,19 @@ class NFTPotionV2Helper {
     // Contract State
     currentBatch;
 
-    constructor(tokenName, tokenSymbol, ipfsPrefix, ipfsSuffix, fullSecret, rarityConfig) {
-        this.tokenName = tokenName;
-        this.tokenSymbol = tokenSymbol;
-        this.ipfsPrefix = ipfsPrefix;
-        this.ipfsSuffix = ipfsSuffix;
-        this.fullSecret = fullSecret;
-        this.rarityConfig = rarityConfig;
-        this.rarityNumMinted = new Array(rarityConfig.length).fill(0);
+    constructor() {
+        this.tokenName = NFT_NAME;
+        this.tokenSymbol = NFT_SYMBOL;
+        this.ipfsPrefix = IPFS_PREFIX;
+        this.ipfsSuffix = IPFS_SUFFIX;
+        this.rarityConfig = getRaritiesConfig();
+        this.rarityConfigEncoded = encodeRarityConfig(this.rarityConfig);
+        this.rarityNumMinted = new Array(this.rarityConfig.length).fill(0);
+        this.fullSecret = encryptPassword(process.env.PASSWORD_GENESIS);
     }
 
     async initialize() {
-        this.owner = await ethers.getSigners()[0];
-        this.rarityConfigEncoded = this._encodeRarityConfig(this.rarityConfig);
+        this.owner = (await ethers.getSigners())[0];
 
         const NFTPotionV2 = await ethers.getContractFactory("NFTPotionV2");
         this.contract = await NFTPotionV2.deploy(
@@ -49,51 +59,81 @@ class NFTPotionV2Helper {
         );
         await this.contract.deployed();
 
+        this.NFTPotionV2 = this.contract;
+        this.NFTPotionFunds = new NFTPotionFundsHelper(this);
+        this.NFTPotionAccessList = new NFTPotionAccessListHelper(this);
+        this.NFTPotionCredit = new NFTPotionCreditHelper(this);
         this.NFTPotionDutchAuction = new NFTPotionDutchAuctionHelper(this);
+
+        await this.NFTPotionFunds.initialize();
+        await this.NFTPotionAccessList.initialize();
+        await this.NFTPotionCredit.initialize();
+        await this.NFTPotionDutchAuction.initialize();
     }
 
-    async startAuction(id, purchasePrice, signer) {
-        await this.NFTPotionDutchAuction.startAuction(id, purchasePrice, signer);
+    async startAuction(id, purchasePrice, signer = undefined) {
+        return this.NFTPotionDutchAuction.startAuction(id, purchasePrice, signer);
     }
 
-    async stopAuction(id, purchasePrice, signer) {
-        await this.NFTPotionDutchAuction.stopAuction(id, purchasePrice, signer);
+    async stopAuction(id, purchasePrice, signer = undefined) {
+        return this.NFTPotionDutchAuction.stopAuction(id, purchasePrice, signer);
     }
 
-    async changePrice(newPrice, signer) {
-        await this.NFTPotionDutchAuction.changePrice(newPrice, signer);
+    async changePrice(id, newPrice, signer = undefined) {
+        return this.NFTPotionDutchAuction.changePrice(newPrice, signer);
     }
 
-    async purchase(amount, publicKey, signer) {
+    async purchase(id, amount, limitPrice, publicKey, sendValue = undefined, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         }
 
         // Initial state
-        const itemsId = this.NFTPotionDutchAuction.itemsId;
         for (let i = 0; i < amount; i++) {
-            const tokenId = this.rarityConfig[itemsId].startTokenId + this.rarityNumMinted[itemsId] + i;
-            const ownerOf = await this.contract.ownerOf(tokenId);
-
-            expect(ownerOf).to.be.equal("0x0000000000000000000000000000000000000000000000000000000000000000");
+            const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
+            await expect(this.contract.ownerOf(toBN(tokenId))).to.be.revertedWith(
+                "ERC721: owner query for nonexistent token",
+            );
         }
 
-        const rarityNumMintedBefore = await this.contract.rarityNumMinted(itemsId);
+        const rarityNumMintedBefore = await this.contract.rarityNumMinted(id);
 
         // Logic
-        const purchasedAmount = await this.NFTPotionDutchAuction.purchase(amount, publicKey, signer);
+        const purchasedAmount = await this.NFTPotionDutchAuction.purchase(
+            id,
+            amount,
+            limitPrice,
+            publicKey,
+            sendValue,
+            signer,
+        );
 
         // Checks and effects
         for (let i = 0; i < amount; i++) {
-            const itemsId = this.NFTPotionDutchAuction.itemsId;
-            const tokenId = this.rarityConfig[itemsId].startTokenId + this.rarityNumMinted[itemsId] + i;
+            const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
             const ownerOf = await this.contract.ownerOf(tokenId);
 
             expect(ownerOf).to.be.equal(signer.address);
         }
 
-        const rarityNumMintedAfter = await this.contract.rarityNumMinted(itemsId);
-        expect(rarityNumMintedAfter).to.be.equal(rarityNumMintedBefore + purchasedAmount);
+        const rarityNumMintedAfter = await this.contract.rarityNumMinted(id);
+        expect(rarityNumMintedAfter).to.be.equal(rarityNumMintedBefore.add(purchasedAmount));
+
+        this.rarityNumMinted[id] += amount;
+    }
+
+    async purchasePrice() {
+        return toBN(this.NFTPotionDutchAuction.purchasePrice);
+    }
+
+    async getRemainingItems(id) {
+        const remainingItemsContract = await this.contract.getRemainingItems(id);
+        const remainingItems =
+            this.rarityConfig[id].endTokenId - this.rarityConfig[id].startTokenId + 1 - this.rarityNumMinted[id];
+
+        expect(remainingItemsContract).to.be.equal(remainingItems);
+
+        return toBN(remainingItems);
     }
 
     _encodeRarityConfig(rarityConfig) {
@@ -106,10 +146,6 @@ class NFTPotionV2Helper {
                 bytesPerPiece: toBN(item.bytesPerPiece),
             };
         });
-    }
-
-    _getRemainingItems(id) {
-        return this.rarityConfig[id].endTokenId - this.rarityConfig[id].startTokenId + 1 - this.rarityNumMinted[id];
     }
 
     _isValidId(id) {

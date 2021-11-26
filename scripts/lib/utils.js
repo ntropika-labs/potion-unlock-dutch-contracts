@@ -3,7 +3,7 @@ const { decodeUTF8, encodeUTF8, decodeBase64, encodeBase64 } = require("tweetnac
 const { bufferToHex } = require("ethereumjs-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
-
+const { BigNumber } = require("@ethersproject/bignumber");
 const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, RARITIES_CONFIG, NUM_NFTS } = require("../config");
 const { encrypt, decrypt, encryptSymmetric, decryptSymmetric, getPublicKey, getPrivateKey } = require("./nacl");
 const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
@@ -212,6 +212,18 @@ function getRaritiesConfig() {
     return RARITIES_CONFIG;
 }
 
+function encodeRarityConfig(rarityConfig) {
+    return rarityConfig.map(item => {
+        return {
+            startTokenId: BigNumber.from(item.startTokenId),
+            endTokenId: BigNumber.from(item.endTokenId),
+            secretSegmentStart: BigNumber.from(item.secretSegmentStart),
+            secretSegmentLength: BigNumber.from(item.secretSegmentLength),
+            bytesPerPiece: BigNumber.from(item.bytesPerPiece),
+        };
+    });
+}
+
 module.exports = {
     // Key management
     getPotionGenesis,
@@ -236,6 +248,7 @@ module.exports = {
     getMerkleLeaves,
     // Rarities
     getRaritiesConfig,
+    encodeRarityConfig,
     getSecretPieceFromId,
     getSecretStartAndLength,
     // Misc

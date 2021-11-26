@@ -6,10 +6,13 @@ class NFTPotionFundsHelper {
     contract;
     owner;
 
-    async initialize(parent) {
+    constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
-        this.owner = await ethers.getSigners()[0];
+    }
+
+    async initialize() {
+        this.owner = (await ethers.getSigners())[0];
     }
 
     async transferFunds(recipient, signer = undefined) {

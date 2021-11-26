@@ -8,26 +8,14 @@ const {
     getPotionGenesis,
     exportContract,
     getRaritiesConfig,
+    encodeRarityConfig,
 } = require("./lib/utils");
 const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
-const { BigNumber } = require("@ethersproject/bignumber");
 
 // Enable/disable console.log
 const EnableConsoleLog = console.log;
 const DisableConsoleLog = function () {};
 console.log = EnableConsoleLog;
-
-function _encodeRarityConfig(rarityConfig) {
-    return rarityConfig.map(item => {
-        return {
-            startTokenId: BigNumber.from(item.startTokenId),
-            endTokenId: BigNumber.from(item.endTokenId),
-            secretSegmentStart: BigNumber.from(item.secretSegmentStart),
-            secretSegmentLength: BigNumber.from(item.secretSegmentLength),
-            bytesPerPiece: BigNumber.from(item.bytesPerPiece),
-        };
-    });
-}
 
 async function deployAuction(enableExport = true) {
     const NFTAuctionFactory = await ethers.getContractFactory("NFTPotionAuction");
@@ -90,7 +78,7 @@ async function deployPotionNFTGame(showLogs = true, enableExport = true) {
 
     // Rarities
     const raritiesConfig = getRaritiesConfig();
-    const raritiesConfigSolidity = _encodeRarityConfig(raritiesConfig);
+    const raritiesConfigSolidity = encodeRarityConfig(raritiesConfig);
 
     // Genesis
     const potionGenesis = getPotionGenesis();

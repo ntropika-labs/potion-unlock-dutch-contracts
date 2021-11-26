@@ -6,10 +6,13 @@ class NFTPotionAccessListHelper {
     contract;
     owner;
 
-    async initialize(parent) {
+    constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
-        this.owner = await ethers.getSigners()[0];
+    }
+
+    async initialize() {
+        this.owner = (await ethers.getSigners())[0];
     }
 
     async canAccess(caller) {
@@ -27,8 +30,7 @@ class NFTPotionAccessListHelper {
         }
 
         // Logic
-        const tx = await this.contract.connect(signer).setAccess(caller, canAccess);
-        await tx.wait();
+        await this.contract.connect(signer).setAccess(caller, canAccess);
 
         // Checks
         const canAccessAfter = await this.contract.canAccess(caller);

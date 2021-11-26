@@ -8,11 +8,14 @@ class NFTPotionCreditHelper {
 
     creditMap;
 
-    async initialize(parent) {
+    constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
-        this.owner = await ethers.getSigners()[0];
         this.creditsMap = new Map();
+    }
+
+    async initialize() {
+        this.owner = (await ethers.getSigners())[0];
     }
 
     async addCredit(buyer, itemsId, amount, signer = undefined) {
@@ -75,6 +78,10 @@ class NFTPotionCreditHelper {
             const creditAfter = await this.contract.provider.getCredit(this.contract.address, itemsIdList[i]);
             expect(creditAfter).to.be.equal(creditsBefore[i].add(amountsList[i]));
         }
+    }
+
+    async getCredit(buyer, id) {
+        return this.contract.getCredit(buyer, id);
     }
 }
 

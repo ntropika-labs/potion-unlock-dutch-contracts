@@ -54,7 +54,7 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
         @dev The function must be overriden by the child contract and return the
         number of items to be sold for the given rarity.
      */
-    function _getRemainingItems(uint256 rarityId) internal view override checkValidRarity(rarityId) returns (uint256) {
+    function getRemainingItems(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint256) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
         uint256 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
         return totalTokens - rarityNumMinted[rarityId];

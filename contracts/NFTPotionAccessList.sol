@@ -36,7 +36,7 @@ contract NFTPotionAccessList is Ownable {
 
         @dev Only admin
     */
-    function setAccess(address[] calldata callers, bool allow) external onlyOwner {
+    function setAccessAll(address[] calldata callers, bool allow) external onlyOwner {
         for (uint256 i = 0; i < callers.length; i++) {
             canAccess[callers[i]] = allow;
         }
