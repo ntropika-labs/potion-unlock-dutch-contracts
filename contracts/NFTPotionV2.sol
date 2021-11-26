@@ -15,7 +15,12 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
     bytes public fullSecret;
     mapping(uint256 => string) public encryptionKeys;
     RarityConfigItem[] public rarityConfig;
-    uint256 nextTokenId = 1;
+    uint256[] public rarityNumMinted;
+
+    modifier checkValidRarity(uint256 rarityId) {
+        require(rarityId < rarityConfig.length, "Invalid rarity ID");
+        _;
+    }
 
     // Constructor
     constructor(
@@ -33,22 +38,55 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
         for (uint256 i = 0; i < _rarityConfig.length; ++i) {
             rarityConfig.push(_rarityConfig[i]);
         }
+
+        rarityNumMinted = new uint256[](rarityConfig.length);
+    }
+
+    // Auction delegates
+
+    /**
+        @notice Requests the total number of items to be sold for the given rarity ID
+
+        @param rarityId The rarity IDs of the items to purchase
+
+        @return The total number of items to be sold for the given rarity
+
+        @dev The function must be overriden by the child contract and return the
+        number of items to be sold for the given rarity.
+     */
+    function _getRemainingItems(uint256 rarityId) internal view override checkValidRarity(rarityId) returns (uint256) {
+        RarityConfigItem storage rarity = rarityConfig[rarityId];
+        uint256 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
+        return totalTokens - rarityNumMinted[rarityId];
     }
 
     /**
         @notice Mints the number of tokens requested by the caller
 
+        @param rarityId The ID of the rarity config to use
         @param amount The amount of tokens to mint
         @param publicKey The public key of the minter
+
+        @dev The caller is ensuring that the number of tokens requested is less than
+        the number of tokens available for minting.
      */
-    function _purchaseItems(uint256 amount, string calldata publicKey) internal override {
+    function _purchaseItems(
+        uint256 rarityId,
+        uint256 amount,
+        string calldata publicKey
+    ) internal override checkValidRarity(rarityId) {
+        RarityConfigItem storage rarity = rarityConfig[rarityId];
+        uint256 numTokensMinted = rarityNumMinted[rarityId];
+
         for (uint256 i = 0; i < amount; ++i) {
-            encryptionKeys[nextTokenId] = publicKey;
+            uint256 tokenId = rarity.startTokenId + numTokensMinted + i;
 
-            _safeMint(msg.sender, nextTokenId);
+            _safeMint(msg.sender, tokenId);
 
-            nextTokenId++;
+            encryptionKeys[tokenId] = publicKey;
         }
+
+        rarityNumMinted[rarityId] += amount;
     }
 
     // View functions

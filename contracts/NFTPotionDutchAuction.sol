@@ -4,18 +4,27 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./NFTPotionCredit.sol";
 import "./NFTPotionKYC.sol";
+import "./NFTPotionFunds.sol";
 import "./RarityConfigItem.sol";
 import "./utils/Utils.sol";
 
-contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
-    // Auction state
-    uint256 public purchasePrice;
-    uint256 public numAuctionedItems;
-    uint256 public numSoldItems;
-    bool public isAuctionActive;
+/**
+    Manual Dutch Auction to sell items at a changing price
 
-    // Used to track unrequested cash received in the receive() function
-    uint256 public unrequestedFundsReceived;
+    @dev This contract is used to sell items at a changing price. The price changes are done manually through
+    the changePrice function. In principle the price should be lowered over time, but this is not implemented
+    and it is the responsability of the user to do it.
+
+    @dev The batchId parameter passed in the contract is an identifier that will be passed to the _purchaseItems
+    function to help the child contract identify which batch of items the user wants to purchase. If there are no
+    batches, the batchId can be any value and can be ignored when overriding the _purchaseItems function.
+ */
+
+contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit {
+    // Auction state
+    uint256 itemsId;
+    uint256 public purchasePrice;
+    bool public isAuctionActive;
 
     // Modifiers
     modifier checkAuctionActive() {
@@ -23,7 +32,7 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         _;
     }
     modifier checkNotSoldOut() {
-        require(numSoldItems < numAuctionedItems, "Auction is sold out");
+        require(_getRemainingItems(itemsId) > 0, "Auction is sold out");
         _;
     }
 
@@ -32,15 +41,14 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
     /**
         @notice Starts a new auction starting at the given price, for the given number of items.
 
+        @param _itemsId The identifier of the items to be auctioned
         @param _purchasePrice The starting price of the tokens.
     */
-    function startAuction(uint256 _purchasePrice, uint256 _numAuctionedItems) external onlyOwner {
+    function startAuction(uint256 _itemsId, uint256 _purchasePrice) external onlyOwner {
         require(!isAuctionActive, "Auction is already active");
-        require(numAuctionedItems > 0, "Number of auctioned tokens must be greater than 0");
 
+        itemsId = _itemsId;
         purchasePrice = _purchasePrice;
-        numAuctionedItems = _numAuctionedItems;
-        numSoldItems = 0;
         isAuctionActive = true;
     }
 
@@ -66,6 +74,9 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
 
         @param amount The amount of assets to buy
         @param publicKey The public key of the buyer
+
+        @dev The function ensures that no more than the maximum number of items will be purchased,
+        so the implementer of the delegator function does not need to check for this.
      */
     function purchase(uint256 amount, string calldata publicKey)
         external
@@ -75,65 +86,53 @@ contract NFTPotionDutchAuction is NFTPotionKYC, NFTPotionCredit {
         onlyKnownCustomer
     {
         // Calculate the amount of items that can still be bought
-        amount = Utils.min(amount, numAuctionedItems - numSoldItems);
+        amount = Utils.min(amount, _getRemainingItems(itemsId));
 
-        // Get the credited amount of items of the buyer and calculate how many items must be paid for.
-        // Then consume the used amount of credit
+        // Get the credited amount of items of the buyer and calculate how many items
+        // must be paid for. Then consume the used amount of credit
         uint256 creditAmount = getCredit(_msgSender());
         uint256 payableAmount = creditAmount < amount ? amount - creditAmount : 0;
 
-        consumeCredit(_msgSender(), amount - payableAmount);
-
-        // Calculate the total price for all the items and validate that enough cash was sent
-        uint256 toPay = payableAmount * purchasePrice;
-        require(msg.value >= toPay, "Didn't send enough cash for purchase");
+        _consumeCredit(_msgSender(), amount - payableAmount);
+        _purchaseItems(itemsId, amount, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference
-        if (msg.value > toPay) {
-            Address.sendValue(payable(_msgSender()), msg.value - toPay);
-        }
-
-        // Finally purchase the items
-        _purchaseItems(amount, publicKey);
-
-        numSoldItems += amount;
+        _chargePayment(payableAmount * purchasePrice);
     }
 
-    // Funds
+    // Delegates
 
     /**
-        @notice Transfer the claimable funds to the recipient
+        @notice Requests the total number of items that can still be sold for
+        the given id
 
-        @param recipient The address to transfer the funds to
+        @param id The id of the items to purchase
 
-        @dev Owner only. Claimable funds come from succesful auctions
-    */
-    function transferFunds(address payable recipient) external onlyOwner {
-        Address.sendValue(recipient, address(this).balance);
+        @return The total number of items that can still be sold
 
-        unrequestedFundsReceived = 0;
+        @dev The function must be overriden by the child contract and return the
+        number of items that can still be sold for the given id.
+     */
+    function _getRemainingItems(uint256 id) internal virtual returns (uint256) {
+        // Empty on purpose
     }
-
-    /**
-        Added to track unrequested sending of cash to the contract
-    */
-    receive() external payable {
-        unrequestedFundsReceived += msg.value;
-    }
-
-    // Delegate
 
     /**
         @notice Delegate function to purchase the amount of items indicated in the call
 
+        @param id The batchId of the items to purchase
         @param amount The amount of items to be purchased
         @param publicKey The public key of the buyer
 
         @dev The function must be overriden by the child contract and implement the
         purchase logic
      */
-    function _purchaseItems(uint256 amount, string calldata publicKey) internal virtual {
+    function _purchaseItems(
+        uint256 id,
+        uint256 amount,
+        string calldata publicKey
+    ) internal virtual {
         // Empty on purpose
     }
 }
