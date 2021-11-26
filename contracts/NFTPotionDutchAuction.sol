@@ -24,6 +24,9 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit 
     uint256 public purchasePrice;
     bool public isAuctionActive;
 
+    // Events
+    event Purchase(uint256 indexed itemsId, address indexed buyer, uint64 numTokens);
+
     // Modifiers
     modifier checkAuctionActive() {
         require(isAuctionActive, "Auction is not active");
@@ -88,10 +91,10 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit 
 
         // Get the credited amount of items of the buyer and calculate how many items
         // must be paid for. Then consume the used amount of credit
-        uint256 creditAmount = getCredit(_msgSender());
+        uint256 creditAmount = getCredit(_msgSender(), itemsId);
         uint256 payableAmount = creditAmount < amount ? amount - creditAmount : 0;
 
-        _consumeCredit(_msgSender(), amount - payableAmount);
+        _consumeCredit(_msgSender(), itemsId, amount - payableAmount);
         _purchaseItems(itemsId, amount, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
