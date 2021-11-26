@@ -47,6 +47,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     */
     function startAuction(uint256 _itemsId, uint256 _purchasePrice) external onlyOwner {
         require(!isAuctionActive, "Auction is already active");
+        require(_getRemainingItems(_itemsId) > 0, "Items are already sold out");
 
         itemsId = _itemsId;
         purchasePrice = _purchasePrice;
