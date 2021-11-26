@@ -2,7 +2,7 @@
 pragma solidity 0.8.9;
 
 import "./NFTPotionCredit.sol";
-import "./NFTPotionKYC.sol";
+import "./NFTPotionAccessList.sol";
 import "./NFTPotionFunds.sol";
 import "./utils/Utils.sol";
 
@@ -18,7 +18,7 @@ import "./utils/Utils.sol";
     batches, the batchId can be any value and can be ignored when overriding the _purchaseItems function.
  */
 
-contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit {
+contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotionCredit {
     // Auction state
     uint256 public itemsId;
     uint256 public purchasePrice;
@@ -84,7 +84,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionKYC, NFTPotionCredit 
         payable
         checkAuctionActive
         checkNotSoldOut
-        onlyKnownCustomer
+        checkCallerAccess
     {
         // Calculate the amount of items that can still be bought
         amount = Utils.min(amount, _getRemainingItems(itemsId));
