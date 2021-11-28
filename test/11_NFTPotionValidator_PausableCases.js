@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 
 const { deployPotionNFTGame } = require("../scripts/deployUtils");
 
-describe("NFTPotionValidator", function () {
+describe.skip("NFTPotionValidator", function () {
     describe("Pausable Cases", function () {
         let NFTAuction, NFTPotion, NFTValidator;
 

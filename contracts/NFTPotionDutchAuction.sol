@@ -6,8 +6,6 @@ import "./NFTPotionAccessList.sol";
 import "./NFTPotionFunds.sol";
 import "./utils/Utils.sol";
 
-import "hardhat/console.sol";
-
 /**
     Manual Dutch Auction to sell items at a changing price
 
@@ -69,7 +67,6 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         @param newPrice The new purchase price
      */
     function changePrice(uint256 id, uint256 newPrice) external onlyOwner checkAuctionActive(id) {
-        require(newPrice > 0, "New price must be greater than 0");
         purchasePrice = newPrice;
     }
 

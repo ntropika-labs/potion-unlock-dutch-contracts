@@ -115,12 +115,6 @@ class NFTPotionDutchAuctionHelper {
             );
             throw new Error("Active auction ID mismatch");
         }
-        if (newPrice === 0) {
-            await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
-                "New price must be greater than 0",
-            );
-            throw new Error("New price must be greater than 0");
-        }
 
         // Logic
         await this.contract.connect(signer).changePrice(id, newPrice);
@@ -192,9 +186,13 @@ class NFTPotionDutchAuctionHelper {
         await this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey, { value: sendValue });
 
         // Checks and effects
+        this.parent.NFTPotionCredit._consumeCredit(signer.address, id, amountToPurchase - amountToPay);
+
         const remainingItemsAfter = await this.contract.getRemainingItems(this.currentId);
+        const currentCreditAfter = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));
 
         expect(remainingItemsAfter).to.be.equal(remainingItemsBefore - amountToPurchase);
+        expect(currentCreditAfter).to.be.equal(currentCreditBefore - (amountToPurchase - amountToPay));
 
         return amountToPurchase;
     }

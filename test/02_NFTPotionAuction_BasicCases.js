@@ -3,7 +3,7 @@ const { ethers } = require("hardhat");
 const { NFTPotionAuctionHelper } = require("./NFTPotionAuctionHelper");
 const { generatePrice } = require("./NFTPotionAuctionUtils");
 
-describe("NFTPotionAuction", function () {
+describe.skip("NFTPotionAuction", function () {
     describe("Auction Basic Cases", function () {
         let auction;
 

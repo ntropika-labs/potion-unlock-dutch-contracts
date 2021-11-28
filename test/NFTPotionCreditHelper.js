@@ -29,15 +29,22 @@ class NFTPotionCreditHelper {
         }
 
         // Initial state
-        const creditBefore = await this.contract.provider.getCredit(this.contract.address, itemsId);
+        const creditBefore = await this.contract.getCredit(buyer, itemsId);
 
         // Logic
         await this.contract.connect(signer).addCredit(buyer, itemsId, amount);
 
         // Checks
-        const creditAfter = await this.contract.provider.getCredit(this.contract.address, itemsId);
+        const creditAfter = await this.contract.getCredit(buyer, itemsId);
 
         expect(creditAfter).to.be.equal(creditBefore.add(amount));
+
+        // Effects
+        if (!this.creditsMap.has(buyer)) {
+            this.creditsMap.set(buyer, new Map());
+        }
+
+        this.creditsMap.get(buyer).set(itemsId, amount);
     }
 
     async addCreditAll(buyersList, itemsIdList, amountsList, signer = undefined) {
@@ -68,20 +75,48 @@ class NFTPotionCreditHelper {
         let creditsBefore = [];
 
         for (let i = 0; i < buyersList.length; i++) {
-            creditsBefore.push(await this.contract.provider.getCredit(this.contract.address, itemsIdList[i]));
+            creditsBefore.push(await this.contract.getCredit(buyersList[i], itemsIdList[i]));
         }
 
         // Logic
         await this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList);
 
         for (let i = 0; i < buyersList.length; i++) {
-            const creditAfter = await this.contract.provider.getCredit(this.contract.address, itemsIdList[i]);
+            const creditAfter = await this.contract.getCredit(buyersList[i], itemsIdList[i]);
             expect(creditAfter).to.be.equal(creditsBefore[i].add(amountsList[i]));
+
+            if (!this.creditsMap.has(buyersList[i])) {
+                this.creditsMap.set(buyersList[i], new Map());
+            }
+
+            this.creditsMap.get(buyersList[i]).set(itemsIdList[i], amountsList[i]);
         }
     }
 
+    _consumeCredit(buyer, id, amount) {
+        if (!this.creditsMap.has(buyer)) {
+            expect(amount).to.be.equal(0);
+            return;
+        }
+        if (!this.creditsMap.get(buyer).has(id)) {
+            expect(amount).to.be.equal(0);
+            return;
+        }
+
+        const credit = this.creditsMap.get(buyer).get(id);
+        expect(credit).to.be.greaterThanOrEqual(amount);
+
+        this.creditsMap.get(buyer).set(id, credit - amount);
+    }
+
     async getCredit(buyer, id) {
-        return this.contract.getCredit(buyer, id);
+        if (!this.creditsMap.has(buyer)) {
+            return 0;
+        }
+        if (!this.creditsMap.get(buyer).has(id)) {
+            return 0;
+        }
+        return this.creditsMap.get(buyer).get(id);
     }
 }
 

@@ -5,8 +5,8 @@ const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 const { expectThrow } = require("./testUtils");
 
-describe.only("NFTPotionAccessList", function () {
-    describe.skip("Negative Cases", function () {
+describe("NFTPotionAccessList", function () {
+    describe("Negative Cases", function () {
         let auction;
         let signers;
         let raritiesConfig;
@@ -49,27 +49,23 @@ describe.only("NFTPotionAccessList", function () {
         describe("Set access for several", function () {
             it("Only owner can set access", async function () {
                 await expectThrow(
-                    async () => auction.NFTPotionAccessList.setAccessList([signers[1].address], [true], signers[1]),
+                    async () => auction.NFTPotionAccessList.setAccessAll([signers[1].address], [true], signers[1]),
                     "Ownable: caller is not the owner",
                 );
                 await expectThrow(
-                    async () => auction.NFTPotionAccessList.setAccessList([signers[1].address], [false], signers[1]),
-                    "Ownable: caller is not the owner",
-                );
-
-                await expectThrow(
-                    async () =>
-                        auction.NFTPotionAccessList.setAccessList(
-                            [owner.address, signers[2].address],
-                            true,
-                            signers[1],
-                        ),
+                    async () => auction.NFTPotionAccessList.setAccessAll([signers[1].address], [false], signers[1]),
                     "Ownable: caller is not the owner",
                 );
 
                 await expectThrow(
                     async () =>
-                        auction.NFTPotionAccessList.setAccessList(
+                        auction.NFTPotionAccessList.setAccessAll([owner.address, signers[2].address], true, signers[1]),
+                    "Ownable: caller is not the owner",
+                );
+
+                await expectThrow(
+                    async () =>
+                        auction.NFTPotionAccessList.setAccessAll(
                             [owner.address, signers[2].address],
                             false,
                             signers[1],

@@ -1,13 +1,11 @@
-const { expect } = require("chai");
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
 const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
-const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 const { expectThrow } = require("./testUtils");
 
-describe.only("NFTPotionCredit", function () {
+describe("NFTPotionCredit", function () {
     describe("Negative Cases", function () {
         let auction;
         let signers;
@@ -26,7 +24,7 @@ describe.only("NFTPotionCredit", function () {
             await auction.initialize();
         });
 
-        describe.only("Transfer funds", function () {
+        describe("Transfer funds", function () {
             it("Only owner can transfer funds", async function () {
                 await expectThrow(
                     async () => auction.NFTPotionFunds.transferFunds(signers[1].address, signers[1]),

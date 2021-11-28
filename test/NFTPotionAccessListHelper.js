@@ -38,7 +38,7 @@ class NFTPotionAccessListHelper {
         expect(canAccessAfter).to.be.equal(canAccess);
     }
 
-    async setAccessList(customerList, canAccess, signer = undefined) {
+    async setAccessAll(customerList, canAccess, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         } else if (signer !== this.owner) {

@@ -4,7 +4,7 @@ const { generatePrice } = require("./NFTPotionAuctionUtils");
 
 const { NFTPotionAuctionHelper } = require("./NFTPotionAuctionHelper");
 
-describe("NFTPotionAuction", function () {
+describe.skip("NFTPotionAuction", function () {
     describe("Owner Cases", function () {
         let auction;
 

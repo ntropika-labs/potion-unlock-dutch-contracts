@@ -7,7 +7,7 @@ const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("../scripts/c
 const { getSecretPieceFromId, getRaritiesConfig } = require("../scripts/lib/utils");
 const { range } = require("./testUtils");
 
-describe("NFTPotion", function () {
+describe.skip("NFTPotion", function () {
     describe("Basic Cases", function () {
         let NFTAuction, NFTPotion, NFTValidator, encryptedPassword;
 

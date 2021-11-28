@@ -7,8 +7,8 @@ const { toBN } = require("./NFTPotionAuctionUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 const { expectThrow } = require("./testUtils");
 
-describe.only("NFTPotionDutchAuction", function () {
-    describe.skip("Negative Cases", function () {
+describe("NFTPotionDutchAuction", function () {
+    describe("Negative Cases", function () {
         let auction;
         let signers;
         let raritiesConfig;
@@ -116,11 +116,6 @@ describe.only("NFTPotionDutchAuction", function () {
                 await expectThrow(async () => auction.changePrice(0, 500), "Active auction ID mismatch");
                 await expectThrow(async () => auction.changePrice(1, 500), "Active auction ID mismatch");
                 await expectThrow(async () => auction.changePrice(4, 500), "Active auction ID mismatch");
-            });
-            it("New price cannot be 0", async function () {
-                await auction.startAuction(2, 123);
-
-                await expectThrow(async () => auction.changePrice(2, 0), "New price must be greater than 0");
             });
         });
         describe("Purchase", function () {

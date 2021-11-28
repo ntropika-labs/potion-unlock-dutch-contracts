@@ -1,14 +1,12 @@
-const { expect } = require("chai");
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
 const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
-const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 const { expectThrow } = require("./testUtils");
 
-describe.only("NFTPotionCredit", function () {
-    describe.skip("Negative Cases", function () {
+describe("NFTPotionCredit", function () {
+    describe("Negative Cases", function () {
         let auction;
         let signers;
         let raritiesConfig;
