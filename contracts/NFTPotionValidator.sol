@@ -123,59 +123,8 @@ contract NFTPotionValidator is Context, Ownable, Pausable {
         require(found, "CRITICAL!! Token ID could not be found in rarity config");
         require(start + length <= finalMessage.length, "CRITICAL!! Decrypted secret position exceeds secret length");
 
-        if (length < 32) {
-            for (uint256 i = 0; i < length; ++i) {
-                finalMessage[start + i] = decryptedSecret[i];
-            }
-            return;
-        }
-
-        uint256 dst;
-        uint256 src;
-
-        // Setup
-        assembly {
-            mstore(0x0, finalMessage.slot)
-            dst := keccak256(0x0, 0x20)
-            dst := add(dst, div(start, 0x20))
-            src := add(decryptedSecret, 0x20)
-        }
-
-        // Copy leading bytes
-        assembly {
-            let modulo := mod(start, 0x20)
-            if gt(modulo, 0) {
-                let srcValue := shr(mul(8, modulo), mload(src))
-                let dstValue := sload(dst)
-
-                sstore(dst, or(srcValue, dstValue))
-
-                let copiedBytes := sub(0x20, modulo)
-                src := add(src, copiedBytes)
-                dst := add(dst, 1)
-
-                length := sub(length, copiedBytes)
-            }
-        }
-
-        // Copy middle bytes
-        for (; length > 32; length -= 32) {
-            assembly {
-                let value := mload(src)
-                sstore(dst, value)
-                dst := add(dst, 1)
-                src := add(src, 0x20)
-            }
-        }
-
-        // Copy trailing bytes
-        assembly {
-            if gt(length, 0) {
-                let value2 := sload(dst)
-                let value1 := mload(src)
-
-                sstore(dst, or(value1, value2))
-            }
+        for (uint256 i = 0; i < length; ++i) {
+            finalMessage[start + i] = decryptedSecret[i];
         }
     }
 
