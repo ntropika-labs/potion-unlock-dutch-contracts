@@ -35,6 +35,10 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         require(id == currentId, "Active auction ID mismatch");
         _;
     }
+    modifier checkAuctionNotSoldOut(uint256 id) {
+        require(getRemainingItems(id) > 0, "Items are already sold out");
+        _;
+    }
 
     // Auction management
 
@@ -44,9 +48,8 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         @param id The identifier of the items to be auctioned
         @param _purchasePrice The starting price of the tokens.
     */
-    function startAuction(uint256 id, uint256 _purchasePrice) external onlyOwner {
+    function startAuction(uint256 id, uint256 _purchasePrice) external onlyOwner checkAuctionNotSoldOut(id) {
         require(!isAuctionActive, "Auction is already active");
-        require(getRemainingItems(id) > 0, "Items are already sold out");
 
         currentId = id;
         purchasePrice = _purchasePrice;
@@ -92,8 +95,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         uint256 amount,
         uint256 limitPrice,
         string calldata publicKey
-    ) external payable checkAuctionActive(id) checkCallerAccess {
-        require(getRemainingItems(id) > 0, "Auction is sold out");
+    ) external payable checkAuctionActive(id) checkCallerAccess checkAuctionNotSoldOut(id) {
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
         // Calculate the amount of items that can still be bought

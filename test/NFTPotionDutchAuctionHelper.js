@@ -46,18 +46,18 @@ class NFTPotionDutchAuctionHelper {
             throw new Error("Auction is already active");
         }
 
-        if ((await this.parent.getRemainingItems(id)) <= 0) {
-            await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
-                "Items are already sold out",
-            );
-            throw new Error("Items are already sold out");
-        }
-
         if (!this.parent._isValidId(id)) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Invalid rarity ID",
             );
             throw new Error("Invalid rarity ID");
+        }
+
+        if ((await this.parent.getRemainingItems(id)) <= 0) {
+            await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
+                "Items are already sold out",
+            );
+            throw new Error("Items are already sold out");
         }
 
         // Logic
@@ -115,9 +115,15 @@ class NFTPotionDutchAuctionHelper {
             );
             throw new Error("Active auction ID mismatch");
         }
+        if (newPrice === 0) {
+            await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
+                "New price must be greater than 0",
+            );
+            throw new Error("New price must be greater than 0");
+        }
 
         // Logic
-        await this.contract.connect(signer).changePrice(newPrice);
+        await this.contract.connect(signer).changePrice(id, newPrice);
 
         // Checks and effects
         this.purchasePrice = await this.contract.purchasePrice();
@@ -137,29 +143,33 @@ class NFTPotionDutchAuctionHelper {
             throw new Error("Auction is not active");
         }
 
-        const remainingItemsBefore = await this.parent.getRemainingItems(this.currentId);
-        if (remainingItemsBefore <= 0) {
+        if (id !== this.currentId) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
-                "Auction is sold out",
+                "Active auction ID mismatch",
             );
-            throw new Error("Auction is sold out");
+            throw new Error("Active auction ID mismatch");
         }
 
         const callerHasAccess = await this.parent.NFTPotionAccessList.canAccess(signer.address);
         if (!callerHasAccess) {
-            console.log(id, amount, limitPrice, publicKey);
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "AccessList: Caller doesn't have access",
             );
             throw new Error("AccessList: Caller doesn't have access");
         }
-
-        if (id !== this.currentId) {
-            console.log(id, this.currentId);
+        const remainingItemsBefore = await this.parent.getRemainingItems(this.currentId);
+        if (remainingItemsBefore <= 0) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
-                "Active auction ID mismatch",
+                "Items are already sold out",
             );
-            throw new Error("Active auction ID mismatch");
+            throw new Error("Items are already sold out");
+        }
+
+        if (limitPrice < this.purchasePrice) {
+            await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
+                "Current price is higher than limit price",
+            );
+            throw new Error("Current price is higher than limit price");
         }
 
         const currentCreditBefore = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));

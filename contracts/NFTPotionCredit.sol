@@ -22,7 +22,7 @@ contract NFTPotionCredit is Ownable {
         @param amounts List of amounts of credit to add
 
     */
-    function addCredit(
+    function addCreditAll(
         address[] calldata buyers,
         uint256[] calldata itemsIds,
         uint256[] calldata amounts

@@ -25,7 +25,7 @@ class NFTPotionCreditHelper {
             await expect(this.contract.connect(signer).addCredit(buyer, itemsId, amount)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         // Initial state
@@ -40,28 +40,28 @@ class NFTPotionCreditHelper {
         expect(creditAfter).to.be.equal(creditBefore.add(amount));
     }
 
-    async addCreditList(buyersList, itemsIdList, amountsList, signer = undefined) {
+    async addCreditAll(buyersList, itemsIdList, amountsList, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         } else if (signer !== this.owner) {
             await expect(
-                this.contract.connect(signer).addCredit(buyersList, itemsIdList, amountsList),
+                this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList),
             ).to.be.revertedWith("Ownable: caller is not the owner");
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         if (buyersList.length === 0) {
             await expect(
-                this.contract.connect(signer).addCredit(buyersList, itemsIdList, amountsList),
+                this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList),
             ).to.be.revertedWith("Trying to whitelist with empty array");
-            return;
+            throw new Error("Trying to whitelist with empty array");
         }
 
         if (buyersList.length !== amountsList.length || buyersList.length !== itemsIdList.length) {
             await expect(
-                this.contract.connect(signer).addCredit(buyersList, itemsIdList, amountsList),
+                this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList),
             ).to.be.revertedWith("Mismatch in array sizes for direct whitelist");
-            return;
+            throw new Error("Mismatch in array sizes for direct whitelist");
         }
 
         // Initial state
@@ -72,7 +72,7 @@ class NFTPotionCreditHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).addCredit(buyersList, itemsIdList, amountsList);
+        await this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList);
 
         for (let i = 0; i < buyersList.length; i++) {
             const creditAfter = await this.contract.provider.getCredit(this.contract.address, itemsIdList[i]);

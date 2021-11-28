@@ -1,16 +1,14 @@
-const chai = require("chai");
+const { expect } = require("chai");
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
-var chaiAsPromised = require("chai-as-promised");
 
 const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
+const { toBN } = require("./NFTPotionAuctionUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
+const { expectThrow } = require("./testUtils");
 
-const expect = chai.expect;
-chai.use(chaiAsPromised);
-
-describe("NFTPotionDutchAuction", function () {
-    describe("Negative Cases", function () {
+describe.only("NFTPotionDutchAuction", function () {
+    describe.skip("Negative Cases", function () {
         let auction;
         let signers;
         let raritiesConfig;
@@ -28,55 +26,49 @@ describe("NFTPotionDutchAuction", function () {
             await auction.initialize();
         });
 
-        /**
-         * Start auction
-         */
-        describe.only("Start Auction", function () {
+        describe("Start Auction", function () {
             it("Only owner can start auction", async function () {
-                try {
-                    await auction.startAuction(1, 100, signers[1]);
-                    await auction.startAuction(1, 100, signers[2]);
-                    await auction.startAuction(1, 100, signers[3]);
-                } catch (error) {
-                    expect(error.message).to.equal("Ownable: caller is not the owner");
-                }
+                await expectThrow(
+                    async () => auction.startAuction(1, 100, signers[1]),
+                    "Ownable: caller is not the owner",
+                );
+                await expectThrow(
+                    async () => auction.startAuction(1, 100, signers[1]),
+                    "Ownable: caller is not the owner",
+                );
+                await expectThrow(
+                    async () => auction.startAuction(1, 100, signers[1]),
+                    "Ownable: caller is not the owner",
+                );
             });
             it("Start auction for invalid rarity ID", async function () {
                 const maxID = raritiesConfig.length - 1;
 
-                try {
-                    await auction.startAuction(maxID + 10, 100);
-                    await auction.startAuction(maxID + 3, 100);
-                    await auction.startAuction(maxID + 1, 100);
-                } catch (error) {
-                    expect(error.message).to.equal("Invalid rarity ID");
-                }
+                await expectThrow(async () => auction.startAuction(maxID + 10, 100), "Invalid rarity ID");
+                await expectThrow(async () => auction.startAuction(maxID + 3, 100), "Invalid rarity ID");
+                await expectThrow(async () => auction.startAuction(maxID + 1, 100), "Invalid rarity ID");
             });
             it("Start auction when another auction is running", async function () {
                 await auction.startAuction(0, 100);
 
-                try {
-                    await auction.startAuction(0, 100);
-                    await auction.startAuction(1, 10);
-                } catch (error) {
-                    expect(error.message).to.equal("Auction is already active");
-                }
+                await expectThrow(async () => auction.startAuction(0, 100), "Auction is already active");
+                await expectThrow(async () => auction.startAuction(1, 10), "Auction is already active");
             });
-            it.only("Start auction all items have been sold", async function () {
+            it("Start auction all items have been sold", async function () {
                 const PURCHASE_AT_ONCE = 100;
 
                 await auction.startAuction(0, 100);
 
                 let remainingItems = await auction.getRemainingItems(0);
-                const purchasePrice = await auction.purchasePrice();
+                const purchasePriceBN = toBN(await auction.purchasePrice());
 
                 await auction.NFTPotionAccessList.setAccess(owner.address, true);
 
                 for (; remainingItems >= PURCHASE_AT_ONCE; remainingItems -= PURCHASE_AT_ONCE) {
-                    await auction.purchase(0, PURCHASE_AT_ONCE, purchasePrice, "Some Public Key");
+                    await auction.purchase(0, PURCHASE_AT_ONCE, purchasePriceBN, "Some Public Key");
                 }
                 if (remainingItems > 0) {
-                    await auction.purchase(0, remainingItems, purchasePrice, "Some Public Key");
+                    await auction.purchase(0, remainingItems, purchasePriceBN, "Some Public Key");
                 }
 
                 remainingItems = await auction.getRemainingItems(0);
@@ -84,11 +76,174 @@ describe("NFTPotionDutchAuction", function () {
 
                 await auction.stopAuction();
 
-                try {
-                    await auction.startAuction(0, 100);
-                } catch (error) {
-                    expect(error.message).to.equal("Items are already sold out");
+                await expectThrow(async () => auction.startAuction(0, 100), "Items are already sold out");
+            });
+        });
+        describe("Stop Auction", function () {
+            it("Only owner can stop auction", async function () {
+                await auction.startAuction(2, 495);
+
+                await expectThrow(async () => auction.stopAuction(signers[2]), "Ownable: caller is not the owner");
+                await expectThrow(async () => auction.stopAuction(signers[3]), "Ownable: caller is not the owner");
+                await expectThrow(async () => auction.stopAuction(signers[2]), "Ownable: caller is not the owner");
+            });
+        });
+        describe("Change Price", function () {
+            it("Only owner can change price", async function () {
+                await auction.startAuction(2, 495);
+
+                await expectThrow(
+                    async () => auction.changePrice(2, 500, signers[2]),
+                    "Ownable: caller is not the owner",
+                );
+                await expectThrow(
+                    async () => auction.changePrice(2, 500, signers[3]),
+                    "Ownable: caller is not the owner",
+                );
+                await expectThrow(
+                    async () => auction.changePrice(2, 500, signers[4]),
+                    "Ownable: caller is not the owner",
+                );
+            });
+            it("Cannot change price if no auction is active", async function () {
+                await expectThrow(async () => auction.changePrice(0, 500), "Auction is not active");
+                await expectThrow(async () => auction.changePrice(1, 500), "Auction is not active");
+                await expectThrow(async () => auction.changePrice(2, 500), "Auction is not active");
+            });
+            it("Cannot change price for a different auction ID", async function () {
+                await auction.startAuction(2, 123);
+
+                await expectThrow(async () => auction.changePrice(0, 500), "Active auction ID mismatch");
+                await expectThrow(async () => auction.changePrice(1, 500), "Active auction ID mismatch");
+                await expectThrow(async () => auction.changePrice(4, 500), "Active auction ID mismatch");
+            });
+            it("New price cannot be 0", async function () {
+                await auction.startAuction(2, 123);
+
+                await expectThrow(async () => auction.changePrice(2, 0), "New price must be greater than 0");
+            });
+        });
+        describe("Purchase", function () {
+            it("Auction must be active", async function () {
+                const currentPriceBN = toBN(await auction.purchasePrice());
+
+                await expectThrow(
+                    async () => auction.purchase(0, 1, currentPriceBN, "TestKey", signers[2]),
+                    "Auction is not active",
+                );
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPriceBN, "TestKey", signers[3]),
+                    "Auction is not active",
+                );
+                await expectThrow(
+                    async () => auction.purchase(2, 1, currentPriceBN, "TestKey", signers[4]),
+                    "Auction is not active",
+                );
+            });
+            it("Auction ID must match", async function () {
+                await auction.startAuction(1, 123);
+                const currentPriceBN = toBN(await auction.purchasePrice());
+
+                await auction.NFTPotionAccessList.setAccess(signers[2].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[3].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[4].address, true);
+
+                await expectThrow(
+                    async () => auction.purchase(0, 1, currentPriceBN, "TestKey", undefined, signers[2]),
+                    "Active auction ID mismatch",
+                );
+                await expectThrow(
+                    async () => auction.purchase(2, 1, currentPriceBN, "TestKey", undefined, signers[3]),
+                    "Active auction ID mismatch",
+                );
+                await expectThrow(
+                    async () => auction.purchase(3, 1, currentPriceBN, "TestKey", undefined, signers[4]),
+                    "Active auction ID mismatch",
+                );
+            });
+            it("Caller must have access to purchase", async function () {
+                await auction.startAuction(1, 123);
+                const currentPriceBN = toBN(await auction.purchasePrice());
+
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPriceBN, "TestKey", undefined, signers[2]),
+                    "AccessList: Caller doesn't have access",
+                );
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPriceBN, "TestKey", undefined, signers[3]),
+                    "AccessList: Caller doesn't have access",
+                );
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPriceBN, "TestKey", undefined, signers[4]),
+                    "AccessList: Caller doesn't have access",
+                );
+            });
+            it("Auction not sold out", async function () {
+                const PURCHASE_AT_ONCE = 100;
+
+                await auction.startAuction(0, 100);
+
+                let remainingItems = await auction.getRemainingItems(0);
+                const purchasePriceBN = toBN(await auction.purchasePrice());
+
+                await auction.NFTPotionAccessList.setAccess(owner.address, true);
+
+                for (; remainingItems >= PURCHASE_AT_ONCE; remainingItems -= PURCHASE_AT_ONCE) {
+                    await auction.purchase(0, PURCHASE_AT_ONCE, purchasePriceBN, "Some Public Key");
                 }
+                if (remainingItems > 0) {
+                    await auction.purchase(0, remainingItems, purchasePriceBN, "Some Public Key");
+                }
+
+                remainingItems = await auction.getRemainingItems(0);
+                expect(remainingItems).to.equal(0);
+
+                await expectThrow(
+                    async () => auction.purchase(0, 1, purchasePriceBN, "Some Public Key"),
+                    "Items are already sold out",
+                );
+            });
+            it("Purchase with a limit price below current price", async function () {
+                await auction.startAuction(1, 456);
+                const currentPrice = await auction.purchasePrice();
+
+                await auction.NFTPotionAccessList.setAccess(signers[2].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[3].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[4].address, true);
+
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPrice - 1, "TestKey", undefined, signers[2]),
+                    "Current price is higher than limit price",
+                );
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPrice - 2, "TestKey", undefined, signers[3]),
+                    "Current price is higher than limit price",
+                );
+                await expectThrow(
+                    async () => auction.purchase(1, 1, currentPrice - 3, "TestKey", undefined, signers[4]),
+                    "Current price is higher than limit price",
+                );
+            });
+            it("Don't send enough cash for payment", async function () {
+                await auction.startAuction(2, 25);
+                const currentPrice = await auction.purchasePrice();
+
+                await auction.NFTPotionAccessList.setAccess(signers[2].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[3].address, true);
+                await auction.NFTPotionAccessList.setAccess(signers[4].address, true);
+
+                await expectThrow(
+                    async () => auction.purchase(2, 1, currentPrice, "TestKey", currentPrice - 1, signers[2]),
+                    "Didn't send enough cash for payment",
+                );
+                await expectThrow(
+                    async () => auction.purchase(2, 10, currentPrice, "TestKey", currentPrice * 10 - 1, signers[3]),
+                    "Didn't send enough cash for payment",
+                );
+                await expectThrow(
+                    async () => auction.purchase(2, 15, currentPrice, "TestKey", currentPrice * 15 - 1, signers[4]),
+                    "Didn't send enough cash for payment",
+                );
             });
         });
     });

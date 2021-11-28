@@ -1,6 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { toBN } = require("./NFTPotionAuctionUtils");
+const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
 const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("../scripts/config");
 const { encryptPassword, getRaritiesConfig, encodeRarityConfig } = require("../scripts/lib/utils");
 
@@ -75,12 +75,12 @@ class NFTPotionV2Helper {
         return this.NFTPotionDutchAuction.startAuction(id, purchasePrice, signer);
     }
 
-    async stopAuction(id, purchasePrice, signer = undefined) {
-        return this.NFTPotionDutchAuction.stopAuction(id, purchasePrice, signer);
+    async stopAuction(signer = undefined) {
+        return this.NFTPotionDutchAuction.stopAuction(signer);
     }
 
     async changePrice(id, newPrice, signer = undefined) {
-        return this.NFTPotionDutchAuction.changePrice(newPrice, signer);
+        return this.NFTPotionDutchAuction.changePrice(id, newPrice, signer);
     }
 
     async purchase(id, amount, limitPrice, publicKey, sendValue = undefined, signer = undefined) {
@@ -98,7 +98,7 @@ class NFTPotionV2Helper {
 
         const rarityNumMintedBefore = await this.contract.rarityNumMinted(id);
 
-        // Logic
+        // Logic+3
         const purchasedAmount = await this.NFTPotionDutchAuction.purchase(
             id,
             amount,
@@ -123,17 +123,18 @@ class NFTPotionV2Helper {
     }
 
     async purchasePrice() {
-        return toBN(this.NFTPotionDutchAuction.purchasePrice);
+        return this.NFTPotionDutchAuction.purchasePrice;
     }
 
     async getRemainingItems(id) {
-        const remainingItemsContract = await this.contract.getRemainingItems(id);
+        const remainingItemsContract = fromBN(await this.contract.getRemainingItems(id));
+
         const remainingItems =
             this.rarityConfig[id].endTokenId - this.rarityConfig[id].startTokenId + 1 - this.rarityNumMinted[id];
 
         expect(remainingItemsContract).to.be.equal(remainingItems);
 
-        return toBN(remainingItems);
+        return remainingItems;
     }
 
     _encodeRarityConfig(rarityConfig) {

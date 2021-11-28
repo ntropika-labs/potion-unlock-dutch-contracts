@@ -26,7 +26,7 @@ class NFTPotionAccessListHelper {
             await expect(this.contract.connect(signer).setAccess(caller, canAccess)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         // Logic
@@ -42,14 +42,14 @@ class NFTPotionAccessListHelper {
         if (signer === undefined) {
             signer = this.owner;
         } else if (signer !== this.owner) {
-            await expect(this.contract.connect(signer).setAccess(customerList, canAccess)).to.be.revertedWith(
+            await expect(this.contract.connect(signer).setAccessAll(customerList, canAccess)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         // Logic
-        const tx = await this.contract.connect(signer).setAccess(customerList, canAccess);
+        const tx = await this.contract.connect(signer).setAccessAll(customerList, canAccess);
         await tx.wait();
 
         // Checks

@@ -22,7 +22,7 @@ class NFTPotionFundsHelper {
             await expect(this.contract.connect(signer).transferFunds(recipient)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
-            return;
+            throw new Error("Ownable: caller is not the owner");
         }
 
         // Initial state
