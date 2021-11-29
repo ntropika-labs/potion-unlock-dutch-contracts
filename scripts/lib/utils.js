@@ -52,8 +52,14 @@ function encryptDataSymmetric(data) {
     return encryptSymmetric(getPotionSecretKey(), data);
 }
 
-function decryptDataSymmetric(encryptedData) {
-    return decryptSymmetric(getPotionSecretKey(), encryptedData);
+function decryptDataSymmetric(encryptedData, key=undefined) {
+    let keyBuffer;
+    if (key) {
+        keyBuffer = keccak256(keccak256(keccak256(Buffer.from(key.slice(2), "hex"))));
+    } else {
+        keyBuffer = getPotionSecretKey();
+    }
+    return decryptSymmetric(keyBuffer, encryptedData);
 }
 
 /**
@@ -65,9 +71,9 @@ function encryptPassword(password) {
     return bufferToHex(encryptDataSymmetric(passwordBuffer));
 }
 
-function decryptPassword(encryptedPassword) {
+function decryptPassword(encryptedPassword, key=undefined) {
     const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
-    return decryptDataSymmetric(encryptedData);
+    return decryptDataSymmetric(encryptedData, key);
 }
 
 /**
