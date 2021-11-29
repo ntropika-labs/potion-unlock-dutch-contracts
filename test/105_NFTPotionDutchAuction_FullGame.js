@@ -1,0 +1,238 @@
+const { expect } = require("chai");
+const { before } = require("mocha");
+const { ethers } = require("hardhat");
+
+const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
+
+const { toBN } = require("./NFTPotionAuctionUtils");
+const { deployPotionNFTV2Game } = require("../scripts/deployUtils");
+const { getMerkleProof } = require("../scripts/merkleUtils");
+const {
+    getSecretPieceFromId,
+    getSecretStartAndLength,
+    getPotionGenesis,
+    getRaritiesConfig,
+} = require("../scripts/lib/utils");
+const { range, initRandom, expectThrow, shuffle } = require("./testUtils");
+
+describe.only("NFTPotionDutchAuction", function () {
+    let signers;
+    let raritiesConfig;
+    let owner;
+
+    let buyersTokenIDs;
+
+    const { seed, getRandom } = initRandom();
+
+    function getPercent() {
+        return getRandom() % 100;
+    }
+
+    function addTokenRange(buyerIndex, start, end) {
+        buyersTokenIDs[buyerIndex].push(...range(start, end));
+    }
+
+    before(async function () {
+        signers = await ethers.getSigners();
+        raritiesConfig = getRaritiesConfig();
+        owner = signers[0];
+        buyersTokenIDs = Array.from(Array(signers.length), () => []);
+    });
+
+    describe(`Full Game (Seed = ${seed})`, function () {
+        let auction;
+        let NFTValidator;
+
+        async function expectPurchaseThrow(id, amount, price, publicKey, sendValue, buyer, error) {
+            await expectThrow(async () => auction.purchase(id, amount, price, publicKey, sendValue, buyer), error);
+        }
+
+        // Initialize the contract
+        before(async function () {
+            let NFTPotionV2;
+            ({ NFTPotionV2, NFTValidator } = await deployPotionNFTV2Game(false, false));
+
+            auction = new NFTPotionV2Helper(NFTPotionV2);
+            await auction.initialize();
+        });
+
+        it(`Dutch Auction, sell all NFTs`, async function () {
+            const NUM_BUYERS = 800;
+            const MAX_BUYERS = 1000;
+            const MAX_ITEMS = 200;
+            const ITEMS_IDS = shuffle(range(0, raritiesConfig.length - 1), getRandom);
+
+            // Give access to buyers
+            for (let i = 0; i < NUM_BUYERS; i++) {
+                await auction.NFTPotionAccessList.setAccess(signers[i].address, true);
+            }
+
+            for (let i = 0; i < 1; i++) {
+                const id = ITEMS_IDS[i];
+
+                const initialPrice = (getRandom() % 10000) + 1000;
+                const totalItemsRarity = raritiesConfig[id].endTokenId - raritiesConfig[id].startTokenId + 1;
+                let totalAvailable = totalItemsRarity;
+
+                console.log("\t[Dutch Auction]");
+
+                // Auction starts
+                await auction.startAuction(id, initialPrice);
+
+                while (totalAvailable > 0) {
+                    process.stdout.write(
+                        `\t    [Rarity ${i + 1}/${ITEMS_IDS.length} ID=${id}]: ${Math.floor(
+                            (100.0 * (totalItemsRarity - totalAvailable)) / totalItemsRarity,
+                        )}%             \r`,
+                    );
+
+                    const currentPrice = await auction.purchasePrice();
+
+                    const buyerIndex = getRandom() % MAX_BUYERS;
+                    const buyer = signers[buyerIndex];
+                    const amountToPurchase = getRandom() % (Math.min(totalAvailable, MAX_ITEMS) + 20); // Small chance of overbuy
+                    const purchasePrice = getRandom() % (currentPrice + 10); // Small chance of overprice
+                    let sendValue = currentPrice * amountToPurchase;
+                    if (getPercent() <= 2) {
+                        sendValue = Math.max(currentPrice * amountToPurchase - (getRandom() % 20), 0);
+                    }
+
+                    let actualAmountPurchased = 0;
+
+                    if (buyerIndex >= NUM_BUYERS) {
+                        // Buyer doesn't have access
+                        await expectPurchaseThrow(
+                            id,
+                            amountToPurchase,
+                            purchasePrice,
+                            "SomeKey" + getRandom(),
+                            sendValue,
+                            buyer,
+                            "AccessList: Caller doesn't have access",
+                        );
+                    } else if (currentPrice > purchasePrice) {
+                        // Buyer overpriced
+                        await expectPurchaseThrow(
+                            id,
+                            amountToPurchase,
+                            purchasePrice,
+                            "SomeKey" + getRandom(),
+                            sendValue,
+                            buyer,
+                            "Current price is higher than limit price",
+                        );
+                    } else {
+                        // Normal case
+
+                        const startTokenId = raritiesConfig[id].startTokenId + auction.rarityNumMinted[id];
+
+                        actualAmountPurchased = await auction.purchase(
+                            id,
+                            amountToPurchase,
+                            purchasePrice,
+                            "SomeKey" + getRandom(),
+                            sendValue,
+                            buyer,
+                        );
+
+                        addTokenRange(buyerIndex, startTokenId, startTokenId + actualAmountPurchased - 1);
+                    }
+
+                    if (getPercent() <= 3) {
+                        await auction.NFTPotionFunds.sendUnrequestedFunds(signers[getRandom() % MAX_BUYERS]);
+                    }
+
+                    const newPrice = Math.max(currentPrice - getRandom() * 15, 0);
+                    await auction.changePrice(id, newPrice);
+
+                    if (getPercent() <= 1) {
+                        await auction.NFTPotionFunds.transferFunds(signers[getRandom() % MAX_BUYERS].address);
+                    }
+
+                    totalAvailable -= actualAmountPurchased;
+                }
+
+                expect(await auction.getRemainingItems(ITEMS_IDS[i])).to.equal(0);
+
+                process.stdout.write(`\t    [Rarity ${i + 1}/${ITEMS_IDS.length} ID=${id}]: 100%             \n`);
+
+                // Auction ends
+                await auction.stopAuction();
+            }
+
+            // Auction transfer funds
+            await auction.NFTPotionFunds.transferFunds(signers[getRandom() % MAX_BUYERS].address);
+        }).timeout(600000);
+        it.skip(`Validate NFT ownership`, async function () {
+            for (const [buyer, tokenIDs] of buyersTokenIDs) {
+                for (const tokenID of tokenIDs) {
+                    const owner = await auction.NFTPotionV2.ownerOf(toBN(tokenID));
+                    expect(owner).to.equal(buyer.address);
+                }
+            }
+        });
+        it(`NFT Validation`, async function () {
+            const MAX_IDS_BATCH_VALIDATION = 30;
+
+            // Validate token ID
+            const potionGenesis = getPotionGenesis();
+            const rarityConfig = getRaritiesConfig();
+
+            const totalIDs = buyersTokenIDs.flat(1).length;
+
+            let processedIds = 0;
+
+            console.log("\t[NFT Validation]");
+
+            // Validate
+            for (let buyerIndex = 0; buyerIndex < buyersTokenIDs.length; buyerIndex++) {
+                const tokenIDs = buyersTokenIDs[buyerIndex];
+                const buyer = signers[buyerIndex];
+
+                // Choose how many to validate
+                while (buyersTokenIDs[buyerIndex].length > 0) {
+                    const numTokensValidate = Math.min(tokenIDs.length, MAX_IDS_BATCH_VALIDATION);
+                    const validationIDs = buyersTokenIDs[buyerIndex].splice(0, numTokensValidate);
+
+                    let secretPieces = [];
+                    let proofs = [];
+
+                    for (const tokenID of validationIDs) {
+                        proofs.push(getMerkleProof(tokenID));
+                        secretPieces.push(getSecretPieceFromId(tokenID, potionGenesis, rarityConfig));
+                    }
+
+                    // Validate list
+                    await NFTValidator.connect(buyer).validateList(validationIDs, secretPieces, proofs);
+
+                    for (const tokenID of validationIDs) {
+                        const secretPiece = getSecretPieceFromId(tokenID, potionGenesis, rarityConfig);
+                        const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+                        const decryptedPiece = getSecretPieceFromId(tokenID, finalMessage, rarityConfig);
+
+                        expect(decryptedPiece).to.be.equalBytes(secretPiece);
+                    }
+
+                    processedIds += validationIDs.length;
+
+                    process.stdout.write(
+                        `\t    Progress: ${Math.floor((100 * processedIds) / totalIDs)}%                   \r`,
+                    );
+                }
+            }
+
+            process.stdout.write(`\t    Progress: 100%                   \r`);
+
+            // Check
+            const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
+            const tokenList = buyersTokenIDs.flat(1);
+
+            for (let i = 0; i < tokenList.length; i++) {
+                const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
+                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
+
+                expect(decryptedPiece).to.be.equalBytes(secretPiece);
+            }
+        }).timeout(6000000);
+    });
+});

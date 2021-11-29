@@ -125,7 +125,9 @@ class NFTPotionV2Helper {
         const rarityNumMintedAfter = await this.contract.rarityNumMinted(id);
         expect(rarityNumMintedAfter).to.be.equal(rarityNumMintedBefore.add(purchasedAmount));
 
-        this.rarityNumMinted[id] += amount;
+        this.rarityNumMinted[id] += purchasedAmount;
+
+        return purchasedAmount;
     }
 
     async purchasePrice() {
