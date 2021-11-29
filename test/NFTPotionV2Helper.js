@@ -34,7 +34,7 @@ class NFTPotionV2Helper {
     // Contract State
     currentBatch;
 
-    constructor() {
+    constructor(contract = undefined) {
         this.tokenName = NFT_NAME;
         this.tokenSymbol = NFT_SYMBOL;
         this.ipfsPrefix = IPFS_PREFIX;
@@ -43,21 +43,25 @@ class NFTPotionV2Helper {
         this.rarityConfigEncoded = encodeRarityConfig(this.rarityConfig);
         this.rarityNumMinted = new Array(this.rarityConfig.length).fill(0);
         this.fullSecret = encryptPassword(process.env.PASSWORD_GENESIS);
+
+        this.contract = contract;
     }
 
     async initialize() {
         this.owner = (await ethers.getSigners())[0];
 
-        const NFTPotionV2 = await ethers.getContractFactory("NFTPotionV2");
-        this.contract = await NFTPotionV2.deploy(
-            this.tokenName,
-            this.tokenSymbol,
-            this.ipfsPrefix,
-            this.ipfsSuffix,
-            this.fullSecret,
-            this.rarityConfigEncoded,
-        );
-        await this.contract.deployed();
+        if (this.contract === undefined) {
+            const NFTPotionV2 = await ethers.getContractFactory("NFTPotionV2");
+            this.contract = await NFTPotionV2.deploy(
+                this.tokenName,
+                this.tokenSymbol,
+                this.ipfsPrefix,
+                this.ipfsSuffix,
+                this.fullSecret,
+                this.rarityConfigEncoded,
+            );
+            await this.contract.deployed();
+        }
 
         this.NFTPotionV2 = this.contract;
         this.NFTPotionFunds = new NFTPotionFundsHelper(this);
@@ -88,8 +92,10 @@ class NFTPotionV2Helper {
             signer = this.owner;
         }
 
+        const remainingItems = await this.getRemainingItems(id);
+
         // Initial state
-        for (let i = 0; i < amount; i++) {
+        for (let i = 0; i < Math.min(amount, remainingItems); i++) {
             const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
             await expect(this.contract.ownerOf(toBN(tokenId))).to.be.revertedWith(
                 "ERC721: owner query for nonexistent token",
@@ -109,7 +115,7 @@ class NFTPotionV2Helper {
         );
 
         // Checks and effects
-        for (let i = 0; i < amount; i++) {
+        for (let i = 0; i < purchasedAmount; i++) {
             const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
             const ownerOf = await this.contract.ownerOf(tokenId);
 

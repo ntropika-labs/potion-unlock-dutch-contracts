@@ -1,5 +1,5 @@
 const fs = require("fs");
-const { decodeUTF8, encodeUTF8, decodeBase64, encodeBase64 } = require("tweetnacl-util");
+const { decodeUTF8, encodeUTF8 } = require("tweetnacl-util");
 const { bufferToHex } = require("ethereumjs-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");

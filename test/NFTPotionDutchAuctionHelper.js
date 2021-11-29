@@ -61,7 +61,9 @@ class NFTPotionDutchAuctionHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).startAuction(id, purchasePrice);
+        await expect(this.contract.connect(signer).startAuction(id, purchasePrice))
+            .to.emit(this.contract, "AuctionStarted")
+            .withArgs(id, purchasePrice);
 
         // Checks and effects
         this.currentId = fromBN(await this.contract.currentId());
@@ -84,7 +86,9 @@ class NFTPotionDutchAuctionHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).stopAuction();
+        await expect(this.contract.connect(signer).stopAuction())
+            .to.emit(this.contract, "AuctionStopped")
+            .withArgs(this.currentId);
 
         // Checks and effects
         this.isAuctionActive = await this.contract.isAuctionActive();
@@ -117,7 +121,9 @@ class NFTPotionDutchAuctionHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).changePrice(id, newPrice);
+        await expect(this.contract.connect(signer).changePrice(id, newPrice))
+            .to.emit(this.contract, "AuctionPriceChanged")
+            .withArgs(id, newPrice);
 
         // Checks and effects
         this.purchasePrice = await this.contract.purchasePrice();
@@ -183,7 +189,9 @@ class NFTPotionDutchAuctionHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey, { value: sendValue });
+        await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey, { value: sendValue }))
+            .to.emit(this.contract, "AuctionItemPurchased")
+            .withArgs(id, signer.address, amountToPurchase, limitPrice);
 
         // Checks and effects
         this.parent.NFTPotionCredit._consumeCredit(signer.address, id, amountToPurchase - amountToPay);

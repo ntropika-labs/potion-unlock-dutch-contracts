@@ -1,3 +1,4 @@
+const { expect } = require("chai");
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
@@ -65,7 +66,7 @@ describe("NFTPotionDutchAuction", function () {
                     await auction.stopAuction();
                 }
             });
-            it("Start/change price/stop auction", async function () {
+            it("Start + change price + stop auction", async function () {
                 for (let i = 0; i < raritiesConfig.length; i++) {
                     await auction.startAuction(i, i * 982);
 
@@ -145,6 +146,86 @@ describe("NFTPotionDutchAuction", function () {
 
                 // Auction transfer funds
                 await auction.NFTPotionFunds.transferFunds(owner.address);
+            });
+        });
+        describe("Edge Cases", function () {
+            it("Send more cash than needed", async function () {
+                const NUM_BUYERS = 10;
+                const ITEMS_ID = 0;
+                const NUM_TOKENS_PER_PURCHASE = 1;
+
+                // Give access to buyers
+                for (let i = 0; i < NUM_BUYERS; i++) {
+                    await auction.NFTPotionAccessList.setAccess(signers[i].address, true);
+                }
+
+                // Auction starts
+                await auction.startAuction(ITEMS_ID, 100);
+
+                let totalAvailable = raritiesConfig[ITEMS_ID].endTokenId - raritiesConfig[ITEMS_ID].startTokenId + 1;
+
+                const purchasePrice = await auction.purchasePrice();
+
+                for (let j = 0; j < NUM_BUYERS && totalAvailable > 0; j++) {
+                    let amountToPurchase = Math.min(NUM_TOKENS_PER_PURCHASE, totalAvailable);
+
+                    await auction.purchase(
+                        ITEMS_ID,
+                        amountToPurchase,
+                        purchasePrice,
+                        "SomeKey" + j,
+                        amountToPurchase * purchasePrice + 20,
+                    );
+
+                    totalAvailable -= amountToPurchase;
+                }
+
+                // Auction ends
+                await auction.stopAuction();
+
+                // Auction transfer funds
+                await auction.NFTPotionFunds.transferFunds(signers[3].address);
+            });
+            it("Purchase all NFTs except 1, then try to purchase 100", async function () {
+                const NUM_BUYERS = 10;
+                const ITEMS_ID = 1;
+                const NUM_TOKENS_PER_PURCHASE = 600;
+
+                // Give access to buyers
+                for (let i = 0; i < NUM_BUYERS; i++) {
+                    await auction.NFTPotionAccessList.setAccess(signers[i].address, true);
+                }
+
+                // Auction starts
+                await auction.startAuction(ITEMS_ID, 100);
+
+                let totalAvailable = raritiesConfig[ITEMS_ID].endTokenId - raritiesConfig[ITEMS_ID].startTokenId + 1;
+
+                // Leave 1 token for the last purchase
+                totalAvailable -= 1;
+
+                const purchasePrice = await auction.purchasePrice();
+
+                for (let j = 0; j < NUM_BUYERS && totalAvailable > 0; j++) {
+                    let amountToPurchase = Math.min(NUM_TOKENS_PER_PURCHASE, totalAvailable);
+
+                    await auction.purchase(ITEMS_ID, amountToPurchase, purchasePrice, "SomeKey" + j);
+
+                    totalAvailable -= amountToPurchase;
+                }
+
+                const remainingItems = await auction.getRemainingItems(ITEMS_ID);
+                expect(totalAvailable).to.be.equal(0);
+                expect(remainingItems).to.be.equal(1);
+
+                // Now purchase 100
+                await auction.purchase(ITEMS_ID, 100, purchasePrice, "SomeKey");
+
+                // Auction ends
+                await auction.stopAuction();
+
+                // Auction transfer funds
+                await auction.NFTPotionFunds.transferFunds(signers[3].address);
             });
         });
     });

@@ -25,7 +25,10 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     bool public isAuctionActive;
 
     // Events
-    event Purchase(uint256 indexed id, address indexed buyer, uint64 numTokens);
+    event AuctionStarted(uint256 id, uint256 startPrice);
+    event AuctionStopped(uint256 id);
+    event AuctionPriceChanged(uint256 id, uint256 newPrice);
+    event AuctionItemPurchased(uint256 indexed id, address indexed buyer, uint256 amount, uint256 limitPrice);
 
     // Modifiers
     modifier checkAuctionActive(uint256 id) {
@@ -44,14 +47,16 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         @notice Starts a new auction starting at the given price, for the given number of items.
 
         @param id The identifier of the items to be auctioned
-        @param _purchasePrice The starting price of the tokens.
+        @param startPrice The starting price of the tokens.
     */
-    function startAuction(uint256 id, uint256 _purchasePrice) external onlyOwner checkAuctionNotSoldOut(id) {
+    function startAuction(uint256 id, uint256 startPrice) external onlyOwner checkAuctionNotSoldOut(id) {
         require(!isAuctionActive, "Auction is already active");
 
         currentId = id;
-        purchasePrice = _purchasePrice;
+        purchasePrice = startPrice;
         isAuctionActive = true;
+
+        emit AuctionStarted(id, startPrice);
     }
 
     /**
@@ -59,6 +64,8 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
      */
     function stopAuction() external onlyOwner {
         isAuctionActive = false;
+
+        emit AuctionStopped(currentId);
     }
 
     /**
@@ -68,6 +75,8 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
      */
     function changePrice(uint256 id, uint256 newPrice) external onlyOwner checkAuctionActive(id) {
         purchasePrice = newPrice;
+
+        emit AuctionPriceChanged(id, newPrice);
     }
 
     /**
@@ -109,6 +118,8 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference
         _chargePayment(payableAmount * purchasePrice);
+
+        emit AuctionItemPurchased(id, _msgSender(), amount, limitPrice);
     }
 
     // Delegates
