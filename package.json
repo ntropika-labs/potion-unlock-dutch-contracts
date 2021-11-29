@@ -6,6 +6,8 @@
         "migrate": "npx hardhat run scripts/deploy.js --network localhost",
         "deploy:localhost": "npx hardhat run scripts/deployNFTPotion.js --network localhost",
         "deploy:rinkeby": "npx hardhat run scripts/deployNFTPotion.js --network rinkeby",
+        "deployV2:localhost": "npx hardhat run scripts/deployNFTPotionV2.js --network localhost",
+        "deployV2:rinkeby": "npx hardhat run scripts/deployNFTPotionV2.js --network rinkeby",
         "fastForward": "npx hardhat fastForward",
         "start": "react-scripts start",
         "build": "react-scripts build",
