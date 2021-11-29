@@ -46,6 +46,8 @@ contract NFTPotionFunds is Ownable {
         @notice Requires that the sent cash is not less than the amount to pay
         and refunds the sender the difference
 
+        @param amountToPay The amount that the caller should have at least sent
+        
         @dev This function is performing an external call and should be called
         after all the checks and effects
      */

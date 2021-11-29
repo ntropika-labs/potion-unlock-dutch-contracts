@@ -78,6 +78,7 @@ contract NFTPotionCredit is Ownable {
         @notice Returns the amount of credit a buyer has
 
         @param buyer Address of the buyer 
+        @param itemsId The items id to get credit for
     */
     function getCredit(address buyer, uint256 itemsId) public view returns (uint256) {
         return credit[buyer][itemsId];
