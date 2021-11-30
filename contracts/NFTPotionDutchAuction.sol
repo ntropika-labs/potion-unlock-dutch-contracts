@@ -7,55 +7,58 @@ import "./NFTPotionFunds.sol";
 import "./utils/Utils.sol";
 
 /**
-    Manual Dutch Auction to sell items at a changing price
+    Manual Dutch Auction to sell NFTs at a changing price
 
-    @dev This contract is used to sell items at a changing price. The price changes are done manually through
+    @dev This contract is used to sell NFTs at a changing price. The price changes are done manually through
     the changePrice function. In principle the price should be lowered over time, but this is not implemented
     and it is the responsability of the user to do it.
 
-    @dev The batchId parameter passed in the contract is an identifier that will be passed to the _purchaseItems
-    function to help the child contract identify which batch of items the user wants to purchase. If there are no
-    batches, the batchId can be any value and can be ignored when overriding the _purchaseItems function.
+    @dev The rarityId parameter passed in the contract is an identifier that will be passed to the _purchaseItems
+    function to help the child contract identify which NFT rarity the user wants to purchase
  */
 
 contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotionCredit {
     // Auction state
-    uint256 public currentId;
+    uint256 public currentRarityId;
     uint256 public purchasePrice;
     bool public isAuctionActive;
 
     // Events
-    event AuctionStarted(uint256 id, uint256 startPrice);
-    event AuctionStopped(uint256 id);
-    event AuctionPriceChanged(uint256 id, uint256 newPrice);
+    event AuctionStarted(uint256 rarityId, uint256 startPrice);
+    event AuctionStopped(uint256 rarityId);
+    event AuctionPriceChanged(uint256 rarityId, uint256 newPrice);
 
     // Modifiers
-    modifier checkAuctionActive(uint256 id) {
+    modifier checkAuctionActive(uint256 rarityId) {
         require(isAuctionActive, "Auction is not active");
-        require(id == currentId, "Active auction ID mismatch");
+        require(rarityId == currentRarityId, "Active auction ID mismatch");
         _;
     }
-    modifier checkAuctionNotSoldOut(uint256 id) {
-        require(getRemainingItems(id) > 0, "Items are already sold out");
+    modifier checkRarityNotSoldOut(uint256 rarityId) {
+        require(getRemainingNFTs(rarityId) > 0, "Rarity is already sold out");
         _;
     }
 
     // Auction management
 
     /**
-        @notice Starts a new auction starting at the given price, for the given number of items.
+        @notice Starts an auction for a rarity ID starting at the specified price
 
-        @param id The identifier of the items to be auctioned
+        @param rarityId The ID for the rarity that is being auctioned
         @param startPrice The starting price of the tokens.
+
+        @dev An auction can be started and stopped even if there are still remaining NFTs
+        to be sold. An auction can be started later for the same rarity ID if there are still
+        NFTs not sold
     */
-    function startAuction(uint256 id, uint256 startPrice) external onlyOwner checkAuctionNotSoldOut(id) {
+    function startAuction(uint256 rarityId, uint256 startPrice) external onlyOwner checkRarityNotSoldOut(rarityId) {
         require(!isAuctionActive, "Auction is already active");
 
-        currentId = id;
+        currentRarityId = rarityId;
         purchasePrice = startPrice;
         isAuctionActive = true;
 
-        emit AuctionStarted(id, startPrice);
+        emit AuctionStarted(rarityId, startPrice);
     }
 
     /**
@@ -64,7 +67,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     function stopAuction() external onlyOwner {
         isAuctionActive = false;
 
-        emit AuctionStopped(currentId);
+        emit AuctionStopped(currentRarityId);
     }
 
     /**
@@ -72,21 +75,21 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
 
         @param newPrice The new purchase price
      */
-    function changePrice(uint256 id, uint256 newPrice) external onlyOwner checkAuctionActive(id) {
+    function changePrice(uint256 rarityId, uint256 newPrice) external onlyOwner checkAuctionActive(rarityId) {
         purchasePrice = newPrice;
 
-        emit AuctionPriceChanged(id, newPrice);
+        emit AuctionPriceChanged(rarityId, newPrice);
     }
 
     /**
-        @notice Mints a batch of tokenIDs
+        @notice Purchases and mints a number of NFTs
 
-        @param id The identifier of the items set being auctioned
-        @param amount The amount of assets to buy
-        @param limitPrice The maximum price the buyer is willing to pay
+        @param rarityId The identifier of the items set being auctioned
+        @param nftAmount The amount of NFTs to buy and mint
+        @param limitPrice The maximum price the buyer is willing to pay for the purchase
         @param publicKey The public key of the buyer
 
-        @dev The auction id is sent in case the auction ends an another auction starts while
+        @dev The auction rarityId is sent in case the auction ends an another auction starts while
         the tx is in flight. This ensures that the purchase happens for the intended batch.
 
         @dev limitPrice is used to ensure that the buyer is not overpaying, in case the purchase price
@@ -96,23 +99,23 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         so the implementer of the delegator function does not need to check for this.
      */
     function purchase(
-        uint256 id,
-        uint256 amount,
+        uint256 rarityId,
+        uint256 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
-    ) external payable checkAuctionActive(id) checkCallerAccess checkAuctionNotSoldOut(id) {
+    ) external payable checkAuctionActive(rarityId) checkCallerAccess checkRarityNotSoldOut(rarityId) {
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
-        // Calculate the amount of items that can still be bought
-        amount = Utils.min(amount, getRemainingItems(id));
+        // Calculate the nftAmount of NFTs that can still be bought
+        nftAmount = Utils.min(nftAmount, getRemainingNFTs(rarityId));
 
-        // Get the credited amount of items of the buyer and calculate how many items
-        // must be paid for. Then consume the used amount of credit
-        uint256 creditAmount = getCredit(_msgSender(), id);
-        uint256 payableAmount = creditAmount < amount ? amount - creditAmount : 0;
+        // Get the credited nftAmount of NFTs of the buyer and calculate how many NFTs
+        // must be paid for. Then consume the used nftAmount of credit
+        uint256 creditAmount = getCredit(_msgSender(), rarityId);
+        uint256 payableAmount = creditAmount < nftAmount ? nftAmount - creditAmount : 0;
 
-        _consumeCredit(_msgSender(), id, amount - payableAmount);
-        _purchaseItems(id, amount, limitPrice, publicKey);
+        _consumeCredit(_msgSender(), rarityId, nftAmount - payableAmount);
+        _purchaseItems(rarityId, nftAmount, limitPrice, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference
@@ -122,25 +125,25 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     // Delegates
 
     /**
-        @notice Requests the total number of items that can still be sold for
-        the given id
+        @notice Requests the total number of NFTs that can still be sold for
+        the given rarity ID
 
-        @param id The id of the items to purchase
+        @param rarityId The rarityId of the NFTs to purchase
 
-        @return The total number of items that can still be sold
+        @return The total number of NFTs that can still be sold
 
         @dev The function must be overriden by the child contract and return the
-        number of items that can still be sold for the given id.
+        number of NFTs that can still be sold for the given rarity ID.
      */
-    function getRemainingItems(uint256 id) public virtual returns (uint256) {
+    function getRemainingNFTs(uint256 rarityId) public virtual returns (uint256) {
         // Empty on purpose
     }
 
     /**
-        @notice Delegate function to purchase the amount of items indicated in the call
+        @notice Delegate function to purchase the nftAmount of NFTs indicated in the call
 
-        @param id The batchId of the items to purchase
-        @param amount The amount of items to be purchased
+        @param rarityId The batchId of the NFTs to purchase
+        @param nftAmount The nftAmount of NFTs to be purchased
         @param limitPrice The maximum price the buyer is willing to pay
         @param publicKey The public key of the buyer
 
@@ -148,8 +151,8 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         purchase logic
      */
     function _purchaseItems(
-        uint256 id,
-        uint256 amount,
+        uint256 rarityId,
+        uint256 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
     ) internal virtual {

@@ -59,7 +59,7 @@ describe("NFTPotionDutchAuction", function () {
 
                 await auction.startAuction(0, 100);
 
-                let remainingItems = await auction.getRemainingItems(0);
+                let remainingItems = await auction.getRemainingNFTs(0);
                 const purchasePriceBN = toBN(await auction.purchasePrice());
 
                 await auction.NFTPotionAccessList.setAccess(owner.address, true);
@@ -71,12 +71,12 @@ describe("NFTPotionDutchAuction", function () {
                     await auction.purchase(0, remainingItems, purchasePriceBN, "Some Public Key");
                 }
 
-                remainingItems = await auction.getRemainingItems(0);
+                remainingItems = await auction.getRemainingNFTs(0);
                 expect(remainingItems).to.equal(0);
 
                 await auction.stopAuction();
 
-                await expectThrow(async () => auction.startAuction(0, 100), "Items are already sold out");
+                await expectThrow(async () => auction.startAuction(0, 100), "Rarity is already sold out");
             });
         });
         describe("Stop Auction", function () {
@@ -178,7 +178,7 @@ describe("NFTPotionDutchAuction", function () {
 
                 await auction.startAuction(0, 100);
 
-                let remainingItems = await auction.getRemainingItems(0);
+                let remainingItems = await auction.getRemainingNFTs(0);
                 const purchasePriceBN = toBN(await auction.purchasePrice());
 
                 await auction.NFTPotionAccessList.setAccess(owner.address, true);
@@ -190,12 +190,12 @@ describe("NFTPotionDutchAuction", function () {
                     await auction.purchase(0, remainingItems, purchasePriceBN, "Some Public Key");
                 }
 
-                remainingItems = await auction.getRemainingItems(0);
+                remainingItems = await auction.getRemainingNFTs(0);
                 expect(remainingItems).to.equal(0);
 
                 await expectThrow(
                     async () => auction.purchase(0, 1, purchasePriceBN, "Some Public Key"),
-                    "Items are already sold out",
+                    "Rarity is already sold out",
                 );
             });
             it("Purchase with a limit price below current price", async function () {

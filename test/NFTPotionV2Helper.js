@@ -103,7 +103,7 @@ class NFTPotionV2Helper {
             signer = this.owner;
         }
 
-        const remainingItems = await this.getRemainingItems(id);
+        const remainingItems = await this.getRemainingNFTs(id);
         const startTokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id];
 
         // Initial state
@@ -155,8 +155,8 @@ class NFTPotionV2Helper {
         return this.NFTPotionDutchAuction.purchasePrice;
     }
 
-    async getRemainingItems(id) {
-        const remainingItemsContract = fromBN(await this.contract.getRemainingItems(id));
+    async getRemainingNFTs(id) {
+        const remainingItemsContract = fromBN(await this.contract.getRemainingNFTs(id));
 
         const remainingItems =
             this.rarityConfig[id].endTokenId - this.rarityConfig[id].startTokenId + 1 - this.rarityNumMinted[id];

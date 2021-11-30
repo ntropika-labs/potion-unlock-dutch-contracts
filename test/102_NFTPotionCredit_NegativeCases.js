@@ -74,6 +74,36 @@ describe("NFTPotionCredit", function () {
                     "Ownable: caller is not the owner",
                 );
             });
+            it("Input data must be consistent", async function () {
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([], [], []),
+                    "Trying to add credit with empty array",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([], [2], []),
+                    "Trying to add credit with empty array",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([], [], [5]),
+                    "Trying to add credit with empty array",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([], [6], [89]),
+                    "Trying to add credit with empty array",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([signers[0].address], [], []),
+                    "Mismatch in array sizes for adding credit",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([signers[0].address], [7], []),
+                    "Mismatch in array sizes for adding credit",
+                );
+                await expectThrow(
+                    async () => auction.NFTPotionCredit.addCreditAll([signers[0].address], [], [89]),
+                    "Mismatch in array sizes for adding credit",
+                );
+            });
         });
     });
 });

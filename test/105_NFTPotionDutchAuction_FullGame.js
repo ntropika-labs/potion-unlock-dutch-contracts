@@ -24,7 +24,7 @@ describe("NFTPotionDutchAuction", function () {
 
     let buyersTokenIDs;
 
-    const { seed, getRandom } = initRandom();
+    const { seed, getRandom } = initRandom(2352351791485539);
 
     function getPercent() {
         return getRandom() % 100;
@@ -157,7 +157,7 @@ describe("NFTPotionDutchAuction", function () {
                     totalAvailable -= actualAmountPurchased;
                 }
 
-                expect(await auction.getRemainingItems(ITEMS_IDS[i])).to.equal(0);
+                expect(await auction.getRemainingNFTs(ITEMS_IDS[i])).to.equal(0);
 
                 process.stdout.write(`\t    [Rarity ${i + 1}/${ITEMS_IDS.length} ID=${id}]: 100%             \n`);
 

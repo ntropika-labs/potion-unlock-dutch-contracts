@@ -3,38 +3,44 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
-    @notice Allows buyer to purchase items for free for a given items ID set
+    @notice Handles the credit that a buyer has for a specific rarity ID. This can be
+    used to give a buyer NFTs for a specific rarity for free
 */
 contract NFTPotionCredit is Ownable {
     /**
-        Buyer's credit (buyer's address => (itemsId, credit))
+        Buyer's credit (buyer's address => (rarityId, credit))
     
-        A buyers given credit to purchase for free an amount of items
-        from a given items id set
+        A buyers given credit to purchase for free an amount of NFTs
+        from a given rarity ID
     */
     mapping(address => mapping(uint256 => uint256)) private credit;
+
+    // Events
+    event CreditAdded(address buyer, uint256 rarityId, uint256 amount);
 
     /**
         @notice Adds credit to a list of buyers
 
         @param buyers List of buyers to add credit to
-        @param itemsIds List of items ids to add credit for
+        @param rarityIds List of rarity IDs to add credit for
         @param amounts List of amounts of credit to add
+
+        @dev Only owner
 
     */
     function addCreditAll(
         address[] calldata buyers,
-        uint256[] calldata itemsIds,
+        uint256[] calldata rarityIds,
         uint256[] calldata amounts
     ) external onlyOwner {
-        require(buyers.length > 0, "Trying to whitelist with empty array");
+        require(buyers.length > 0, "Trying to add credit with empty array");
         require(
-            buyers.length == itemsIds.length || buyers.length == amounts.length,
-            "Mismatch in array sizes for direct whitelist"
+            buyers.length == rarityIds.length && buyers.length == amounts.length,
+            "Mismatch in array sizes for adding credit"
         );
 
         for (uint256 i = 0; i < amounts.length; ++i) {
-            credit[buyers[i]][itemsIds[i]] += amounts[i];
+            _addCredit(buyers[i], rarityIds[i], amounts[i]);
         }
     }
 
@@ -42,34 +48,53 @@ contract NFTPotionCredit is Ownable {
         @notice Adds the given amount to the buyer's credit
 
         @param buyer The buyer to add credit to
-        @param itemsId The items id to add credit for
+        @param rarityId The rarity ID to add credit for
         @param amount The amount of credit to add
+
+        @dev Only owner
     */
     function addCredit(
         address buyer,
-        uint256 itemsId,
-        uint128 amount
+        uint256 rarityId,
+        uint256 amount
     ) external onlyOwner {
-        credit[buyer][itemsId] += amount;
+        _addCredit(buyer, rarityId, amount);
     }
 
     // Internal functions
+
+    /**
+        @notice Adds the given amount to the buyer's credit
+
+        @param buyer The buyer to add credit to
+        @param rarityId The rarity ID to add credit for
+        @param amount The amount of credit to add
+     */
+    function _addCredit(
+        address buyer,
+        uint256 rarityId,
+        uint256 amount
+    ) internal {
+        credit[buyer][rarityId] += amount;
+
+        emit CreditAdded(buyer, rarityId, amount);
+    }
 
     /** 
         @notice Consumes the given amount of credit from the buyer
 
         @param buyer The buyer to consume credit from
-        @param itemsId The items id to consume credit for
+        @param rarityId The rarity ID to consume credit for
         @param amount The amount of credit to consume
      */
     function _consumeCredit(
         address buyer,
-        uint256 itemsId,
+        uint256 rarityId,
         uint256 amount
     ) internal {
-        require(credit[buyer][itemsId] >= amount, "Not enough credit to consume");
+        require(credit[buyer][rarityId] >= amount, "Not enough credit to consume");
 
-        credit[buyer][itemsId] -= amount;
+        credit[buyer][rarityId] -= amount;
     }
 
     // View functions
@@ -78,9 +103,9 @@ contract NFTPotionCredit is Ownable {
         @notice Returns the amount of credit a buyer has
 
         @param buyer Address of the buyer 
-        @param itemsId The items id to get credit for
+        @param rarityId The rarity ID to get credit for
     */
-    function getCredit(address buyer, uint256 itemsId) public view returns (uint256) {
-        return credit[buyer][itemsId];
+    function getCredit(address buyer, uint256 rarityId) public view returns (uint256) {
+        return credit[buyer][rarityId];
     }
 }

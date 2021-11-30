@@ -1,24 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./INFTPotion.sol";
+import "./INFTPotionValidatorV2.sol";
 
-contract NFTPotionValidatorV2 is Context, Ownable, Pausable {
+contract NFTPotionValidatorV2 is INFTPotionValidatorV2, Ownable {
     //------------
     // Storage
     //------------
     bytes32 public merkleRoot;
     INFTPotion public NFTContract;
     mapping(uint256 => bool) public isTokenValidated;
-
-    //------------
-    // Events
-    //------------
-    event NFTValidated(address indexed owner, uint256 indexed tokenId, uint256 secretStartPos, bytes decryptedSecret);
 
     //---------------
     // Constructor
@@ -47,7 +41,7 @@ contract NFTPotionValidatorV2 is Context, Ownable, Pausable {
         uint256 tokenId,
         bytes calldata decryptedSecret,
         bytes32[] calldata proof
-    ) public whenNotPaused {
+    ) public {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
         require(!isTokenValidated[tokenId], "TAV"); // Token Already Validated
 
@@ -78,28 +72,6 @@ contract NFTPotionValidatorV2 is Context, Ownable, Pausable {
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             validate(tokenIds[i], decryptedSecrets[i], proofs[i]);
         }
-    }
-
-    //------------------
-    // Owner functions
-    //------------------
-
-    /**
-        @notice Pauses the contract by stopping the validation functionality
-
-        @dev Owner only
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-        @notice Unpauses the contract allowing validation again
-
-        @dev Owner only
-     */
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     //--------------------

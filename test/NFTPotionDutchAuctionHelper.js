@@ -53,11 +53,11 @@ class NFTPotionDutchAuctionHelper {
             throw new Error("Invalid rarity ID");
         }
 
-        if ((await this.parent.getRemainingItems(id)) <= 0) {
+        if ((await this.parent.getRemainingNFTs(id)) <= 0) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
-                "Items are already sold out",
+                "Rarity is already sold out",
             );
-            throw new Error("Items are already sold out");
+            throw new Error("Rarity is already sold out");
         }
 
         // Logic
@@ -66,7 +66,7 @@ class NFTPotionDutchAuctionHelper {
             .withArgs(id, purchasePrice);
 
         // Checks and effects
-        this.currentId = fromBN(await this.contract.currentId());
+        this.currentId = fromBN(await this.contract.currentRarityId());
         this.purchasePrice = fromBN(await this.contract.purchasePrice());
         this.isAuctionActive = await this.contract.isAuctionActive();
 
@@ -157,12 +157,12 @@ class NFTPotionDutchAuctionHelper {
             );
             throw new Error("AccessList: Caller doesn't have access");
         }
-        const remainingItemsBefore = await this.parent.getRemainingItems(this.currentId);
+        const remainingItemsBefore = await this.parent.getRemainingNFTs(this.currentId);
         if (remainingItemsBefore <= 0) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
-                "Items are already sold out",
+                "Rarity is already sold out",
             );
-            throw new Error("Items are already sold out");
+            throw new Error("Rarity is already sold out");
         }
 
         if (limitPrice < this.purchasePrice) {
@@ -196,7 +196,7 @@ class NFTPotionDutchAuctionHelper {
         // Checks and effects
         this.parent.NFTPotionCredit._consumeCredit(signer.address, id, amountToPurchase - amountToPay);
 
-        const remainingItemsAfter = await this.contract.getRemainingItems(this.currentId);
+        const remainingItemsAfter = await this.contract.getRemainingNFTs(this.currentId);
         const currentCreditAfter = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));
 
         expect(remainingItemsAfter).to.be.equal(remainingItemsBefore - amountToPurchase);

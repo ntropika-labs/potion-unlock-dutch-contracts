@@ -5,21 +5,16 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
-    Manual Dutch Auction to sell items at a changing price
+    @notice Handles the funds received from the caller and makes sure that enough
+    cash is sent for a specific payment.
 
-    @dev This contract is used to sell items at a changing price. The price changes are done manually through
-    the changePrice function. In principle the price should be lowered over time, but this is not implemented
-    and it is the responsability of the user to do it.
+    The owner can use transferFunds to send the funds to a recipient
 
-    @dev The batchId parameter passed in the contract is an identifier that will be passed to the _purchaseItems
-    function to help the child contract identify which batch of items the user wants to purchase. If there are no
-    batches, the batchId can be any value and can be ignored when overriding the _purchaseItems function.
+    It also takes care of unrequested cash sent by rejecting them with an error
+    message.
  */
 
 contract NFTPotionFunds is Ownable {
-    // Used to track unrequested cash received in the receive() function
-    uint256 public unrequestedFundsReceived;
-
     /**
         @notice Transfer the claimable funds to the recipient
 
@@ -29,15 +24,13 @@ contract NFTPotionFunds is Ownable {
     */
     function transferFunds(address payable recipient) external onlyOwner {
         Address.sendValue(recipient, address(this).balance);
-
-        unrequestedFundsReceived = 0;
     }
 
     /**
-        Added to track unrequested sending of cash to the contract
+        Added explicetely to avoid receiving cash by mistake
     */
     receive() external payable {
-        unrequestedFundsReceived += msg.value;
+        revert("NFTPotionFunds: Unrequested funds received");
     }
 
     // Internal functions

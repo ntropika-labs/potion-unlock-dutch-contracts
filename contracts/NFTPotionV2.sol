@@ -45,8 +45,14 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
         ipfsSuffix = _ipfsSuffix;
         fullSecret = _fullSecret;
 
+        uint256 lastTokenId = 0;
         for (uint256 i = 0; i < _rarityConfig.length; ++i) {
+            require(_rarityConfig[i].startTokenId < _rarityConfig[i].endTokenId, "Rarity token ID ranges are invalid");
+            require(_rarityConfig[i].startTokenId > lastTokenId, "Rarity token ID ranges are overlapping");
+
             rarityConfig.push(_rarityConfig[i]);
+
+            lastTokenId = _rarityConfig[i].endTokenId;
         }
 
         rarityNumMinted = new uint256[](rarityConfig.length);
@@ -55,16 +61,16 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
     // Auction delegates
 
     /**
-        @notice Requests the total number of items to be sold for the given rarity ID
+        @notice Requests the total number of NFTs to be sold for the given rarity ID
 
-        @param rarityId The rarity IDs of the items to purchase
+        @param rarityId The rarity IDs of the NFTs to purchase
 
-        @return The total number of items to be sold for the given rarity
+        @return The total number of NFTs to be sold for the given rarity
 
         @dev The function must be overriden by the child contract and return the
-        number of items to be sold for the given rarity.
+        number of NFTs to be sold for the given rarity.
      */
-    function getRemainingItems(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint256) {
+    function getRemainingNFTs(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint256) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
         uint256 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
         return totalTokens - rarityNumMinted[rarityId];

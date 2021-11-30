@@ -214,7 +214,7 @@ describe("NFTPotionDutchAuction", function () {
                     totalAvailable -= amountToPurchase;
                 }
 
-                const remainingItems = await auction.getRemainingItems(ITEMS_ID);
+                const remainingItems = await auction.getRemainingNFTs(ITEMS_ID);
                 expect(totalAvailable).to.be.equal(0);
                 expect(remainingItems).to.be.equal(1);
 

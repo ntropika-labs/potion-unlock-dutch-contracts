@@ -60,15 +60,15 @@ class NFTPotionCreditHelper {
         if (buyersList.length === 0) {
             await expect(
                 this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList),
-            ).to.be.revertedWith("Trying to whitelist with empty array");
-            throw new Error("Trying to whitelist with empty array");
+            ).to.be.revertedWith("Trying to add credit with empty array");
+            throw new Error("Trying to add credit with empty array");
         }
 
         if (buyersList.length !== amountsList.length || buyersList.length !== itemsIdList.length) {
             await expect(
                 this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList),
-            ).to.be.revertedWith("Mismatch in array sizes for direct whitelist");
-            throw new Error("Mismatch in array sizes for direct whitelist");
+            ).to.be.revertedWith("Mismatch in array sizes for adding credit");
+            throw new Error("Mismatch in array sizes for adding credit");
         }
 
         // Initial state
