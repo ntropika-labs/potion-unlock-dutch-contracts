@@ -17,6 +17,7 @@ contract NFTPotionCredit is Ownable {
 
     // Events
     event CreditAdded(address buyer, uint256 rarityId, uint256 amount);
+    event CreditConsumed(address buyer, uint256 rarityId, uint256 amount);
 
     /**
         @notice Adds credit to a list of buyers
@@ -95,6 +96,8 @@ contract NFTPotionCredit is Ownable {
         require(credit[buyer][rarityId] >= amount, "Not enough credit to consume");
 
         credit[buyer][rarityId] -= amount;
+
+        emit CreditConsumed(buyer, rarityId, amount);
     }
 
     // View functions

@@ -32,7 +32,9 @@ class NFTPotionCreditHelper {
         const creditBefore = await this.contract.getCredit(buyer, itemsId);
 
         // Logic
-        await this.contract.connect(signer).addCredit(buyer, itemsId, amount);
+        await expect(this.contract.connect(signer).addCredit(buyer, itemsId, amount))
+            .to.emit(this.contract, "CreditAdded")
+            .withArgs(buyer, itemsId, amount);
 
         // Checks
         const creditAfter = await this.contract.getCredit(buyer, itemsId);
@@ -79,9 +81,13 @@ class NFTPotionCreditHelper {
         }
 
         // Logic
-        await this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList);
+        const tx = this.contract.connect(signer).addCreditAll(buyersList, itemsIdList, amountsList);
 
         for (let i = 0; i < buyersList.length; i++) {
+            await expect(tx)
+                .to.emit(this.contract, "CreditAdded")
+                .withArgs(buyersList[i], itemsIdList[i], amountsList[i]);
+
             const creditAfter = await this.contract.getCredit(buyersList[i], itemsIdList[i]);
             expect(creditAfter).to.be.equal(creditsBefore[i].add(amountsList[i]));
 
@@ -93,7 +99,7 @@ class NFTPotionCreditHelper {
         }
     }
 
-    _consumeCredit(buyer, id, amount) {
+    async _consumeCredit(tx, buyer, id, amount) {
         if (!this.creditsMap.has(buyer)) {
             expect(amount).to.be.equal(0);
             return;
@@ -107,6 +113,8 @@ class NFTPotionCreditHelper {
         expect(credit).to.be.greaterThanOrEqual(amount);
 
         this.creditsMap.get(buyer).set(id, credit - amount);
+
+        await expect(tx).to.emit(this.contract, "CreditConsumed").withArgs(buyer, id, amount);
     }
 
     async getCredit(buyer, id) {

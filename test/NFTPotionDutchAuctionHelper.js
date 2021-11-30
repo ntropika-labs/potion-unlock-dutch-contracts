@@ -194,7 +194,7 @@ class NFTPotionDutchAuctionHelper {
             .purchase(id, amount, limitPrice, publicKey, { value: sendValue });
 
         // Checks and effects
-        this.parent.NFTPotionCredit._consumeCredit(signer.address, id, amountToPurchase - amountToPay);
+        await this.parent.NFTPotionCredit._consumeCredit(tx, signer.address, id, amountToPurchase - amountToPay);
 
         const remainingItemsAfter = await this.contract.getRemainingNFTs(this.currentId);
         const currentCreditAfter = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));

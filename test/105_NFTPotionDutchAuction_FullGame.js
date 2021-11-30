@@ -168,14 +168,6 @@ describe("NFTPotionDutchAuction", function () {
             // Auction transfer funds
             await auction.NFTPotionFunds.transferFunds(signers[getRandom() % MAX_BUYERS].address);
         }).timeout(600000);
-        it.skip(`Validate NFT ownership`, async function () {
-            for (const [buyer, tokenIDs] of buyersTokenIDs) {
-                for (const tokenID of tokenIDs) {
-                    const owner = await auction.NFTPotionV2.ownerOf(toBN(tokenID));
-                    expect(owner).to.equal(buyer.address);
-                }
-            }
-        });
         it.skip(`Input Data Gas Limit`, async function () {
             let proofs = [];
             for (let i = 0; i < 29; i++) {
