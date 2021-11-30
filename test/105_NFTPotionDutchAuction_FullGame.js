@@ -17,7 +17,7 @@ const {
 const { range, initRandom, expectThrow, shuffle } = require("./testUtils");
 const { bufferToHex } = require("ethereumjs-util");
 
-describe.only("NFTPotionDutchAuction", function () {
+describe("NFTPotionDutchAuction", function () {
     let signers;
     let raritiesConfig;
     let owner;
@@ -284,7 +284,7 @@ describe.only("NFTPotionDutchAuction", function () {
                 }
             }
 
-            process.stdout.write(`\t    Progress: 100%                   \r`);
+            process.stdout.write(`\t    Progress: 100%                   \n`);
         }).timeout(6000000);
     });
 });
