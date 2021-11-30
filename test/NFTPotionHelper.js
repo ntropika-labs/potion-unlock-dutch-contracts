@@ -15,11 +15,11 @@ const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
 const { NFTPotionAccessListHelper } = require("./NFTPotionAccessListHelper");
 const { NFTPotionCreditHelper } = require("./NFTPotionCreditHelper");
 
-class NFTPotionV2Helper {
+class NFTPotionHelper {
     contract;
     owner;
 
-    NFTPotionV2;
+    NFTPotion;
     NFTPotionDutchAuction;
     NFTPotionFunds;
     NFTPotionAccessList;
@@ -59,8 +59,8 @@ class NFTPotionV2Helper {
             const encryptedPassword = encryptPassword(process.env.PASSWORD_GENESIS);
             this.fullSecret = Buffer.from(encryptedPassword.slice(2), "hex");
 
-            const NFTPotionV2 = await ethers.getContractFactory("NFTPotionV2");
-            this.contract = await NFTPotionV2.deploy(
+            const NFTPotion = await ethers.getContractFactory("NFTPotion");
+            this.contract = await NFTPotion.deploy(
                 this.tokenName,
                 this.tokenSymbol,
                 this.ipfsPrefix,
@@ -74,7 +74,7 @@ class NFTPotionV2Helper {
             this.fullSecret = Buffer.from(secret.slice(2), "hex");
         }
 
-        this.NFTPotionV2 = this.contract;
+        this.NFTPotion = this.contract;
         this.NFTPotionFunds = new NFTPotionFundsHelper(this);
         this.NFTPotionAccessList = new NFTPotionAccessListHelper(this);
         this.NFTPotionCredit = new NFTPotionCreditHelper(this);
@@ -183,4 +183,4 @@ class NFTPotionV2Helper {
     }
 }
 
-module.exports = { NFTPotionV2Helper };
+module.exports = { NFTPotionHelper };

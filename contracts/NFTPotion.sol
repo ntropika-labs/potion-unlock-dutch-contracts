@@ -1,115 +1,112 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
-
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "./NFTPotionAuction.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "./NFTPotionDutchAuction.sol";
 import "./RarityConfigItem.sol";
 
-contract NFTPotion is ERC721URIStorage, Ownable, Pausable {
-    //--------------
+/**
+    NFT contract for Potion Unlock
+ */
+contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
     // Storage
-    //--------------
     string public ipfsPrefix;
     string public ipfsSuffix;
     bytes public fullSecret;
-    mapping(uint256 => string) public encryptionKeys;
-    INFTPotionWhitelist whitelist;
     RarityConfigItem[] public rarityConfig;
+    uint256[] public rarityNumMinted;
 
-    //--------------
+    // Events
+    event NFTPurchased(
+        address indexed buyer,
+        uint256 indexed startTokenId,
+        string indexed publicKey,
+        uint256 amount,
+        uint256 limitPrice
+    );
+
     // Modifiers
-    //--------------
-    modifier checkWhitelist(uint256 tokenId) {
-        INFTPotionWhitelist.WhitelistData[] memory ranges = whitelist.getWhitelistRanges(_msgSender());
-
-        bool isWhitelisted;
-        for (uint256 i = 0; i < ranges.length; ++i) {
-            if (tokenId >= ranges[i].firstId && tokenId <= ranges[i].lastId) {
-                isWhitelisted = true;
-                break;
-            }
-        }
-        require(isWhitelisted, "Not whitelisted for token ID");
+    modifier checkValidRarity(uint256 rarityId) {
+        require(rarityId < rarityConfig.length, "Invalid rarity ID");
         _;
     }
 
-    //---------------
     // Constructor
-    //---------------
     constructor(
         string memory _tokenName,
         string memory _tokenSymbol,
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
         bytes memory _fullSecret,
-        address _whitelist,
         RarityConfigItem[] memory _rarityConfig
     ) ERC721(_tokenName, _tokenSymbol) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
         fullSecret = _fullSecret;
-        whitelist = INFTPotionWhitelist(_whitelist);
 
+        uint256 lastTokenId = 0;
         for (uint256 i = 0; i < _rarityConfig.length; ++i) {
+            require(_rarityConfig[i].startTokenId < _rarityConfig[i].endTokenId, "Rarity token ID ranges are invalid");
+            require(_rarityConfig[i].startTokenId > lastTokenId, "Rarity token ID ranges are overlapping");
+
             rarityConfig.push(_rarityConfig[i]);
+
+            lastTokenId = _rarityConfig[i].endTokenId;
         }
+
+        rarityNumMinted = new uint256[](rarityConfig.length);
     }
 
-    //--------------------
-    // Minting functions
-    //--------------------
+    // Auction delegates
 
     /**
-        @notice Mints a new token if it's been whitelisted for the caller
+        @notice Requests the total number of NFTs to be sold for the given rarity ID
 
-        @param tokenId The ID of the token to mint
-        @param publicKey The public key to be used for genesis encryption
+        @param rarityId The rarity IDs of the NFTs to purchase
+
+        @return The total number of NFTs to be sold for the given rarity
+
+        @dev The function must be overriden by the child contract and return the
+        number of NFTs to be sold for the given rarity.
      */
-    function mint(uint256 tokenId, string calldata publicKey) public checkWhitelist(tokenId) whenNotPaused {
-        _safeMint(msg.sender, tokenId);
-
-        encryptionKeys[tokenId] = publicKey;
+    function getRemainingNFTs(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint256) {
+        RarityConfigItem storage rarity = rarityConfig[rarityId];
+        uint256 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
+        return totalTokens - rarityNumMinted[rarityId];
     }
 
     /**
-        @notice Mints a batch of tokenIDs
+        @notice Mints the number of tokens requested by the caller
 
-        @param tokenIds List of token IDs to be minted
-        @param publicKey The public key to be used for genesis encryption
+        @param rarityId The ID of the rarity config to use
+        @param amount The amount of tokens to mint
+        @param limitPrice The maximum price the buyer is willing to pay
+        @param publicKey The public key of the minter
+
+        @dev The caller is ensuring that the number of tokens requested is less than
+        the number of tokens available for minting.
      */
-    function mintList(uint256[] calldata tokenIds, string calldata publicKey) external {
-        for (uint256 i = 0; i < tokenIds.length; ++i) {
-            mint(tokenIds[i], publicKey);
+    function _purchaseItems(
+        uint256 rarityId,
+        uint256 amount,
+        uint256 limitPrice,
+        string calldata publicKey
+    ) internal override checkValidRarity(rarityId) {
+        RarityConfigItem storage rarity = rarityConfig[rarityId];
+        uint256 numTokensMinted = rarityNumMinted[rarityId];
+        uint256 startTokenId = rarity.startTokenId + numTokensMinted;
+
+        for (uint256 i = 0; i < amount; ++i) {
+            _safeMint(msg.sender, startTokenId + i);
         }
+
+        rarityNumMinted[rarityId] += amount;
+
+        emit NFTPurchased(_msgSender(), startTokenId, publicKey, amount, limitPrice);
     }
 
-    //------------------
-    // Owner functions
-    //------------------
-
-    /**
-        @notice Pauses the contract by stopping the minting functionality
-
-        @dev Owner only
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-        @notice Unpauses the contract allowing minting again
-
-        @dev Owner only
-     */
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    //------------------
     // View functions
-    //------------------
 
     /**
         @notice returns the NFT artwork for the given token ID
@@ -122,8 +119,7 @@ contract NFTPotion is ERC721URIStorage, Ownable, Pausable {
         if (ownerOf(tokenId) == address(0)) {
             return "";
         }
-
-        return string(abi.encodePacked(ipfsPrefix, _uint2str(tokenId), ipfsSuffix));
+        return string(abi.encodePacked(ipfsPrefix, Strings.toString(tokenId), ipfsSuffix));
     }
 
     /**
@@ -185,33 +181,5 @@ contract NFTPotion is ERC721URIStorage, Ownable, Pausable {
         }
 
         return out;
-    }
-
-    //---------------------
-    // Internal functions
-    //---------------------
-
-    /**
-        @notice Converts a number to its string representation
-     */
-    function _uint2str(uint256 _i) internal pure returns (string memory _uintAsString) {
-        if (_i == 0) {
-            return "0";
-        }
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        uint256 k = len - 1;
-        while (_i != 0) {
-            unchecked {
-                bstr[k--] = bytes1(uint8(48 + (_i % 10)));
-            }
-            _i /= 10;
-        }
-        return string(bstr);
     }
 }

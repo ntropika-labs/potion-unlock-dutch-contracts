@@ -1,7 +1,7 @@
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
-const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
+const { NFTPotionHelper } = require("./NFTPotionHelper");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 
 describe.skip("NFTPotionDutchAuction", function () {
@@ -19,7 +19,7 @@ describe.skip("NFTPotionDutchAuction", function () {
 
         // Initialize the contract
         beforeEach(async function () {
-            auction = new NFTPotionV2Helper();
+            auction = new NFTPotionHelper();
             await auction.initialize();
         });
         it("Single NFT purchased per call", async function () {

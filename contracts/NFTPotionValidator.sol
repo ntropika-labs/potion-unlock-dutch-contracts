@@ -1,38 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 
-import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
 import "./INFTPotion.sol";
+import "./INFTPotionValidator.sol";
 
-contract NFTPotionValidator is Context, Ownable, Pausable {
+contract NFTPotionValidator is INFTPotionValidator, Ownable {
     //------------
     // Storage
     //------------
     bytes32 public merkleRoot;
     INFTPotion public NFTContract;
-    mapping(uint256 => bool) public isValidated;
-    uint256 public partialSecretSize;
-    bytes public finalMessage;
-
-    //------------
-    // Events
-    //------------
-    event NFTValidated(address owner, uint256 tokenId);
+    mapping(uint256 => bool) public isTokenValidated;
 
     //---------------
     // Constructor
     //---------------
-    constructor(
-        address _NFTContract,
-        bytes32 _merkleRoot,
-        uint256 _secretSize
-    ) {
+    constructor(address _NFTContract, bytes32 _merkleRoot) {
         merkleRoot = _merkleRoot;
         NFTContract = INFTPotion(_NFTContract);
-
-        finalMessage = new bytes(_secretSize);
     }
 
     //---------------------
@@ -46,23 +33,26 @@ contract NFTPotionValidator is Context, Ownable, Pausable {
         @param tokenId The token id of the NFT that is being validated
         @param decryptedSecret The decrypted secret associated with the NFT
         @param proof The merkle proof for the decrypted secret
+
+        @dev secretStartPost can be used as a key to understand if a piece of secret has been already
+        validated or not
       */
     function validate(
         uint256 tokenId,
-        bytes memory decryptedSecret,
-        bytes32[] memory proof
-    ) public whenNotPaused {
+        bytes calldata decryptedSecret,
+        bytes32[] calldata proof
+    ) public {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
-        require(!isValidated[tokenId], "TAV"); // Token Already Validated
+        require(!isTokenValidated[tokenId], "TAV"); // Token Already Validated
 
-        bytes memory data = abi.encodePacked(tokenId, decryptedSecret);
-        bytes32 leaf = keccak256(data);
+        (uint256 secretStartPos, , bool found) = NFTContract.getSecretPositionLength(tokenId);
+        require(found, "CRITICAL!! Token ID could not be found in rarity config");
 
-        require(_verifyMerkleProof(merkleRoot, leaf, proof), "FV"); // Failed Validation
+        _verify(tokenId, decryptedSecret, proof);
 
-        _copyDecryptedSecret(tokenId, decryptedSecret);
+        isTokenValidated[tokenId] = true;
 
-        emit NFTValidated(_msgSender(), tokenId);
+        emit NFTValidated(_msgSender(), tokenId, secretStartPos, decryptedSecret);
     }
 
     /**
@@ -84,79 +74,26 @@ contract NFTPotionValidator is Context, Ownable, Pausable {
         }
     }
 
-    //------------------
-    // Owner functions
-    //------------------
-
-    /**
-        @notice Pauses the contract by stopping the validation functionality
-
-        @dev Owner only
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-        @notice Unpauses the contract allowing validation again
-
-        @dev Owner only
-     */
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    //------------------
+    //--------------------
     // Internal functions
-    //------------------
+    //--------------------
 
     /**
-        @notice Copies the decrypted secret into the finalMessage at the right location using
-                the rarities configuration
+        Verifies the merkle proof for the given decrypted secret
 
-        @param tokenId The token id of the NFT which decrypted secret is being copied
+        @param tokenId The token id of the NFT that is being validated
         @param decryptedSecret The decrypted secret associated with the NFT
+        @param proof The merkle proof for the decrypted secret
+
     */
-    function _copyDecryptedSecret(uint256 tokenId, bytes memory decryptedSecret) internal {
-        (uint256 start, uint256 length, bool found) = NFTContract.getSecretPositionLength(tokenId);
+    function _verify(
+        uint256 tokenId,
+        bytes calldata decryptedSecret,
+        bytes32[] calldata proof
+    ) internal view {
+        bytes memory data = abi.encodePacked(tokenId, decryptedSecret);
+        bytes32 leaf = keccak256(data);
 
-        require(found, "CRITICAL!! Token ID could not be found in rarity config");
-        require(start + length <= finalMessage.length, "CRITICAL!! Decrypted secret position exceeds secret length");
-
-        for (uint256 i = 0; i < length; ++i) {
-            finalMessage[start + i] = decryptedSecret[i];
-        }
-    }
-
-    /**
-        @notice Verifies the merkle proof for the given leaf
-
-        @param root The merkle root
-        @param leaf The leaf to be verified
-        @param proof The merkle proof for the leaf
-
-        @dev Copied from https://github.com/miguelmota/merkletreejs-solidity
-     */
-    function _verifyMerkleProof(
-        bytes32 root,
-        bytes32 leaf,
-        bytes32[] memory proof
-    ) internal pure returns (bool) {
-        bytes32 computedHash = leaf;
-
-        for (uint256 i = 0; i < proof.length; i++) {
-            bytes32 proofElement = proof[i];
-
-            if (computedHash < proofElement) {
-                // Hash(current computed hash + current element of the proof)
-                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
-            } else {
-                // Hash(current element of the proof + current computed hash)
-                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
-            }
-        }
-
-        // Check if the computed hash (root) is equal to the provided root
-        return computedHash == root;
+        require(MerkleProof.verify(proof, merkleRoot, leaf), "FV"); // Failed Validation
     }
 }

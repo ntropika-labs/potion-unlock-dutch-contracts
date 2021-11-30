@@ -81,7 +81,7 @@ module.exports = {
         path: "./abis",
         clear: true,
         flat: true,
-        only: [":NFT", ":INFTPotionValidatorV2$"],
+        only: [":NFT", ":INFTPotionValidator$"],
         spacing: 2,
         pretty: false,
     },
