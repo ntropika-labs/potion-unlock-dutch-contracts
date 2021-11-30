@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./NFTPotionDutchAuction.sol";
 import "./RarityConfigItem.sol";
@@ -13,10 +14,19 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
     string public ipfsPrefix;
     string public ipfsSuffix;
     bytes public fullSecret;
-    mapping(uint256 => string) public encryptionKeys;
     RarityConfigItem[] public rarityConfig;
     uint256[] public rarityNumMinted;
 
+    // Events
+    event NFTPurchased(
+        address indexed buyer,
+        uint256 indexed startTokenId,
+        string indexed publicKey,
+        uint256 amount,
+        uint256 limitPrice
+    );
+
+    // Modifiers
     modifier checkValidRarity(uint256 rarityId) {
         require(rarityId < rarityConfig.length, "Invalid rarity ID");
         _;
@@ -65,6 +75,7 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
 
         @param rarityId The ID of the rarity config to use
         @param amount The amount of tokens to mint
+        @param limitPrice The maximum price the buyer is willing to pay
         @param publicKey The public key of the minter
 
         @dev The caller is ensuring that the number of tokens requested is less than
@@ -73,20 +84,20 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
     function _purchaseItems(
         uint256 rarityId,
         uint256 amount,
+        uint256 limitPrice,
         string calldata publicKey
     ) internal override checkValidRarity(rarityId) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
         uint256 numTokensMinted = rarityNumMinted[rarityId];
+        uint256 startTokenId = rarity.startTokenId + numTokensMinted;
 
         for (uint256 i = 0; i < amount; ++i) {
-            uint256 tokenId = rarity.startTokenId + numTokensMinted + i;
-
-            _safeMint(msg.sender, tokenId);
-
-            encryptionKeys[tokenId] = publicKey;
+            _safeMint(msg.sender, startTokenId + i);
         }
 
         rarityNumMinted[rarityId] += amount;
+
+        emit NFTPurchased(_msgSender(), startTokenId, publicKey, amount, limitPrice);
     }
 
     // View functions
@@ -102,8 +113,7 @@ contract NFTPotionV2 is ERC721URIStorage, NFTPotionDutchAuction {
         if (ownerOf(tokenId) == address(0)) {
             return "";
         }
-
-        return string(abi.encodePacked(ipfsPrefix, Utils.toStr(tokenId), ipfsSuffix));
+        return string(abi.encodePacked(ipfsPrefix, Strings.toString(tokenId), ipfsSuffix));
     }
 
     /**

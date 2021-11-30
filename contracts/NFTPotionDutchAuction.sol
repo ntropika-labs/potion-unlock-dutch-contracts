@@ -28,7 +28,6 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     event AuctionStarted(uint256 id, uint256 startPrice);
     event AuctionStopped(uint256 id);
     event AuctionPriceChanged(uint256 id, uint256 newPrice);
-    event AuctionItemPurchased(uint256 indexed id, address indexed buyer, uint256 amount, uint256 limitPrice);
 
     // Modifiers
     modifier checkAuctionActive(uint256 id) {
@@ -113,13 +112,11 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         uint256 payableAmount = creditAmount < amount ? amount - creditAmount : 0;
 
         _consumeCredit(_msgSender(), id, amount - payableAmount);
-        _purchaseItems(id, amount, publicKey);
+        _purchaseItems(id, amount, limitPrice, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference
         _chargePayment(payableAmount * purchasePrice);
-
-        emit AuctionItemPurchased(id, _msgSender(), amount, limitPrice);
     }
 
     // Delegates
@@ -144,6 +141,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
 
         @param id The batchId of the items to purchase
         @param amount The amount of items to be purchased
+        @param limitPrice The maximum price the buyer is willing to pay
         @param publicKey The public key of the buyer
 
         @dev The function must be overriden by the child contract and implement the
@@ -152,6 +150,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
     function _purchaseItems(
         uint256 id,
         uint256 amount,
+        uint256 limitPrice,
         string calldata publicKey
     ) internal virtual {
         // Empty on purpose
