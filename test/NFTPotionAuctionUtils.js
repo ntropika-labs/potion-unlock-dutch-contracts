@@ -26,8 +26,8 @@ async function fastForwardChain(seconds) {
     await ethers.provider.send("evm_mine", []);
 }
 
-function fromBN(bn) {
-    const value = formatUnits(bn, "wei");
+function fromBN(bn, unit = "wei") {
+    const value = formatUnits(bn, unit);
     try {
         return parseInt(value);
     } catch {

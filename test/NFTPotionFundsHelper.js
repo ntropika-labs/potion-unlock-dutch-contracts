@@ -32,7 +32,7 @@ class NFTPotionFundsHelper {
         // Logic
         const tx = await this.contract.connect(signer).transferFunds(recipient);
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const contractBalanceAfter = await this.contract.provider.getBalance(this.contract.address);
@@ -66,7 +66,7 @@ class NFTPotionFundsHelper {
             value: amount,
         });
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const contractBalanceAfter = await this.contract.provider.getBalance(this.contract.address);

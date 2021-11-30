@@ -189,9 +189,9 @@ class NFTPotionDutchAuctionHelper {
         }
 
         // Logic
-        await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey, { value: sendValue }))
-            .to.emit(this.contract, "AuctionItemPurchased")
-            .withArgs(id, signer.address, amountToPurchase, limitPrice);
+        const tx = await this.contract
+            .connect(signer)
+            .purchase(id, amount, limitPrice, publicKey, { value: sendValue });
 
         // Checks and effects
         this.parent.NFTPotionCredit._consumeCredit(signer.address, id, amountToPurchase - amountToPay);
@@ -202,7 +202,7 @@ class NFTPotionDutchAuctionHelper {
         expect(remainingItemsAfter).to.be.equal(remainingItemsBefore - amountToPurchase);
         expect(currentCreditAfter).to.be.equal(currentCreditBefore - (amountToPurchase - amountToPay));
 
-        return amountToPurchase;
+        return { tx, amountToPurchase };
     }
 }
 

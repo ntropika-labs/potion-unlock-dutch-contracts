@@ -125,7 +125,7 @@ function buildMerkleTree(secret, rarityConfig) {
     let leaves = getMerkleLeaves(secret, rarityConfig);
 
     const merkleTree = new MerkleTree(leaves, keccak256, { sort: true });
-    return merkleTree;
+    return {merkleTree, leaves};
 }
 
 /**

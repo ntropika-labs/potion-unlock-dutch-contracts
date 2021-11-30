@@ -161,7 +161,7 @@ class NFTPotionAuctionHelper {
         // Logic
         const tx = await this.contract.connect(signer).cancelBid(alsoRefund);
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const latestBid = await this.getLatestBid(this.currentBatchId, signer.address);
@@ -211,7 +211,7 @@ class NFTPotionAuctionHelper {
         await expect(tx).to.emit(this.contract, "Purchase").withArgs(this.currentBatchId, signer.address, numTokens);
 
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const currentBalance = await signer.getBalance();
@@ -280,7 +280,7 @@ class NFTPotionAuctionHelper {
 
         const tx = await this.contract.connect(signer).transferFunds(recipient.address);
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const currentBalance = await recipient.getBalance();
@@ -349,7 +349,7 @@ class NFTPotionAuctionHelper {
 
         const tx = await this.contract.connect(signer).claim(batchId, alsoRefund);
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const currentBalance = await signer.getBalance();
@@ -417,7 +417,7 @@ class NFTPotionAuctionHelper {
 
         const tx = await this.contract.connect(signer).claimRefund();
         const receipt = await tx.wait();
-        const gasCost = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
 
         // Checks
         const currentBalance = await signer.getBalance();

@@ -28,11 +28,9 @@ async function main() {
 
     const potionGenesis = getPotionGenesis();
     const rarityConfig = getRaritiesConfig();
-    const merkleTree = buildMerkleTree(potionGenesis, rarityConfig);
+    const { merkleTree, leaves } = buildMerkleTree(potionGenesis, rarityConfig);
 
     const tokenId = argv.tokenId;
-
-    const leaves = getMerkleLeaves(potionGenesis, rarityConfig);
 
     console.log(merkleTree.getHexRoot());
 

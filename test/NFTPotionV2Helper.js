@@ -1,8 +1,14 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
+const { bufferToHex } = require("ethereumjs-util");
 const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
 const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("../scripts/config");
-const { encryptPassword, getRaritiesConfig, encodeRarityConfig } = require("../scripts/lib/utils");
+const {
+    encryptPassword,
+    getRaritiesConfig,
+    encodeRarityConfig,
+    getSecretPieceFromId,
+} = require("../scripts/lib/utils");
 
 const { NFTPotionDutchAuctionHelper } = require("./NFTPotionDutchAuctionHelper");
 const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
@@ -42,7 +48,6 @@ class NFTPotionV2Helper {
         this.rarityConfig = getRaritiesConfig();
         this.rarityConfigEncoded = encodeRarityConfig(this.rarityConfig);
         this.rarityNumMinted = new Array(this.rarityConfig.length).fill(0);
-        this.fullSecret = encryptPassword(process.env.PASSWORD_GENESIS);
 
         this.contract = contract;
     }
@@ -51,6 +56,9 @@ class NFTPotionV2Helper {
         this.owner = (await ethers.getSigners())[0];
 
         if (this.contract === undefined) {
+            const encryptedPassword = encryptPassword(process.env.PASSWORD_GENESIS);
+            this.fullSecret = Buffer.from(encryptedPassword.slice(2), "hex");
+
             const NFTPotionV2 = await ethers.getContractFactory("NFTPotionV2");
             this.contract = await NFTPotionV2.deploy(
                 this.tokenName,
@@ -61,6 +69,9 @@ class NFTPotionV2Helper {
                 this.rarityConfigEncoded,
             );
             await this.contract.deployed();
+        } else {
+            const secret = await this.contract.fullSecret();
+            this.fullSecret = Buffer.from(secret.slice(2), "hex");
         }
 
         this.NFTPotionV2 = this.contract;
@@ -93,10 +104,11 @@ class NFTPotionV2Helper {
         }
 
         const remainingItems = await this.getRemainingItems(id);
+        const startTokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id];
 
         // Initial state
         for (let i = 0; i < Math.min(amount, remainingItems); i++) {
-            const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
+            const tokenId = startTokenId + i;
             await expect(this.contract.ownerOf(toBN(tokenId))).to.be.revertedWith(
                 "ERC721: owner query for nonexistent token",
             );
@@ -104,8 +116,8 @@ class NFTPotionV2Helper {
 
         const rarityNumMintedBefore = await this.contract.rarityNumMinted(id);
 
-        // Logic+3
-        const purchasedAmount = await this.NFTPotionDutchAuction.purchase(
+        // Logic
+        const { tx, amountToPurchase: purchasedAmount } = await this.NFTPotionDutchAuction.purchase(
             id,
             amount,
             limitPrice,
@@ -114,12 +126,21 @@ class NFTPotionV2Helper {
             signer,
         );
 
+        await expect(tx)
+            .to.emit(this.contract, "NFTPurchased")
+            .withArgs(signer.address, startTokenId, publicKey, purchasedAmount, limitPrice);
+
         // Checks and effects
         for (let i = 0; i < purchasedAmount; i++) {
             const tokenId = this.rarityConfig[id].startTokenId + this.rarityNumMinted[id] + i;
             const ownerOf = await this.contract.ownerOf(tokenId);
+            const tokenURI = await this.contract.tokenURI(tokenId);
+            const secret = await this.contract.secret(tokenId);
+            const expectedSecret = getSecretPieceFromId(tokenId, this.fullSecret, this.rarityConfig);
 
             expect(ownerOf).to.be.equal(signer.address);
+            expect(tokenURI).to.be.equal(IPFS_PREFIX + tokenId + IPFS_SUFFIX);
+            expect(secret).to.be.equal(bufferToHex(expectedSecret));
         }
 
         const rarityNumMintedAfter = await this.contract.rarityNumMinted(id);

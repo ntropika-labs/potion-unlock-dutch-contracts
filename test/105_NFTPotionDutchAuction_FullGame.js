@@ -4,16 +4,18 @@ const { ethers } = require("hardhat");
 
 const { NFTPotionV2Helper } = require("./NFTPotionV2Helper");
 
-const { toBN } = require("./NFTPotionAuctionUtils");
+const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
 const { deployPotionNFTV2Game } = require("../scripts/deployUtils");
-const { getMerkleProof } = require("../scripts/merkleUtils");
+const { getMerkleProofWithTree } = require("../scripts/merkleUtils");
 const {
     getSecretPieceFromId,
     getSecretStartAndLength,
+    buildMerkleTree,
     getPotionGenesis,
     getRaritiesConfig,
 } = require("../scripts/lib/utils");
 const { range, initRandom, expectThrow, shuffle } = require("./testUtils");
+const { bufferToHex } = require("ethereumjs-util");
 
 describe.only("NFTPotionDutchAuction", function () {
     let signers;
@@ -41,7 +43,7 @@ describe.only("NFTPotionDutchAuction", function () {
 
     describe(`Full Game (Seed = ${seed})`, function () {
         let auction;
-        let NFTValidator;
+        let NFTValidatorV2;
 
         async function expectPurchaseThrow(id, amount, price, publicKey, sendValue, buyer, error) {
             await expectThrow(async () => auction.purchase(id, amount, price, publicKey, sendValue, buyer), error);
@@ -50,7 +52,7 @@ describe.only("NFTPotionDutchAuction", function () {
         // Initialize the contract
         before(async function () {
             let NFTPotionV2;
-            ({ NFTPotionV2, NFTValidator } = await deployPotionNFTV2Game(false, false));
+            ({ NFTPotionV2, NFTValidatorV2 } = await deployPotionNFTV2Game(false, false));
 
             auction = new NFTPotionV2Helper(NFTPotionV2);
             await auction.initialize();
@@ -67,14 +69,14 @@ describe.only("NFTPotionDutchAuction", function () {
                 await auction.NFTPotionAccessList.setAccess(signers[i].address, true);
             }
 
-            for (let i = 0; i < 1; i++) {
+            console.log("\t[Dutch Auction]");
+
+            for (let i = 0; i < ITEMS_IDS.length; i++) {
                 const id = ITEMS_IDS[i];
 
                 const initialPrice = (getRandom() % 10000) + 1000;
                 const totalItemsRarity = raritiesConfig[id].endTokenId - raritiesConfig[id].startTokenId + 1;
                 let totalAvailable = totalItemsRarity;
-
-                console.log("\t[Dutch Auction]");
 
                 // Auction starts
                 await auction.startAuction(id, initialPrice);
@@ -139,7 +141,10 @@ describe.only("NFTPotionDutchAuction", function () {
                     }
 
                     if (getPercent() <= 3) {
-                        await auction.NFTPotionFunds.sendUnrequestedFunds(signers[getRandom() % MAX_BUYERS]);
+                        await auction.NFTPotionFunds.sendUnrequestedFunds(
+                            getRandom() % 1000000,
+                            signers[getRandom() % MAX_BUYERS],
+                        );
                     }
 
                     const newPrice = Math.max(currentPrice - getRandom() * 15, 0);
@@ -171,12 +176,66 @@ describe.only("NFTPotionDutchAuction", function () {
                 }
             }
         });
+        it.skip(`Input Data Gas Limit`, async function () {
+            let proofs = [];
+            for (let i = 0; i < 29; i++) {
+                proofs.push([
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    "0x1111111111111111111111111111111111111111111111111111111111111111",
+                    "0x2222222222222222222222222222222222222222222222222222222222222222",
+                    "0x3333333333333333333333333333333333333333333333333333333333333333",
+                    "0x4444444444444444444444444444444444444444444444444444444444444444",
+                    "0x5555555555555555555555555555555555555555555555555555555555555555",
+                    "0x6666666666666666666666666666666666666666666666666666666666666666",
+                    "0x7777777777777777777777777777777777777777777777777777777777777777",
+                    "0x8888888888888888888888888888888888888888888888888888888888888888",
+                    "0x9999999999999999999999999999999999999999999999999999999999999999",
+                    "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                    "0xdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+                    "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                    "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+                ]);
+                // proofs.push([
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                //     "0x0000000000000000000000000000000000000000000000000000000000000000",
+                // ]);
+            }
+
+            // Validate list
+            const gasEstimation = fromBN(await NFTValidatorV2.estimateGas.validateList(proofs));
+            console.log(gasEstimation);
+
+            const tx = await NFTValidatorV2.populateTransaction.validateList(proofs);
+            console.log(tx);
+            console.log(tx.data.length);
+
+            await NFTValidatorV2.validateList(proofs);
+        });
+
         it(`NFT Validation`, async function () {
-            const MAX_IDS_BATCH_VALIDATION = 30;
+            const MAX_IDS_BATCH_VALIDATION = 25;
 
             // Validate token ID
             const potionGenesis = getPotionGenesis();
             const rarityConfig = getRaritiesConfig();
+            const { merkleTree, leaves } = buildMerkleTree(potionGenesis, rarityConfig);
 
             const totalIDs = buyersTokenIDs.flat(1).length;
 
@@ -198,19 +257,23 @@ describe.only("NFTPotionDutchAuction", function () {
                     let proofs = [];
 
                     for (const tokenID of validationIDs) {
-                        proofs.push(getMerkleProof(tokenID));
-                        secretPieces.push(getSecretPieceFromId(tokenID, potionGenesis, rarityConfig));
+                        proofs.push(getMerkleProofWithTree(tokenID, merkleTree, leaves));
+                        secretPieces.push(bufferToHex(getSecretPieceFromId(tokenID, potionGenesis, rarityConfig)));
                     }
 
                     // Validate list
-                    await NFTValidator.connect(buyer).validateList(validationIDs, secretPieces, proofs);
+                    const tx = await NFTValidatorV2.connect(buyer).validateList(validationIDs, secretPieces, proofs);
 
-                    for (const tokenID of validationIDs) {
-                        const secretPiece = getSecretPieceFromId(tokenID, potionGenesis, rarityConfig);
-                        const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
-                        const decryptedPiece = getSecretPieceFromId(tokenID, finalMessage, rarityConfig);
+                    // Validate the events
+                    for (let i = 0; i < validationIDs.length; i++) {
+                        const tokenID = validationIDs[i];
+                        const secretPiece = secretPieces[i];
 
-                        expect(decryptedPiece).to.be.equalBytes(secretPiece);
+                        const { start } = getSecretStartAndLength(tokenID, rarityConfig);
+
+                        await expect(tx)
+                            .to.emit(NFTValidatorV2, "NFTValidated")
+                            .withArgs(buyer.address, toBN(tokenID), toBN(start), secretPiece);
                     }
 
                     processedIds += validationIDs.length;
@@ -222,17 +285,6 @@ describe.only("NFTPotionDutchAuction", function () {
             }
 
             process.stdout.write(`\t    Progress: 100%                   \r`);
-
-            // Check
-            const finalMessage = Buffer.from((await NFTValidator.finalMessage()).substr(2), "hex");
-            const tokenList = buyersTokenIDs.flat(1);
-
-            for (let i = 0; i < tokenList.length; i++) {
-                const secretPiece = getSecretPieceFromId(tokenList[i], potionGenesis, rarityConfig);
-                const decryptedPiece = getSecretPieceFromId(tokenList[i], finalMessage, rarityConfig);
-
-                expect(decryptedPiece).to.be.equalBytes(secretPiece);
-            }
         }).timeout(6000000);
     });
 });

@@ -90,6 +90,22 @@ async function deployNFTValidator(NFTContractAddress, merkleTree, secret, enable
     return NFTValidator;
 }
 
+async function deployNFTValidatorV2(NFTContractAddress, merkleTree, enableExport = true) {
+    const merkleRoot = merkleTree.getHexRoot();
+
+    const NFTValidatorV2Factory = await ethers.getContractFactory("NFTPotionValidatorV2");
+    let NFTPotionValidatorV2 = await NFTValidatorV2Factory.deploy(NFTContractAddress, merkleRoot);
+
+    await NFTPotionValidatorV2.deployed();
+
+    console.log(`Validator Contract deployed to: ${NFTPotionValidatorV2.address}`);
+    if (enableExport) {
+        exportContract("NFTPotionValidator", NFTPotionValidatorV2.address);
+    }
+
+    return NFTPotionValidatorV2;
+}
+
 async function deployPotionNFTGame(showLogs = true, enableExport = true) {
     if (showLogs) {
         console.log = EnableConsoleLog;
@@ -118,7 +134,7 @@ async function deployPotionNFTGame(showLogs = true, enableExport = true) {
     console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
 
     // Merkle tree
-    const merkleTree = buildMerkleTree(potionGenesis, raritiesConfig);
+    const { merkleTree } = buildMerkleTree(potionGenesis, raritiesConfig);
     console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // Auction contract
@@ -163,18 +179,18 @@ async function deployPotionNFTV2Game(showLogs = true, enableExport = true) {
     console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
 
     // Merkle tree
-    const merkleTree = buildMerkleTree(potionGenesis, raritiesConfig);
+    const { merkleTree } = buildMerkleTree(potionGenesis, raritiesConfig);
     console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // NFT V2 contract
     const NFTPotionV2 = await deployNFTV2Contract(encryptedPassword, raritiesConfigSolidity, enableExport);
 
     // Validator contract
-    const NFTValidator = await deployNFTValidator(NFTPotionV2.address, merkleTree, potionGenesis, enableExport);
+    const NFTValidatorV2 = await deployNFTValidatorV2(NFTPotionV2.address, merkleTree, enableExport);
 
     console.log = EnableConsoleLog;
 
-    return { NFTPotionV2, NFTValidator, encryptedPassword };
+    return { NFTPotionV2, NFTValidatorV2, encryptedPassword };
 }
 
 module.exports = { deployAuction, deployNFTContract, deployNFTValidator, deployPotionNFTGame, deployPotionNFTV2Game };
