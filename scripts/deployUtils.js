@@ -68,7 +68,7 @@ async function deployNFTV2Contract(secret, rarityConfig, enableExport = true) {
 
     console.log("Potion NFT V2 Contract deployed to:", NFTPotionV2.address);
     if (enableExport) {
-        exportContract("NFTV2Potion", NFTPotionV2.address);
+        exportContract("NFTPotionV2", NFTPotionV2.address);
     }
 
     return NFTPotionV2;
@@ -100,7 +100,7 @@ async function deployNFTValidatorV2(NFTContractAddress, merkleTree, enableExport
 
     console.log(`Validator Contract deployed to: ${NFTPotionValidatorV2.address}`);
     if (enableExport) {
-        exportContract("NFTPotionValidator", NFTPotionValidatorV2.address);
+        exportContract("NFTPotionValidatorV2", NFTPotionValidatorV2.address);
     }
 
     return NFTPotionValidatorV2;
