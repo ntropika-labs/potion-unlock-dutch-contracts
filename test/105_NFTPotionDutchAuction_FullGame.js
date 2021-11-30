@@ -1,4 +1,4 @@
-const { expect } = require("chai");
+const { expect } = require("chai").use(require("chai-bytes"));
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
@@ -24,7 +24,7 @@ describe("NFTPotionDutchAuction", function () {
 
     let buyersTokenIDs;
 
-    const { seed, getRandom } = initRandom(2352351791485539);
+    const { seed, getRandom } = initRandom();
 
     function getPercent() {
         return getRandom() % 100;
@@ -70,6 +70,8 @@ describe("NFTPotionDutchAuction", function () {
             }
 
             console.log("\t[Dutch Auction]");
+
+            let totalNFTsAllRarities = 0;
 
             for (let i = 0; i < ITEMS_IDS.length; i++) {
                 const id = ITEMS_IDS[i];
@@ -157,6 +159,9 @@ describe("NFTPotionDutchAuction", function () {
                     totalAvailable -= actualAmountPurchased;
                 }
 
+                totalNFTsAllRarities += totalItemsRarity;
+
+                expect(buyersTokenIDs.flat(1).length).to.be.equal(totalNFTsAllRarities);
                 expect(await auction.getRemainingNFTs(ITEMS_IDS[i])).to.equal(0);
 
                 process.stdout.write(`\t    [Rarity ${i + 1}/${ITEMS_IDS.length} ID=${id}]: 100%             \n`);
@@ -230,6 +235,7 @@ describe("NFTPotionDutchAuction", function () {
             const { merkleTree, leaves } = buildMerkleTree(potionGenesis, rarityConfig);
 
             const totalIDs = buyersTokenIDs.flat(1).length;
+            let finalMessage = Buffer.alloc(potionGenesis.length, 0);
 
             let processedIds = 0;
 
@@ -266,6 +272,9 @@ describe("NFTPotionDutchAuction", function () {
                         await expect(tx)
                             .to.emit(NFTValidatorV2, "NFTValidated")
                             .withArgs(buyer.address, toBN(tokenID), toBN(start), secretPiece);
+
+                        // Copy the secret to final message
+                        Buffer.from(secretPiece.slice(2), "hex").copy(finalMessage, start);
                     }
 
                     processedIds += validationIDs.length;
@@ -275,6 +284,9 @@ describe("NFTPotionDutchAuction", function () {
                     );
                 }
             }
+
+            // Validate the final message
+            expect(potionGenesis).to.be.equalBytes(finalMessage);
 
             process.stdout.write(`\t    Progress: 100%                   \n`);
         }).timeout(6000000);
