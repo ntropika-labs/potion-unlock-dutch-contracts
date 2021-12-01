@@ -41,7 +41,7 @@ describe("NFTPotionDutchAuction", function () {
         buyersTokenIDs = Array.from(Array(signers.length), () => []);
     });
 
-    describe.only(`Full Game (Seed = ${seed})`, function () {
+    describe(`Full Game (Seed = ${seed})`, function () {
         let auction;
         let NFTValidator;
 

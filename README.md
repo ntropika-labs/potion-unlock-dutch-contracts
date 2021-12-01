@@ -1,4 +1,4 @@
-# Potion NFT Game
+# Potion Unlock Dutch Auction
 
 ## TL;DR
 
