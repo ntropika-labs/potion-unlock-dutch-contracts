@@ -7,8 +7,8 @@ const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
 
 // Demo Config
 const NUM_NFTS = 10000;
-const IPFS_PREFIX = "https://ipfs.io/ipfs/QmWkrqWXgF7yiXyVDsHegoZdZmGcfJaUmWP4eVKoZM1gnW/";
-const IPFS_SUFFIX = ".jpg";
+const IPFS_PREFIX = "http://ipfs.io/ipfs/QmP64ezSShtSsYXXAgL5ju9Zzvr9AzEZnxiiVw6Ynd6Skt/";
+const IPFS_SUFFIX = ".json";
 
 const RARITIES_CONFIG = [
     {
