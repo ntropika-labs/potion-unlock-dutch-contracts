@@ -72,6 +72,9 @@ module.exports = {
                 count: 1000,
             },
         },
+        ganache: {
+            url: "http://127.0.0.1:8545",
+        },
         localhost: {
             url: "http://127.0.0.1:8545",
             gasPrice: 180000000000,
@@ -89,5 +92,8 @@ module.exports = {
         currency: "EUR",
         coinmarketcap: process.env.COINMARKETCAP_API_KEY,
         enabled: true,
+    },
+    mocha: {
+        timeout: 100000,
     },
 };

@@ -70,6 +70,7 @@
         "chai-bytes": "^0.1.2",
         "ethereumjs-util": "^7.1.2",
         "fs": "^0.0.1-security",
+        "ganache-cli": "^6.12.2",
         "hardhat-abi-exporter": "^2.3.1",
         "hardhat-contract-sizer": "^2.1.1",
         "hardhat-gas-reporter": "^1.0.4",
