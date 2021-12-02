@@ -69,6 +69,9 @@ contract NFTPotionValidator is INFTPotionValidator, Ownable {
         bytes[] calldata decryptedSecrets,
         bytes32[][] calldata proofs
     ) external {
+        require(tokenIds.length == decryptedSecrets.length, "ALM"); // Array Length Mismatch
+        require(tokenIds.length == proofs.length, "ALM"); // Array Length Mismatch
+
         for (uint256 i = 0; i < tokenIds.length; ++i) {
             validate(tokenIds[i], decryptedSecrets[i], proofs[i]);
         }

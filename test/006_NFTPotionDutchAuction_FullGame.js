@@ -17,7 +17,7 @@ const {
 const { range, initRandom, expectThrow, shuffle } = require("./testUtils");
 const { bufferToHex } = require("ethereumjs-util");
 
-describe("NFTPotionDutchAuction", function () {
+describe.only("NFTPotionDutchAuction", function () {
     let signers;
     let raritiesConfig;
     let owner;
@@ -207,6 +207,40 @@ describe("NFTPotionDutchAuction", function () {
                     }
 
                     // Validate list
+                    if (getPercent() <= 1) {
+                        const useCase = getRandom() % 3;
+                        switch (useCase) {
+                            case 0:
+                                await expect(
+                                    NFTValidator.connect(buyer).validateList(
+                                        validationIDs.slice(0, (getRandom() % (validationIDs.length - 1)) + 1),
+                                        secretPieces,
+                                        proofs,
+                                    ),
+                                ).to.be.revertedWith("ALM");
+                                break;
+                            case 1:
+                                await expect(
+                                    NFTValidator.connect(buyer).validateList(
+                                        validationIDs,
+                                        secretPieces.slice(0, (getRandom() % (secretPieces.length - 1)) + 1),
+                                        proofs,
+                                    ),
+                                ).to.be.revertedWith("ALM");
+                                break;
+                            case 2:
+                                await expect(
+                                    NFTValidator.connect(buyer).validateList(
+                                        validationIDs,
+                                        secretPieces,
+                                        proofs.slice(0, (getRandom() % (proofs.length - 1)) + 1),
+                                    ),
+                                ).to.be.revertedWith("ALM");
+                                break;
+                            default:
+                        }
+                    }
+
                     const tx = await NFTValidator.connect(buyer).validateList(validationIDs, secretPieces, proofs);
 
                     // Validate the events
