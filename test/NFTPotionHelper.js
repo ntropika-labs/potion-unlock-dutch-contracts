@@ -128,7 +128,7 @@ class NFTPotionHelper {
 
         await expect(tx)
             .to.emit(this.contract, "NFTPurchased")
-            .withArgs(signer.address, startTokenId, publicKey, purchasedAmount, limitPrice);
+            .withArgs(signer.address, startTokenId, purchasedAmount, limitPrice, publicKey);
 
         // Checks and effects
         for (let i = 0; i < purchasedAmount; i++) {

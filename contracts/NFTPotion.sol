@@ -21,9 +21,9 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
     event NFTPurchased(
         address indexed buyer,
         uint256 indexed startTokenId,
-        string indexed publicKey,
         uint256 amount,
-        uint256 limitPrice
+        uint256 limitPrice,
+        string publicKey
     );
 
     // Modifiers
@@ -103,7 +103,7 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
 
         rarityNumMinted[rarityId] += amount;
 
-        emit NFTPurchased(_msgSender(), startTokenId, publicKey, amount, limitPrice);
+        emit NFTPurchased(_msgSender(), startTokenId, amount, limitPrice, publicKey);
     }
 
     // View functions
