@@ -1,9 +1,6 @@
 // Config
-const NFT_NAME = "Potion NFT Game 1";
-const NFT_SYMBOL = "PNFT1";
-
-const METAMASK_PUBLIC_KEY = "mtrHp1WHZM9rxF2Ilot9Hie5XmQcKCf7oDQ1DpGkTSI=";
-const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
+const NFT_NAME = "Potion Unlock";
+const NFT_SYMBOL = "PUNFT";
 
 // Demo Config
 const NUM_NFTS = 10000;
@@ -72,11 +69,14 @@ const RARITIES_CONFIG = [
         rarityFrame: "legendary-frame",
     },
 ];
+
+// Contracts deployment
+const CONTRACTS_DEPLOYMENTS_FILE = "src/deployments.json";
+
 module.exports = {
     NFT_NAME,
     NFT_SYMBOL,
     NUM_NFTS,
-    METAMASK_PUBLIC_KEY,
     CONTRACTS_DEPLOYMENTS_FILE,
     IPFS_PREFIX,
     IPFS_SUFFIX,
