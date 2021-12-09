@@ -4,7 +4,7 @@ const { bufferToHex } = require("ethereumjs-util");
 const { MerkleTree } = require("merkletreejs");
 const keccak256 = require("keccak256");
 const { BigNumber } = require("@ethersproject/bignumber");
-const { METAMASK_PUBLIC_KEY, CONTRACTS_DEPLOYMENTS_FILE, RARITIES_CONFIG, NUM_NFTS } = require("../config");
+const { CONTRACTS_DEPLOYMENTS_FILE, RARITIES_CONFIG, NUM_NFTS } = require("../config");
 const { encrypt, decrypt, encryptSymmetric, decryptSymmetric, getPublicKey, getPrivateKey } = require("./nacl");
 const { encrypt: encryptMetamask } = require("@metamask/eth-sig-util");
 
@@ -74,13 +74,6 @@ function encryptPassword(password) {
 function decryptPassword(encryptedPassword, key=undefined) {
     const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
     return decryptDataSymmetric(encryptedData, key);
-}
-
-/**
- * Metamask Encryption
- */
-function getMetamaskPublicKey() {
-    return METAMASK_PUBLIC_KEY;
 }
 
 function signMetamaskMessage(publicKey, data) {
@@ -247,7 +240,6 @@ module.exports = {
     decryptPassword,
     // Metamask encryption
     signMetamaskMessage,
-    getMetamaskPublicKey,
     // Merkle Tree
     buildMerkleTree,
     getPieceHash,
