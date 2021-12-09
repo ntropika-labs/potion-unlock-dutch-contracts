@@ -4,7 +4,7 @@ const NFT_SYMBOL = "PUNFT";
 
 // Demo Config
 const NUM_NFTS = 10000;
-const IPFS_PREFIX = "http://ipfs.io/ipfs/QmP64ezSShtSsYXXAgL5ju9Zzvr9AzEZnxiiVw6Ynd6Skt/";
+const IPFS_PREFIX = "http://ipfs.io/ipfs/QmZXNdXyjzKxDf8hCtZvMciKTVMWR9rvWDzQhHnQZ1gAum/";
 const IPFS_SUFFIX = ".json";
 
 const RARITIES_CONFIG = [
