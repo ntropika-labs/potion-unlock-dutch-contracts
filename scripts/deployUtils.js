@@ -10,7 +10,7 @@ const {
     getRaritiesConfig,
     encodeRarityConfig,
 } = require("./lib/utils");
-const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("./config");
+const { NFT_NAME, NFT_SYMBOL } = require("./config");
 
 // Enable/disable console.log
 const EnableConsoleLog = console.log;
@@ -33,7 +33,14 @@ async function deployAuction(enableExport = true) {
 
 async function deployNFTContract(secret, rarityConfig, enableExport = true) {
     const NFTPotionFactory = await ethers.getContractFactory("NFTPotion");
-    let NFTPotion = await NFTPotionFactory.deploy(NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX, secret, rarityConfig);
+    let NFTPotion = await NFTPotionFactory.deploy(
+        NFT_NAME,
+        NFT_SYMBOL,
+        process.env.IPFS_PREFIX,
+        process.env.IPFS_SUFFIX,
+        secret,
+        rarityConfig,
+    );
 
     await NFTPotion.deployed();
 

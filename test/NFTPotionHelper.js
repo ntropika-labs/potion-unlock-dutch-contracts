@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const { ethers } = require("hardhat");
 const { bufferToHex } = require("ethereumjs-util");
 const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
-const { NFT_NAME, NFT_SYMBOL, IPFS_PREFIX, IPFS_SUFFIX } = require("../scripts/config");
+const { NFT_NAME, NFT_SYMBOL } = require("../scripts/config");
 const {
     encryptPassword,
     getRaritiesConfig,
@@ -14,6 +14,8 @@ const { NFTPotionDutchAuctionHelper } = require("./NFTPotionDutchAuctionHelper")
 const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
 const { NFTPotionAccessListHelper } = require("./NFTPotionAccessListHelper");
 const { NFTPotionCreditHelper } = require("./NFTPotionCreditHelper");
+
+require("dotenv").config();
 
 class NFTPotionHelper {
     contract;
@@ -43,8 +45,8 @@ class NFTPotionHelper {
     constructor(contract = undefined) {
         this.tokenName = NFT_NAME;
         this.tokenSymbol = NFT_SYMBOL;
-        this.ipfsPrefix = IPFS_PREFIX;
-        this.ipfsSuffix = IPFS_SUFFIX;
+        this.ipfsPrefix = process.env.IPFS_PREFIX;
+        this.ipfsSuffix = process.env.IPFS_SUFFIX;
         this.rarityConfig = getRaritiesConfig();
         this.rarityConfigEncoded = encodeRarityConfig(this.rarityConfig);
         this.rarityNumMinted = new Array(this.rarityConfig.length).fill(0);
@@ -139,7 +141,7 @@ class NFTPotionHelper {
             const expectedSecret = getSecretPieceFromId(tokenId, this.fullSecret, this.rarityConfig);
 
             expect(ownerOf).to.be.equal(signer.address);
-            expect(tokenURI).to.be.equal(IPFS_PREFIX + tokenId + IPFS_SUFFIX);
+            expect(tokenURI).to.be.equal(process.env.IPFS_PREFIX + tokenId + process.env.IPFS_SUFFIX);
             expect(secret).to.be.equal(bufferToHex(expectedSecret));
         }
 
