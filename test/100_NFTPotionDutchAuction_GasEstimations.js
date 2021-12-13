@@ -59,7 +59,7 @@ describe.skip("NFTPotionDutchAuction", function () {
         it("Maximum amount of NFTs purchased in a single call", async function () {
             const NUM_BUYERS = 10;
             const ITEMS_ID = 0;
-            const NUM_TOKENS_PER_PURCHASE = 600;
+            const NUM_TOKENS_PER_PURCHASE = 250;
 
             // Give access to buyers
             for (let i = 0; i < NUM_BUYERS; i++) {

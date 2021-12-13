@@ -189,7 +189,7 @@ describe("NFTPotionDutchAuction", function () {
             it("Purchase all NFTs except 1, then try to purchase 100", async function () {
                 const NUM_BUYERS = 10;
                 const ITEMS_ID = 1;
-                const NUM_TOKENS_PER_PURCHASE = 200;
+                const NUM_TOKENS_PER_PURCHASE = 230;
 
                 // Give access to buyers
                 for (let i = 0; i < NUM_BUYERS; i++) {
