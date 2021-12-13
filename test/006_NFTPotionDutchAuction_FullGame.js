@@ -243,19 +243,26 @@ describe("NFTPotionDutchAuction", function () {
 
                     const tx = await NFTValidator.connect(buyer).validateList(validationIDs, secretPieces, proofs);
 
-                    // Validate the events
+                    // Retrieve the starting positions
+                    const startPositions = [];
                     for (let i = 0; i < validationIDs.length; i++) {
                         const tokenID = validationIDs[i];
-                        const secretPiece = secretPieces[i];
 
                         const { start } = getSecretStartAndLength(tokenID, rarityConfig);
 
-                        await expect(tx)
-                            .to.emit(NFTValidator, "NFTValidated")
-                            .withArgs(buyer.address, toBN(tokenID), toBN(start), secretPiece);
+                        startPositions.push(start);
+                    }
+
+                    await expect(tx)
+                        .to.emit(NFTValidator, "NFTListValidated")
+                        .withArgs(buyer.address, validationIDs, startPositions, secretPieces);
+
+                    // Validate the events
+                    for (let i = 0; i < validationIDs.length; i++) {
+                        const secretPiece = secretPieces[i];
 
                         // Copy the secret to final message
-                        Buffer.from(secretPiece.slice(2), "hex").copy(finalMessage, start);
+                        Buffer.from(secretPiece.slice(2), "hex").copy(finalMessage, startPositions[i]);
                     }
 
                     processedIds += validationIDs.length;
