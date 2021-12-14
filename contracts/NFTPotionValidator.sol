@@ -78,6 +78,24 @@ contract NFTPotionValidator is INFTPotionValidator, Ownable {
     }
 
     //--------------------
+    // View functions
+    //--------------------
+
+    /**
+        Returns the validation status for a list of token Ids
+
+        @param tokenIds List of token Ids to get the status for
+
+        @return status List of validation statuses for the token Ids
+     */
+    function getValidationStatus(uint256[] calldata tokenIds) external view returns (bool[] memory status) {
+        status = new bool[](tokenIds.length);
+        for (uint256 i = 0; i < tokenIds.length; ++i) {
+            status[i] = isTokenValidated[tokenIds[i]];
+        }
+    }
+
+    //--------------------
     // Internal functions
     //--------------------
 

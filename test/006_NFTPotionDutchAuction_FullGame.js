@@ -4,7 +4,7 @@ const { ethers } = require("hardhat");
 
 const { NFTPotionHelper } = require("./NFTPotionHelper");
 
-const { toBN, fromBN } = require("./NFTPotionAuctionUtils");
+const { toBN } = require("./NFTPotionAuctionUtils");
 const { deployPotionNFTGame } = require("../scripts/deployUtils");
 const { getMerkleProofWithTree } = require("../scripts/merkleUtils");
 const {
@@ -192,11 +192,12 @@ describe("NFTPotionDutchAuction", function () {
             for (let buyerIndex = 0; buyerIndex < buyersTokenIDs.length; buyerIndex++) {
                 const tokenIDs = buyersTokenIDs[buyerIndex];
                 const buyer = signers[buyerIndex];
+                let validatedTokens = [];
 
                 // Choose how many to validate
                 while (buyersTokenIDs[buyerIndex].length > 0) {
-                    const numTokensValidate = Math.min(tokenIDs.length, MAX_IDS_BATCH_VALIDATION);
-                    const validationIDs = buyersTokenIDs[buyerIndex].splice(0, numTokensValidate);
+                    //const numTokensValidate = Math.min(tokenIDs.length, MAX_IDS_BATCH_VALIDATION);
+                    const validationIDs = buyersTokenIDs[buyerIndex].splice(0, MAX_IDS_BATCH_VALIDATION);
 
                     let secretPieces = [];
                     let proofs = [];
@@ -256,6 +257,18 @@ describe("NFTPotionDutchAuction", function () {
 
                         // Copy the secret to final message
                         Buffer.from(secretPiece.slice(2), "hex").copy(finalMessage, start);
+                    }
+
+                    validatedTokens = validatedTokens.concat(validationIDs);
+
+                    const tokenStatus = await NFTValidator.connect(buyer).getValidationStatus(tokenIDs);
+
+                    for (let i = 0; i < tokenStatus.length; i++) {
+                        if (tokenStatus[i] === true) {
+                            expect(validatedTokens.includes(tokenIDs[i])).to.be.equal(true);
+                        } else {
+                            expect(validatedTokens.includes(tokenIDs[i])).to.be.equal(false);
+                        }
                     }
 
                     processedIds += validationIDs.length;
