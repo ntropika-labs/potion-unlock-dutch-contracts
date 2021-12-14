@@ -5,17 +5,19 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "./NFTPotionDutchAuction.sol";
 import "./RarityConfigItem.sol";
+import "./INFTPotion.sol";
 
 /**
     NFT contract for Potion Unlock
  */
-contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
+contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
     // Storage
     string public ipfsPrefix;
     string public ipfsSuffix;
     bytes public fullSecret;
     RarityConfigItem[] public rarityConfig;
     uint256[] public rarityNumMinted;
+    mapping(address => PurchasedRange[]) public purchasedNFTs;
 
     // Events
     event NFTPurchased(
@@ -103,6 +105,8 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
 
         rarityNumMinted[rarityId] += amount;
 
+        purchasedNFTs[msg.sender].push(PurchasedRange(uint128(startTokenId), uint128(amount)));
+
         emit NFTPurchased(_msgSender(), startTokenId, amount, limitPrice, publicKey);
     }
 
@@ -181,5 +185,14 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
         }
 
         return out;
+    }
+
+    /**
+        Gets the list of token ranges owned by a buyer
+
+        @param buyer The address of the buyer
+     */
+    function getPurchasedRanges(address buyer) external view returns (PurchasedRange[] memory) {
+        return purchasedNFTs[buyer];
     }
 }

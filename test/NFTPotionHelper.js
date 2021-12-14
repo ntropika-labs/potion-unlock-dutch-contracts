@@ -117,6 +117,7 @@ class NFTPotionHelper {
         }
 
         const rarityNumMintedBefore = await this.contract.rarityNumMinted(id);
+        const purchasedItemsBefore = await this.contract.connect(signer).getPurchasedRanges(signer.address);
 
         // Logic
         const { tx, amountToPurchase: purchasedAmount } = await this.NFTPotionDutchAuction.purchase(
@@ -147,6 +148,13 @@ class NFTPotionHelper {
 
         const rarityNumMintedAfter = await this.contract.rarityNumMinted(id);
         expect(rarityNumMintedAfter).to.be.equal(rarityNumMintedBefore.add(purchasedAmount));
+
+        const purchasedItemsAfter = await this.contract.connect(signer).getPurchasedRanges(signer.address);
+        expect(purchasedItemsAfter.length).to.be.equal(purchasedItemsBefore.length + 1);
+        expect(purchasedItemsAfter[purchasedItemsAfter.length - 1].startTokenId).to.be.equal(
+            this.rarityConfig[id].startTokenId + this.rarityNumMinted[id],
+        );
+        expect(purchasedItemsAfter[purchasedItemsAfter.length - 1].amount).to.be.equal(purchasedAmount);
 
         this.rarityNumMinted[id] += purchasedAmount;
 
