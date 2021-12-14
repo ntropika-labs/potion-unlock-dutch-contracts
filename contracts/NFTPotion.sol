@@ -16,6 +16,18 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
     bytes public fullSecret;
     RarityConfigItem[] public rarityConfig;
     uint256[] public rarityNumMinted;
+    //mapping(address => uint128[]) public purchasedNFTs;
+
+    struct PurchasedRange {
+        uint128 start;
+        uint128 length;
+    }
+
+    /*struct PurchasedRange {
+        uint256 start;
+        uint256 length;
+    }*/
+    mapping(address => PurchasedRange[]) public purchasedNFTs;
 
     // Events
     event NFTPurchased(
@@ -99,7 +111,12 @@ contract NFTPotion is ERC721URIStorage, NFTPotionDutchAuction {
 
         for (uint256 i = 0; i < amount; ++i) {
             _safeMint(msg.sender, startTokenId + i);
+
+            //purchasedNFTs[msg.sender].push(uint128(startTokenId + i));
         }
+
+        purchasedNFTs[msg.sender].push(PurchasedRange(uint128(startTokenId), uint128(amount)));
+        //purchasedNFTs[msg.sender].push(PurchasedRange(startTokenId, amount));
 
         rarityNumMinted[rarityId] += amount;
 
