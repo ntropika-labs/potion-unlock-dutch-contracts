@@ -55,7 +55,10 @@ function encryptDataSymmetric(data) {
 function decryptDataSymmetric(encryptedData, key=undefined) {
     let keyBuffer;
     if (key) {
-        keyBuffer = keccak256(keccak256(keccak256(Buffer.from(key.slice(2), "hex"))));
+        if (key.startsWith("0x")) {
+            key = key.slice(2);
+        }
+        keyBuffer = keccak256(keccak256(keccak256(Buffer.from(key, "hex"))));
     } else {
         keyBuffer = getPotionSecretKey();
     }
