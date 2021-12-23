@@ -29,6 +29,7 @@ contract NFTPotionERC20Funds is Ownable {
         @notice Transfer the claimable funds to the recipient
 
         @param recipient The address to transfer the funds to
+        @param amount The amount of funds to transfer
 
         @dev Owner only
     */
