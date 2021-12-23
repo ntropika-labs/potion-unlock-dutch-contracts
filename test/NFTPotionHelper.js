@@ -118,7 +118,7 @@ class NFTPotionHelper {
             );
         }
 
-        const rarityNumMintedBefore = await this.contract.rarityNumMinted(id);
+        const rarityNumMintedBefore = toBN(await this.contract.rarityNumMinted(id));
         const purchasedItemsBefore = await this.contract.connect(signer).getPurchasedRanges(signer.address);
 
         // Logic

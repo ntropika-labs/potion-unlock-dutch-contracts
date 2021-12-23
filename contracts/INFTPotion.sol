@@ -12,8 +12,8 @@ interface INFTPotion is IERC721 {
         @param amount The amount of tokens in the range
      */
     struct PurchasedRange {
-        uint128 startTokenId;
-        uint128 amount;
+        uint32 startTokenId;
+        uint32 amount;
     }
 
     function getSecretPositionLength(uint256 tokenId)

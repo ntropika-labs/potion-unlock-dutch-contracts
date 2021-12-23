@@ -3,13 +3,16 @@ const { ethers } = require("hardhat");
 const { fromBN, toBN } = require("./NFTPotionAuctionUtils");
 
 class NFTPotionDutchAuctionHelper {
+    STATE_INACTIVE = 0;
+    STATE_ACTIVE = 1;
+
     parent;
     contract;
     owner;
 
     currentId;
     purchasePrice;
-    isAuctionActive;
+    auctionState;
 
     constructor(parent) {
         this.parent = parent;
@@ -18,7 +21,7 @@ class NFTPotionDutchAuctionHelper {
 
         this.currentId = 0;
         this.purchasePrice = 0;
-        this.isAuctionActive = false;
+        this.auctionState = this.STATE_INACTIVE;
     }
 
     async initialize() {
@@ -35,7 +38,7 @@ class NFTPotionDutchAuctionHelper {
             throw new Error("Ownable: caller is not the owner");
         }
 
-        if (this.isAuctionActive) {
+        if (this.auctionState === this.STATE_ACTIVE) {
             await expect(this.contract.connect(signer).startAuction(id, purchasePrice)).to.be.revertedWith(
                 "Auction is already active",
             );
@@ -64,11 +67,11 @@ class NFTPotionDutchAuctionHelper {
         // Checks and effects
         this.currentId = fromBN(await this.contract.currentRarityId());
         this.purchasePrice = fromBN(await this.contract.purchasePrice());
-        this.isAuctionActive = await this.contract.isAuctionActive();
+        this.auctionState = await this.contract.auctionState();
 
         expect(this.currentId).to.be.equal(id);
         expect(this.purchasePrice).to.be.equal(purchasePrice);
-        expect(this.isAuctionActive).to.be.equal(true);
+        expect(this.auctionState).to.be.equal(this.STATE_ACTIVE);
     }
 
     async stopAuction(signer = undefined) {
@@ -87,9 +90,9 @@ class NFTPotionDutchAuctionHelper {
             .withArgs(this.currentId);
 
         // Checks and effects
-        this.isAuctionActive = await this.contract.isAuctionActive();
+        this.auctionState = await this.contract.auctionState();
 
-        expect(this.isAuctionActive).to.be.equal(false);
+        expect(this.auctionState).to.be.equal(this.STATE_INACTIVE);
     }
 
     async changePrice(id, newPrice, signer = undefined) {
@@ -102,7 +105,7 @@ class NFTPotionDutchAuctionHelper {
             throw new Error("Ownable: caller is not the owner");
         }
 
-        if (!this.isAuctionActive) {
+        if (this.auctionState === this.STATE_INACTIVE) {
             await expect(this.contract.connect(signer).changePrice(id, newPrice)).to.be.revertedWith(
                 "Auction is not active",
             );
@@ -132,7 +135,7 @@ class NFTPotionDutchAuctionHelper {
             signer = this.owner;
         }
 
-        if (!this.isAuctionActive) {
+        if (this.auctionState === this.STATE_INACTIVE) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
                 "Auction is not active",
             );

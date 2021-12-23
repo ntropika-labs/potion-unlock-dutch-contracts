@@ -16,14 +16,14 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
     string public ipfsSuffix;
     bytes public fullSecret;
     RarityConfigItem[] public rarityConfig;
-    uint256[] public rarityNumMinted;
+    uint32[] public rarityNumMinted;
     mapping(address => PurchasedRange[]) public purchasedNFTs;
 
     // Events
     event NFTPurchased(
         address indexed buyer,
-        uint256 indexed startTokenId,
-        uint256 amount,
+        uint32 indexed startTokenId,
+        uint32 amount,
         uint256 limitPrice,
         string publicKey
     );
@@ -58,7 +58,7 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
             lastTokenId = _rarityConfig[i].endTokenId;
         }
 
-        rarityNumMinted = new uint256[](rarityConfig.length);
+        rarityNumMinted = new uint32[](rarityConfig.length);
     }
 
     // Auction delegates
@@ -73,9 +73,9 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
         @dev The function must be overriden by the child contract and return the
         number of NFTs to be sold for the given rarity.
      */
-    function getRemainingNFTs(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint256) {
+    function getRemainingNFTs(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint32) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
-        uint256 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
+        uint32 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
         return totalTokens - rarityNumMinted[rarityId];
     }
 
@@ -92,21 +92,21 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
      */
     function _purchaseItems(
         uint256 rarityId,
-        uint256 amount,
+        uint32 amount,
         uint256 limitPrice,
         string calldata publicKey
     ) internal override checkValidRarity(rarityId) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
-        uint256 numTokensMinted = rarityNumMinted[rarityId];
-        uint256 startTokenId = rarity.startTokenId + numTokensMinted;
+        uint32 numTokensMinted = rarityNumMinted[rarityId];
+        uint32 startTokenId = rarity.startTokenId + numTokensMinted;
 
-        for (uint256 i = 0; i < amount; ++i) {
+        for (uint32 i = 0; i < amount; ++i) {
             _safeMint(msg.sender, startTokenId + i);
         }
 
         rarityNumMinted[rarityId] += amount;
 
-        purchasedNFTs[msg.sender].push(PurchasedRange(uint128(startTokenId), uint128(amount)));
+        purchasedNFTs[msg.sender].push(PurchasedRange(startTokenId, amount));
 
         emit NFTPurchased(_msgSender(), startTokenId, amount, limitPrice, publicKey);
     }

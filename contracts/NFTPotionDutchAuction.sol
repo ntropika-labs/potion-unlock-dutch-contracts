@@ -18,19 +18,25 @@ import "./utils/Utils.sol";
  */
 
 contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTPotionCredit {
-    // Auction state
+    // Auuction State
+    enum AuctionState {
+        Inactive, // = 0
+        Active // = 1
+    }
+
+    // Public variables
     uint256 public currentRarityId;
     uint256 public purchasePrice;
-    bool public isAuctionActive;
+    AuctionState public auctionState;
 
     // Events
-    event AuctionStarted(uint256 rarityId, uint256 startPrice);
-    event AuctionStopped(uint256 rarityId);
-    event AuctionPriceChanged(uint256 rarityId, uint256 newPrice);
+    event AuctionStarted(uint256 indexed rarityId, uint256 indexed startPrice);
+    event AuctionStopped(uint256 indexed rarityId);
+    event AuctionPriceChanged(uint256 indexed rarityId, uint256 indexed newPrice);
 
     // Modifiers
     modifier checkAuctionActive(uint256 rarityId) {
-        require(isAuctionActive, "Auction is not active");
+        require(auctionState == AuctionState.Active, "Auction is not active");
         require(rarityId == currentRarityId, "Active auction ID mismatch");
         _;
     }
@@ -55,11 +61,11 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         NFTs not sold
     */
     function startAuction(uint256 rarityId, uint256 startPrice) external onlyOwner checkRarityNotSoldOut(rarityId) {
-        require(!isAuctionActive, "Auction is already active");
+        require(auctionState == AuctionState.Inactive, "Auction is already active");
 
         currentRarityId = rarityId;
         purchasePrice = startPrice;
-        isAuctionActive = true;
+        auctionState = AuctionState.Active;
 
         emit AuctionStarted(rarityId, startPrice);
     }
@@ -68,7 +74,7 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         @notice Stops the auction
      */
     function stopAuction() external onlyOwner {
-        isAuctionActive = false;
+        auctionState = AuctionState.Inactive;
 
         emit AuctionStopped(currentRarityId);
     }
@@ -103,14 +109,14 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
      */
     function purchase(
         uint256 rarityId,
-        uint256 nftAmount,
+        uint32 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
     ) external checkAuctionActive(rarityId) checkCallerAccess checkRarityNotSoldOut(rarityId) {
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
         // Calculate the nftAmount of NFTs that can still be bought
-        nftAmount = Utils.min(nftAmount, getRemainingNFTs(rarityId));
+        nftAmount = Utils.min32(nftAmount, getRemainingNFTs(rarityId));
 
         // Get the credited nftAmount of NFTs of the buyer and calculate how many NFTs
         // must be paid for. Then consume the used nftAmount of credit
@@ -121,7 +127,10 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         _purchaseItems(rarityId, nftAmount, limitPrice, publicKey);
 
         // While the tx was in flight the purchase price may have changed or the sender
-        // may have sent more cash than needed. If so, refund the difference
+        // may have sent more cash than needed. If so, refund the difference. This must
+        // always be the last call because it will execute an external function. No
+        // reentrancy guard is needed in this case because all state has already been
+        // updated before the function is called
         _chargePayment(payableAmount * purchasePrice);
     }
 
@@ -138,7 +147,7 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         @dev The function must be overriden by the child contract and return the
         number of NFTs that can still be sold for the given rarity ID.
      */
-    function getRemainingNFTs(uint256 rarityId) public virtual returns (uint256) {
+    function getRemainingNFTs(uint256 rarityId) public virtual returns (uint32) {
         // Empty on purpose
     }
 
@@ -155,7 +164,7 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
      */
     function _purchaseItems(
         uint256 rarityId,
-        uint256 nftAmount,
+        uint32 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
     ) internal virtual {

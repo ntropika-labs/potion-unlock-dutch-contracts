@@ -16,8 +16,8 @@ contract NFTPotionCredit is Ownable {
     mapping(address => mapping(uint256 => uint256)) private credit;
 
     // Events
-    event CreditAdded(address buyer, uint256 rarityId, uint256 amount);
-    event CreditConsumed(address buyer, uint256 rarityId, uint256 amount);
+    event CreditAdded(address indexed buyer, uint256 indexed rarityId, uint256 amount);
+    event CreditConsumed(address indexed buyer, uint256 indexed rarityId, uint256 amount);
 
     /**
         @notice Adds credit to a list of buyers

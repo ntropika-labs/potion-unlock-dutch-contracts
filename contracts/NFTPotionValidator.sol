@@ -46,7 +46,7 @@ contract NFTPotionValidator is INFTPotionValidator, Ownable {
         require(!isTokenValidated[tokenId], "TAV"); // Token Already Validated
 
         (uint256 secretStartPos, , bool found) = NFTContract.getSecretPositionLength(tokenId);
-        require(found, "CRITICAL!! Token ID could not be found in rarity config");
+        require(found, "Token ID could not be found in rarity config");
 
         _verify(tokenId, decryptedSecret, proof);
 
