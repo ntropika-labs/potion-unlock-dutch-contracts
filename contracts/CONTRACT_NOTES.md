@@ -38,8 +38,8 @@ The contract makes use of the following contracts:
     addresses that are present in the whitelist will be able to purchase
 -   NFTPotionCredit: Takes care of the available credit for a user. This credit is specified as a number of NFTs
     that the user can purchase for free
--   NFTPotionFunds: Takes care of managing the Ether sent to the contract and vaidating that the Eterher is enough
-    to pay for the current charges
+-   NFTPotionERC20Funds: Takes care of transferring the correct amount of ERC20 to the contract and allowing the owner
+    to send this funds to a recipient
 
 # NFTPotion.sol
 

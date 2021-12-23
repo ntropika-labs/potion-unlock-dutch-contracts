@@ -3,7 +3,7 @@ pragma solidity 0.8.9;
 
 import "./NFTPotionCredit.sol";
 import "./NFTPotionAccessList.sol";
-import "./NFTPotionFunds.sol";
+import "./NFTPotionERC20Funds.sol";
 import "./utils/Utils.sol";
 
 /**
@@ -17,7 +17,7 @@ import "./utils/Utils.sol";
     function to help the child contract identify which NFT rarity the user wants to purchase
  */
 
-contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotionCredit {
+contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTPotionCredit {
     // Auction state
     uint256 public currentRarityId;
     uint256 public purchasePrice;
@@ -38,6 +38,9 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         require(getRemainingNFTs(rarityId) > 0, "Rarity is already sold out");
         _;
     }
+
+    // Constructor
+    constructor(address _paymentToken) NFTPotionERC20Funds(_paymentToken) {}
 
     // Auction management
 
@@ -103,7 +106,7 @@ contract NFTPotionDutchAuction is NFTPotionFunds, NFTPotionAccessList, NFTPotion
         uint256 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
-    ) external payable checkAuctionActive(rarityId) checkCallerAccess checkRarityNotSoldOut(rarityId) {
+    ) external checkAuctionActive(rarityId) checkCallerAccess checkRarityNotSoldOut(rarityId) {
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
         // Calculate the nftAmount of NFTs that can still be bought
