@@ -1,9 +1,9 @@
 // Config
 const NFT_NAME = "Potion Unlock";
 const NFT_SYMBOL = "PUNFT";
-
-// Demo Config
 const NUM_NFTS = 10000;
+
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
 const RARITIES_CONFIG = [
     {
@@ -75,6 +75,7 @@ module.exports = {
     NFT_NAME,
     NFT_SYMBOL,
     NUM_NFTS,
+    USDC_ADDRESS,
     CONTRACTS_DEPLOYMENTS_FILE,
     RARITIES_CONFIG,
 };
