@@ -3,6 +3,7 @@ const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
 const { NFTPotionHelper } = require("./NFTPotionHelper");
+const { deployNFTContract, deployMockUSDC } = require("../scripts/deployUtils");
 const { toBN } = require("./NFTPotionAuctionUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
 const { expectThrow } = require("./testUtils");
@@ -13,17 +14,31 @@ describe("NFTPotionDutchAuction", function () {
         let signers;
         let raritiesConfig;
         let owner;
+        let USDC;
 
         before(async function () {
             signers = await ethers.getSigners();
             raritiesConfig = getRaritiesConfig();
             owner = signers[0];
+
+            USDC = await deployMockUSDC();
+
+            for (const signer of signers) {
+                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
+            }
         });
 
         // Initialize the contract
         beforeEach(async function () {
-            auction = new NFTPotionHelper();
+            let NFTPotion;
+            ({ NFTPotion } = await deployNFTContract(USDC, true));
+
+            auction = new NFTPotionHelper(NFTPotion, USDC);
             await auction.initialize();
+
+            for (const signer of signers) {
+                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
+            }
         });
 
         describe("Start Auction", function () {
@@ -219,7 +234,7 @@ describe("NFTPotionDutchAuction", function () {
                     "Current price is higher than limit price",
                 );
             });
-            it("Don't send enough cash for payment", async function () {
+            it("Don't approve enough cash for payment", async function () {
                 await auction.startAuction(2, 25);
                 const currentPrice = await auction.purchasePrice();
 
@@ -229,15 +244,15 @@ describe("NFTPotionDutchAuction", function () {
 
                 await expectThrow(
                     async () => auction.purchase(2, 1, currentPrice, "TestKey", currentPrice - 1, signers[2]),
-                    "Didn't send enough cash for payment",
+                    "ERC20: transfer amount exceeds allowance",
                 );
                 await expectThrow(
                     async () => auction.purchase(2, 10, currentPrice, "TestKey", currentPrice * 10 - 1, signers[3]),
-                    "Didn't send enough cash for payment",
+                    "ERC20: transfer amount exceeds allowance",
                 );
                 await expectThrow(
                     async () => auction.purchase(2, 15, currentPrice, "TestKey", currentPrice * 15 - 1, signers[4]),
-                    "Didn't send enough cash for payment",
+                    "ERC20: transfer amount exceeds allowance",
                 );
             });
         });

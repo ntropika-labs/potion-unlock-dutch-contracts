@@ -29,7 +29,7 @@ function _restoreLogs() {
     console.log = EnableConsoleLog;
 }
 
-async function deployNFTContract(isTest = false) {
+async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
     _configureLogs(isTest);
 
     // Rarities
@@ -57,9 +57,13 @@ async function deployNFTContract(isTest = false) {
     console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // USDC
-    let USDC = USDC_ADDRESS;
-    if (isTest) {
-        USDC = await deployMockUSDC();
+    //
+    // Value can be passed as a parameter. If it is not passed then
+    // fetch it internally (which will in turn deploy it or use the
+    // mainnet one
+    let USDC = deployedUSDC;
+    if (USDC === undefined) {
+        USDC = await _getUSDC(isTest);
     }
 
     // Deploy the contract
@@ -70,7 +74,7 @@ async function deployNFTContract(isTest = false) {
         process.env.IPFS_PREFIX,
         process.env.IPFS_SUFFIX,
         encryptedPassword,
-        USDC,
+        USDC.address,
         raritiesConfigSolidity,
     );
 
@@ -116,23 +120,33 @@ async function deployNFTValidator(NFTContractAddress, isTest = false) {
 }
 
 async function deployMockUSDC() {
-    _configureLogs(true);
-
     const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
     let MockUSDC = await MockUSDCFactory.deploy();
 
     await MockUSDC.deployed();
 
-    console.log(`MockUSDC Contract deployed to: ${MockUSDC.address}`);
-
-    _restoreLogs();
-
     return MockUSDC;
 }
 
-async function deployPotionNFTGame(isTest = false) {
+async function _getUSDC(isTest = false) {
+    let USDC;
+
+    if (isTest) {
+        USDC = await deployMockUSDC();
+        await USDC.deployed();
+    } else {
+        const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
+        USDC = await MockUSDCFactory.attach(USDC_ADDRESS);
+    }
+
+    console.log(`USDC Contract at: ${USDC.address}`);
+
+    return USDC;
+}
+
+async function deployPotionNFTGame(deployedUSDC = undefined, isTest = false) {
     // NFT contract
-    const { NFTPotion, USDC, encryptedPassword } = await deployNFTContract(isTest);
+    const { NFTPotion, USDC, encryptedPassword } = await deployNFTContract(deployedUSDC, isTest);
 
     // Validator contract
     const NFTValidator = await deployNFTValidator(NFTPotion.address, isTest);
@@ -140,4 +154,4 @@ async function deployPotionNFTGame(isTest = false) {
     return { NFTPotion, NFTValidator, USDC, encryptedPassword };
 }
 
-module.exports = { deployNFTContract, deployNFTValidator, deployPotionNFTGame };
+module.exports = { deployNFTContract, deployNFTValidator, deployPotionNFTGame, deployMockUSDC };

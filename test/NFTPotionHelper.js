@@ -42,7 +42,7 @@ class NFTPotionHelper {
     // Contract State
     currentBatch;
 
-    constructor(contract = undefined) {
+    constructor(contract = undefined, USDC = undefined) {
         this.tokenName = NFT_NAME;
         this.tokenSymbol = NFT_SYMBOL;
         this.ipfsPrefix = process.env.IPFS_PREFIX;
@@ -52,6 +52,7 @@ class NFTPotionHelper {
         this.rarityNumMinted = new Array(this.rarityConfig.length).fill(0);
 
         this.contract = contract;
+        this.USDC = USDC;
     }
 
     async initialize() {
@@ -68,6 +69,7 @@ class NFTPotionHelper {
                 this.ipfsPrefix,
                 this.ipfsSuffix,
                 this.fullSecret,
+                this.USDC,
                 this.rarityConfigEncoded,
             );
             await this.contract.deployed();
@@ -100,7 +102,7 @@ class NFTPotionHelper {
         return this.NFTPotionDutchAuction.changePrice(id, newPrice, signer);
     }
 
-    async purchase(id, amount, limitPrice, publicKey, sendValue = undefined, signer = undefined) {
+    async purchase(id, amount, limitPrice, publicKey, approveAmount = undefined, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         }
@@ -125,7 +127,7 @@ class NFTPotionHelper {
             amount,
             limitPrice,
             publicKey,
-            sendValue,
+            approveAmount,
             signer,
         );
 
