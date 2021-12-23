@@ -41,8 +41,9 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
         bytes memory _fullSecret,
+        address _paymentToken,
         RarityConfigItem[] memory _rarityConfig
-    ) ERC721(_tokenName, _tokenSymbol) {
+    ) ERC721(_tokenName, _tokenSymbol) NFTPotionDutchAuction(_paymentToken) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
         fullSecret = _fullSecret;

@@ -9,42 +9,45 @@ class NFTPotionFundsHelper {
     constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
+        this.USDC = parent.USDC;
     }
 
     async initialize() {
         this.owner = (await ethers.getSigners())[0];
     }
 
-    async transferFunds(recipient, signer = undefined) {
+    async transferFunds(recipient, amount = undefined, signer = undefined) {
+        // Initial state
+        const contractBalance = await this.USDC.balanceOf(this.contract.address);
+        const recipientBalance = await this.USDC.balanceOf(recipient);
+
+        const amountToTransfer = amount === undefined ? contractBalance : amount;
+
         if (signer === undefined) {
             signer = this.owner;
         } else if (signer !== this.owner) {
-            await expect(this.contract.connect(signer).transferFunds(recipient)).to.be.revertedWith(
+            await expect(this.contract.connect(signer).transferFunds(recipient, amountToTransfer)).to.be.revertedWith(
                 "Ownable: caller is not the owner",
             );
             throw new Error("Ownable: caller is not the owner");
         }
 
-        // Initial state
-        const contractBalance = await this.contract.provider.getBalance(this.contract.address);
-        const recipientBalance = await this.contract.provider.getBalance(recipient);
+        if (amountToTransfer.gt(contractBalance)) {
+            await expect(this.contract.connect(signer).transferFunds(recipient, amountToTransfer)).to.be.revertedWith(
+                "ERC20: transfer amount exceeds balance",
+            );
+            throw new Error("ERC20: transfer amount exceeds balance");
+        }
 
         // Logic
-        const tx = await this.contract.connect(signer).transferFunds(recipient);
-        const receipt = await tx.wait();
-        const gasCost = receipt.gasUsed.mul(receipt.effectiveGasPrice);
+        await this.contract.connect(signer).transferFunds(recipient, amountToTransfer);
 
         // Checks
-        const contractBalanceAfter = await this.contract.provider.getBalance(this.contract.address);
-        const recipientBalanceAfter = await this.contract.provider.getBalance(recipient);
+        const contractBalanceAfter = await this.USDC.balanceOf(this.contract.address);
+        const recipientBalanceAfter = await this.USDC.balanceOf(recipient);
 
-        expect(contractBalanceAfter).to.be.equal(0);
-
-        if (recipient === signer.address) {
-            expect(recipientBalanceAfter).to.be.equal(recipientBalance.add(contractBalance).sub(gasCost));
-        } else {
-            expect(recipientBalanceAfter).to.be.equal(recipientBalance.add(contractBalance));
-        }
+        expect(contractBalanceAfter).to.be.equal(contractBalance.sub(amountToTransfer));
+        expect(recipientBalanceAfter).to.be.equal(recipientBalance.add(amountToTransfer));
     }
 
     async sendUnrequestedFunds(amount, signer) {
@@ -60,6 +63,15 @@ class NFTPotionFundsHelper {
                 value: amount,
             }),
         ).to.be.revertedWith("NFTPotionFunds: Unrequested funds received");
+    }
+
+    async approve(spender, amount, signer = undefined) {
+        if (signer === undefined) {
+            signer = (await ethers.getSigners())[0];
+        }
+
+        // Logic
+        return this.USDC.connect(signer).approve(this.contract.address, amount);
     }
 }
 

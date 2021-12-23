@@ -5,7 +5,7 @@ const { ethers } = require("hardhat");
 const { NFTPotionHelper } = require("./NFTPotionHelper");
 
 const { toBN } = require("./NFTPotionAuctionUtils");
-const { deployPotionNFTGame } = require("../scripts/deployUtils");
+const { deployPotionNFTGame, deployMockUSDC } = require("../scripts/deployUtils");
 const { getMerkleProofWithTree } = require("../scripts/merkleUtils");
 const {
     getSecretPieceFromId,
@@ -21,7 +21,7 @@ describe("NFTPotionDutchAuction", function () {
     let signers;
     let raritiesConfig;
     let owner;
-
+    let USDC;
     let buyersTokenIDs;
 
     const { seed, getRandom } = initRandom();
@@ -39,22 +39,28 @@ describe("NFTPotionDutchAuction", function () {
         raritiesConfig = getRaritiesConfig();
         owner = signers[0];
         buyersTokenIDs = Array.from(Array(signers.length), () => []);
+
+        USDC = await deployMockUSDC();
+
+        for (const signer of signers) {
+            await USDC.mint(signer.address, ethers.utils.parseEther("100"));
+        }
     });
 
     describe(`Full Game (Seed = ${seed})`, function () {
         let auction;
         let NFTValidator;
 
-        async function expectPurchaseThrow(id, amount, price, publicKey, sendValue, buyer, error) {
-            await expectThrow(async () => auction.purchase(id, amount, price, publicKey, sendValue, buyer), error);
+        async function expectPurchaseThrow(id, amount, price, publicKey, approveAmount, buyer, error) {
+            await expectThrow(async () => auction.purchase(id, amount, price, publicKey, approveAmount, buyer), error);
         }
 
         // Initialize the contract
         before(async function () {
             let NFTPotion;
-            ({ NFTPotion, NFTValidator } = await deployPotionNFTGame(false, false));
+            ({ NFTPotion, NFTValidator } = await deployPotionNFTGame(USDC, true));
 
-            auction = new NFTPotionHelper(NFTPotion);
+            auction = new NFTPotionHelper(NFTPotion, USDC);
             await auction.initialize();
         });
 
@@ -96,9 +102,9 @@ describe("NFTPotionDutchAuction", function () {
                     const buyer = signers[buyerIndex];
                     const amountToPurchase = getRandom() % (Math.min(totalAvailable, MAX_ITEMS) + 20); // Small chance of overbuy
                     const purchasePrice = getRandom() % (currentPrice + 10); // Small chance of overprice
-                    let sendValue = currentPrice * amountToPurchase;
+                    let approveAmount = currentPrice * amountToPurchase;
                     if (getPercent() <= 2) {
-                        sendValue = Math.max(currentPrice * amountToPurchase - (getRandom() % 20), 0);
+                        approveAmount = Math.max(currentPrice * amountToPurchase - (getRandom() % 20), 0);
                     }
 
                     let actualAmountPurchased = 0;
@@ -110,7 +116,7 @@ describe("NFTPotionDutchAuction", function () {
                             amountToPurchase,
                             purchasePrice,
                             "SomeKey" + getRandom(),
-                            sendValue,
+                            approveAmount,
                             buyer,
                             "AccessList: Caller doesn't have access",
                         );
@@ -121,7 +127,7 @@ describe("NFTPotionDutchAuction", function () {
                             amountToPurchase,
                             purchasePrice,
                             "SomeKey" + getRandom(),
-                            sendValue,
+                            approveAmount,
                             buyer,
                             "Current price is higher than limit price",
                         );
@@ -135,7 +141,7 @@ describe("NFTPotionDutchAuction", function () {
                             amountToPurchase,
                             purchasePrice,
                             "SomeKey" + getRandom(),
-                            sendValue,
+                            approveAmount,
                             buyer,
                         );
 

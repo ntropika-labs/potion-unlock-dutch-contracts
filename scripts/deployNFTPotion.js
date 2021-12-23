@@ -3,7 +3,7 @@ require("dotenv").config();
 const { deployPotionNFTGame } = require("./deployUtils");
 
 async function main() {
-    await deployPotionNFTGame(true, true);
+    await deployPotionNFTGame();
 }
 
 main()

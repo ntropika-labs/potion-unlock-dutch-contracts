@@ -1,11 +1,6 @@
 const { expect } = require("chai");
 const { ethers } = require("hardhat");
-const { fromBN } = require("./NFTPotionAuctionUtils");
-
-const { NFTPotionFundsHelper } = require("./NFTPotionFundsHelper");
-const { NFTPotionAccessListHelper } = require("./NFTPotionAccessListHelper");
-const { NFTPotionCreditHelper } = require("./NFTPotionCreditHelper");
-const { send } = require("process");
+const { fromBN, toBN } = require("./NFTPotionAuctionUtils");
 
 class NFTPotionDutchAuctionHelper {
     parent;
@@ -19,6 +14,7 @@ class NFTPotionDutchAuctionHelper {
     constructor(parent) {
         this.parent = parent;
         this.contract = parent.contract;
+        this.USDC = parent.USDC;
 
         this.currentId = 0;
         this.purchasePrice = 0;
@@ -131,7 +127,7 @@ class NFTPotionDutchAuctionHelper {
         expect(this.purchasePrice).to.be.equal(newPrice);
     }
 
-    async purchase(id, amount, limitPrice, publicKey, sendValue = undefined, signer = undefined) {
+    async purchase(id, amount, limitPrice, publicKey, approveAmount = undefined, signer = undefined) {
         if (signer === undefined) {
             signer = this.owner;
         }
@@ -176,31 +172,34 @@ class NFTPotionDutchAuctionHelper {
         const amountToPurchase = amount > remainingItemsBefore ? remainingItemsBefore : amount;
         const amountToPay = amountToPurchase > currentCreditBefore ? amountToPurchase - currentCreditBefore : 0;
         const toPay = amountToPay * this.purchasePrice;
+        const paymentTokenBalanceBefore = await this.USDC.balanceOf(signer.address);
 
-        if (sendValue === undefined) {
-            sendValue = toPay;
+        if (approveAmount === undefined) {
+            approveAmount = toPay;
         }
 
-        if (sendValue < toPay) {
+        await this.parent.NFTPotionFunds.approve(this.contract.address, approveAmount);
+
+        if (approveAmount < toPay) {
             await expect(this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey)).to.be.revertedWith(
-                "Didn't send enough cash for payment",
+                "ERC20: transfer amount exceeds allowance",
             );
-            throw new Error("Didn't send enough cash for payment");
+            throw new Error("ERC20: transfer amount exceeds allowance");
         }
 
         // Logic
-        const tx = await this.contract
-            .connect(signer)
-            .purchase(id, amount, limitPrice, publicKey, { value: sendValue });
+        const tx = await this.contract.connect(signer).purchase(id, amount, limitPrice, publicKey);
 
         // Checks and effects
         await this.parent.NFTPotionCredit._consumeCredit(tx, signer.address, id, amountToPurchase - amountToPay);
 
         const remainingItemsAfter = await this.contract.getRemainingNFTs(this.currentId);
         const currentCreditAfter = fromBN(await this.parent.NFTPotionCredit.getCredit(signer.address, this.currentId));
+        const paymentTokenBalanceAfter = await this.USDC.balanceOf(signer.address);
 
         expect(remainingItemsAfter).to.be.equal(remainingItemsBefore - amountToPurchase);
         expect(currentCreditAfter).to.be.equal(currentCreditBefore - (amountToPurchase - amountToPay));
+        expect(paymentTokenBalanceAfter).to.be.equal(paymentTokenBalanceBefore.sub(toBN(toPay)));
 
         return { tx, amountToPurchase };
     }
