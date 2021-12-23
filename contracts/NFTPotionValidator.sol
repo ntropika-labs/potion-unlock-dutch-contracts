@@ -43,7 +43,6 @@ contract NFTPotionValidator is INFTPotionValidator, Ownable {
         bytes32[] calldata proof
     ) public {
         require(NFTContract.ownerOf(tokenId) == _msgSender(), "ITO"); // Invalid Token Owner
-        require(!isTokenValidated[tokenId], "TAV"); // Token Already Validated
 
         (uint256 secretStartPos, , bool found) = NFTContract.getSecretPositionLength(tokenId);
         require(found, "Token ID could not be found in rarity config");
