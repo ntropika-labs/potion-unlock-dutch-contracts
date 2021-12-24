@@ -2,10 +2,7 @@ const { expect } = require("chai").use(require("chai-bytes"));
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
-const { NFTPotionHelper } = require("./NFTPotionHelper");
-
 const { toBN } = require("./NFTPotionAuctionUtils");
-const { deployPotionNFTGame, deployMockUSDC } = require("../scripts/deployUtils");
 const { getMerkleProofWithTree } = require("../scripts/merkleUtils");
 const {
     getSecretPieceFromId,
@@ -14,8 +11,17 @@ const {
     getPotionGenesis,
     getRaritiesConfig,
 } = require("../scripts/lib/utils");
-const { range, initRandom, expectThrow, shuffle } = require("./testUtils");
+const {
+    range,
+    initRandom,
+    expectThrow,
+    shuffle,
+    deployUSDCContract,
+    deployDutchAuctionContracts,
+    deployFullGameContracts,
+} = require("./testUtils");
 const { bufferToHex } = require("ethereumjs-util");
+const { NFTPotionDutchAuctionHelper } = require("./NFTPotionDutchAuctionHelper");
 
 describe("NFTPotionDutchAuction", function () {
     let signers;
@@ -40,11 +46,7 @@ describe("NFTPotionDutchAuction", function () {
         owner = signers[0];
         buyersTokenIDs = Array.from(Array(signers.length), () => []);
 
-        USDC = await deployMockUSDC();
-
-        for (const signer of signers) {
-            await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-        }
+        USDC = await deployUSDCContract(signers, "100");
     });
 
     describe(`Full Game (Seed = ${seed})`, function () {
@@ -57,11 +59,7 @@ describe("NFTPotionDutchAuction", function () {
 
         // Initialize the contract
         before(async function () {
-            let NFTPotion;
-            ({ NFTPotion, NFTValidator } = await deployPotionNFTGame(USDC, true));
-
-            auction = new NFTPotionHelper(NFTPotion, USDC);
-            await auction.initialize();
+            ({ NFTDutchAuctionHelper: auction, NFTValidator } = await deployFullGameContracts(USDC));
         });
 
         it(`Dutch Auction, sell all NFTs`, async function () {
@@ -133,8 +131,7 @@ describe("NFTPotionDutchAuction", function () {
                         );
                     } else {
                         // Normal case
-
-                        const startTokenId = raritiesConfig[id].startTokenId + auction.rarityNumMinted[id];
+                        const startTokenId = raritiesConfig[id].startTokenId + auction.NFTPotion.rarityNumMinted[id];
 
                         actualAmountPurchased = await auction.purchase(
                             id,
@@ -168,7 +165,7 @@ describe("NFTPotionDutchAuction", function () {
                 totalNFTsAllRarities += totalItemsRarity;
 
                 expect(buyersTokenIDs.flat(1).length).to.be.equal(totalNFTsAllRarities);
-                expect(await auction.getRemainingNFTs(ITEMS_IDS[i])).to.equal(0);
+                expect(await auction.NFTPotion.getRemainingNFTs(ITEMS_IDS[i])).to.equal(0);
 
                 process.stdout.write(`\t    [Rarity ${i + 1}/${ITEMS_IDS.length} ID=${id}]: 100%             \n`);
 

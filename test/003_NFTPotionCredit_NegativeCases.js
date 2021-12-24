@@ -1,38 +1,25 @@
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
-const { NFTPotionHelper } = require("./NFTPotionHelper");
-const { getRaritiesConfig } = require("../scripts/lib/utils");
-const { expectThrow } = require("./testUtils");
-const { deployNFTContract, deployMockUSDC } = require("../scripts/deployUtils");
+const { expectThrow, deployUSDCContract, deployDutchAuctionContracts } = require("./testUtils");
 
 describe("NFTPotionCredit", function () {
     describe("Negative Cases", function () {
         let auction;
         let signers;
-        let raritiesConfig;
         let owner;
         let USDC;
 
         before(async function () {
             signers = await ethers.getSigners();
-            raritiesConfig = getRaritiesConfig();
             owner = signers[0];
 
-            USDC = await deployMockUSDC();
-
-            for (const signer of signers) {
-                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-            }
+            USDC = await deployUSDCContract(signers, "100");
         });
 
         // Initialize the contract
         beforeEach(async function () {
-            let NFTPotion;
-            ({ NFTPotion } = await deployNFTContract(USDC, true));
-
-            auction = new NFTPotionHelper(NFTPotion, USDC);
-            await auction.initialize();
+            auction = await deployDutchAuctionContracts(USDC);
         });
 
         describe("Add credit for one", function () {

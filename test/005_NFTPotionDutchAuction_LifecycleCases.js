@@ -2,12 +2,11 @@ const { expect } = require("chai");
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
-const { NFTPotionHelper } = require("./NFTPotionHelper");
+const { deployUSDCContract, deployDutchAuctionContracts } = require("./testUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
-const { deployNFTContract, deployMockUSDC } = require("../scripts/deployUtils");
 
 describe("NFTPotionDutchAuction", function () {
-    describe("Lyfecycle Cases", function () {
+    describe("Lifecycle Cases", function () {
         let auction;
         let signers;
         let raritiesConfig;
@@ -19,24 +18,12 @@ describe("NFTPotionDutchAuction", function () {
             raritiesConfig = getRaritiesConfig();
             owner = signers[0];
 
-            USDC = await deployMockUSDC();
-
-            for (const signer of signers) {
-                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-            }
+            USDC = await deployUSDCContract(signers, "100");
         });
 
         // Initialize the contract
         beforeEach(async function () {
-            let NFTPotion;
-            ({ NFTPotion } = await deployNFTContract(USDC, true));
-
-            auction = new NFTPotionHelper(NFTPotion, USDC);
-            await auction.initialize();
-
-            for (const signer of signers) {
-                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-            }
+            auction = await deployDutchAuctionContracts(USDC);
         });
 
         describe("Basic Cases", function () {
@@ -164,7 +151,7 @@ describe("NFTPotionDutchAuction", function () {
             });
         });
         describe("Edge Cases", function () {
-            it("Send more cash than needed", async function () {
+            it("Approve more cash than needed", async function () {
                 const NUM_BUYERS = 10;
                 const ITEMS_ID = 0;
                 const NUM_TOKENS_PER_PURCHASE = 1;
@@ -229,7 +216,7 @@ describe("NFTPotionDutchAuction", function () {
                     totalAvailable -= amountToPurchase;
                 }
 
-                const remainingItems = await auction.getRemainingNFTs(ITEMS_ID);
+                const remainingItems = await auction.NFTPotion.getRemainingNFTs(ITEMS_ID);
                 expect(totalAvailable).to.be.equal(0);
                 expect(remainingItems).to.be.equal(1);
 

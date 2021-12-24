@@ -1,9 +1,8 @@
 const { before } = require("mocha");
 const { ethers } = require("hardhat");
 
-const { NFTPotionHelper } = require("./NFTPotionHelper");
+const { deployUSDCContract, deployDutchAuctionContracts } = require("./testUtils");
 const { getRaritiesConfig } = require("../scripts/lib/utils");
-const { deployNFTContract, deployMockUSDC } = require("../scripts/deployUtils");
 
 describe.skip("NFTPotionDutchAuction", function () {
     describe("Gas Estimations", function () {
@@ -18,20 +17,12 @@ describe.skip("NFTPotionDutchAuction", function () {
             raritiesConfig = getRaritiesConfig();
             owner = signers[0];
 
-            USDC = await deployMockUSDC();
-
-            for (const signer of signers) {
-                await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-            }
+            USDC = await deployUSDCContract(signers, "100");
         });
 
         // Initialize the contract
         beforeEach(async function () {
-            let NFTPotion;
-            ({ NFTPotion } = await deployNFTContract(USDC, true));
-
-            auction = new NFTPotionHelper(NFTPotion, USDC);
-            await auction.initialize();
+            auction = await deployDutchAuctionContracts(USDC);
         });
         it("Single NFT purchased per call", async function () {
             const NUM_BUYERS = 10;

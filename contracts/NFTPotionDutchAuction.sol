@@ -4,6 +4,7 @@ pragma solidity 0.8.9;
 import "./NFTPotionCredit.sol";
 import "./NFTPotionAccessList.sol";
 import "./NFTPotionERC20Funds.sol";
+import "./INFTPotion.sol";
 import "./utils/Utils.sol";
 
 /**
@@ -28,11 +29,19 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
     uint256 public currentRarityId;
     uint256 public purchasePrice;
     AuctionState public auctionState;
+    INFTPotion public NFTContract;
 
     // Events
     event AuctionStarted(uint256 indexed rarityId, uint256 indexed startPrice);
     event AuctionStopped(uint256 indexed rarityId);
     event AuctionPriceChanged(uint256 indexed rarityId, uint256 indexed newPrice);
+    event NFTPurchased(
+        address indexed buyer,
+        uint32 indexed startTokenId,
+        uint32 amount,
+        uint256 limitPrice,
+        string publicKey
+    );
 
     // Modifiers
     modifier checkAuctionActive(uint256 rarityId) {
@@ -41,12 +50,14 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         _;
     }
     modifier checkRarityNotSoldOut(uint256 rarityId) {
-        require(getRemainingNFTs(rarityId) > 0, "Rarity is already sold out");
+        require(NFTContract.getRemainingNFTs(rarityId) > 0, "Rarity is already sold out");
         _;
     }
 
     // Constructor
-    constructor(address _paymentToken) NFTPotionERC20Funds(_paymentToken) {}
+    constructor(address _NFTContract, address _paymentToken) NFTPotionERC20Funds(_paymentToken) {
+        NFTContract = INFTPotion(_NFTContract);
+    }
 
     // Auction management
 
@@ -112,11 +123,12 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         uint32 nftAmount,
         uint256 limitPrice,
         string calldata publicKey
-    ) external checkAuctionActive(rarityId) checkCallerAccess checkRarityNotSoldOut(rarityId) {
+    ) external checkAuctionActive(rarityId) checkCallerAccess {
         require(purchasePrice <= limitPrice, "Current price is higher than limit price");
 
         // Calculate the nftAmount of NFTs that can still be bought
-        nftAmount = Utils.min32(nftAmount, getRemainingNFTs(rarityId));
+        uint32 remainingNFTs = NFTContract.getRemainingNFTs(rarityId);
+        nftAmount = Utils.min32(nftAmount, remainingNFTs);
 
         // Get the credited nftAmount of NFTs of the buyer and calculate how many NFTs
         // must be paid for. Then consume the used nftAmount of credit
@@ -124,7 +136,7 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         uint256 payableAmount = creditAmount < nftAmount ? nftAmount - creditAmount : 0;
 
         _consumeCredit(_msgSender(), rarityId, nftAmount - payableAmount);
-        _purchaseItems(rarityId, nftAmount, limitPrice, publicKey);
+        uint32 startTokenId = NFTContract.mint(rarityId, nftAmount, _msgSender());
 
         // While the tx was in flight the purchase price may have changed or the sender
         // may have sent more cash than needed. If so, refund the difference. This must
@@ -132,42 +144,22 @@ contract NFTPotionDutchAuction is NFTPotionERC20Funds, NFTPotionAccessList, NFTP
         // reentrancy guard is needed in this case because all state has already been
         // updated before the function is called
         _chargePayment(payableAmount * purchasePrice);
+
+        emit NFTPurchased(_msgSender(), startTokenId, nftAmount, limitPrice, publicKey);
     }
 
-    // Delegates
+    // NFT Ownership Management
 
     /**
-        @notice Requests the total number of NFTs that can still be sold for
-        the given rarity ID
+        @notice Transfer the NFT ownership to a new owner
 
-        @param rarityId The rarityId of the NFTs to purchase
+        @param newOwner The address of the new owner
 
-        @return The total number of NFTs that can still be sold
-
-        @dev The function must be overriden by the child contract and return the
-        number of NFTs that can still be sold for the given rarity ID.
+        @dev If a new auciton contract is deployed that uses the same NFT contract,
+        this method can be used to transfer the ownership of the NFT to the new
+        auction contract or even to an admin wallet to manually mint tokens
      */
-    function getRemainingNFTs(uint256 rarityId) public virtual returns (uint32) {
-        // Empty on purpose
-    }
-
-    /**
-        @notice Delegate function to purchase the nftAmount of NFTs indicated in the call
-
-        @param rarityId The batchId of the NFTs to purchase
-        @param nftAmount The nftAmount of NFTs to be purchased
-        @param limitPrice The maximum price the buyer is willing to pay
-        @param publicKey The public key of the buyer
-
-        @dev The function must be overriden by the child contract and implement the
-        purchase logic
-     */
-    function _purchaseItems(
-        uint256 rarityId,
-        uint32 nftAmount,
-        uint256 limitPrice,
-        string calldata publicKey
-    ) internal virtual {
-        // Empty on purpose
+    function transferNFTContractOwnership(address newOwner) external onlyOwner {
+        NFTContract.transferOwnership(newOwner);
     }
 }

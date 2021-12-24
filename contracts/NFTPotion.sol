@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "./NFTPotionDutchAuction.sol";
 import "./RarityConfigItem.sol";
 import "./INFTPotion.sol";
 
 /**
     NFT contract for Potion Unlock
  */
-contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
+contract NFTPotion is INFTPotion, ERC721URIStorage, Ownable {
     // Storage
     string public ipfsPrefix;
     string public ipfsSuffix;
@@ -19,18 +18,13 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
     uint32[] public rarityNumMinted;
     mapping(address => PurchasedRange[]) public purchasedNFTs;
 
-    // Events
-    event NFTPurchased(
-        address indexed buyer,
-        uint32 indexed startTokenId,
-        uint32 amount,
-        uint256 limitPrice,
-        string publicKey
-    );
-
     // Modifiers
     modifier checkValidRarity(uint256 rarityId) {
         require(rarityId < rarityConfig.length, "Invalid rarity ID");
+        _;
+    }
+    modifier checkRarityNotSoldOut(uint256 rarityId) {
+        require(getRemainingNFTs(rarityId) > 0, "Rarity is already sold out");
         _;
     }
 
@@ -41,9 +35,8 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
         string memory _ipfsPrefix,
         string memory _ipfsSuffix,
         bytes memory _fullSecret,
-        address _paymentToken,
         RarityConfigItem[] memory _rarityConfig
-    ) ERC721(_tokenName, _tokenSymbol) NFTPotionDutchAuction(_paymentToken) {
+    ) ERC721(_tokenName, _tokenSymbol) {
         ipfsPrefix = _ipfsPrefix;
         ipfsSuffix = _ipfsSuffix;
         fullSecret = _fullSecret;
@@ -61,54 +54,30 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
         rarityNumMinted = new uint32[](rarityConfig.length);
     }
 
-    // Auction delegates
-
-    /**
-        @notice Requests the total number of NFTs to be sold for the given rarity ID
-
-        @param rarityId The rarity IDs of the NFTs to purchase
-
-        @return The total number of NFTs to be sold for the given rarity
-
-        @dev The function must be overriden by the child contract and return the
-        number of NFTs to be sold for the given rarity.
-     */
-    function getRemainingNFTs(uint256 rarityId) public view override checkValidRarity(rarityId) returns (uint32) {
-        RarityConfigItem storage rarity = rarityConfig[rarityId];
-        uint32 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
-        return totalTokens - rarityNumMinted[rarityId];
-    }
+    // Mint function
 
     /**
         @notice Mints the number of tokens requested by the caller
 
         @param rarityId The ID of the rarity config to use
         @param amount The amount of tokens to mint
-        @param limitPrice The maximum price the buyer is willing to pay
-        @param publicKey The public key of the minter
-
-        @dev The caller is ensuring that the number of tokens requested is less than
-        the number of tokens available for minting.
      */
-    function _purchaseItems(
+    function mint(
         uint256 rarityId,
         uint32 amount,
-        uint256 limitPrice,
-        string calldata publicKey
-    ) internal override checkValidRarity(rarityId) {
+        address recipient
+    ) external checkRarityNotSoldOut(rarityId) onlyOwner returns (uint32 startTokenId) {
         RarityConfigItem storage rarity = rarityConfig[rarityId];
         uint32 numTokensMinted = rarityNumMinted[rarityId];
-        uint32 startTokenId = rarity.startTokenId + numTokensMinted;
+        startTokenId = rarity.startTokenId + numTokensMinted;
 
         for (uint32 i = 0; i < amount; ++i) {
-            _safeMint(msg.sender, startTokenId + i);
+            _safeMint(recipient, startTokenId + i);
         }
 
         rarityNumMinted[rarityId] += amount;
 
-        purchasedNFTs[msg.sender].push(PurchasedRange(startTokenId, amount));
-
-        emit NFTPurchased(_msgSender(), startTokenId, amount, limitPrice, publicKey);
+        purchasedNFTs[recipient].push(PurchasedRange(startTokenId, amount));
     }
 
     // View functions
@@ -125,6 +94,22 @@ contract NFTPotion is INFTPotion, ERC721URIStorage, NFTPotionDutchAuction {
             return "";
         }
         return string(abi.encodePacked(ipfsPrefix, Strings.toString(tokenId), ipfsSuffix));
+    }
+
+    /**
+        @notice Requests the total number of NFTs to be sold for the given rarity ID
+
+        @param rarityId The rarity IDs of the NFTs to purchase
+
+        @return The total number of NFTs to be sold for the given rarity
+
+        @dev The function must be overriden by the child contract and return the
+        number of NFTs to be sold for the given rarity.
+     */
+    function getRemainingNFTs(uint256 rarityId) public view checkValidRarity(rarityId) returns (uint32) {
+        RarityConfigItem storage rarity = rarityConfig[rarityId];
+        uint32 totalTokens = rarity.endTokenId - rarity.startTokenId + 1;
+        return totalTokens - rarityNumMinted[rarityId];
     }
 
     /**

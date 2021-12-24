@@ -71,7 +71,7 @@ class NFTPotionFundsHelper {
         }
 
         // Logic
-        return this.USDC.connect(signer).approve(this.contract.address, amount);
+        return this.USDC.connect(signer).approve(spender, amount);
     }
 }
 
