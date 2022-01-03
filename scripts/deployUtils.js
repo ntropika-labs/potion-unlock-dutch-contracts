@@ -63,7 +63,7 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
     // mainnet one
     let USDC = deployedUSDC;
     if (USDC === undefined) {
-        USDC = await _getUSDC(isTest);
+        USDC = await _getUSDC(true);
     }
 
     // Deploy the contract
@@ -134,14 +134,15 @@ async function _getUSDC(isTest = false) {
     if (isTest) {
         USDC = await deployMockUSDC();
         await USDC.deployed();
+        const signers = await ethers.getSigners();
+        for (const signer of signers) {
+            await USDC.mint(signer.address, ethers.utils.parseEther("1000000000"));
+        }
         
     } else {
         const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
         USDC = await MockUSDCFactory.attach(USDC_ADDRESS);
-        const signers = await ethers.getSigners();
-        for (const signer of signers) {
-            await USDC.mint(signer.address, ethers.utils.parseEther("100"));
-        }
+        
     }
 
     console.log(`USDC Contract at: ${USDC.address}`);
