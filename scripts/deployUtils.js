@@ -134,9 +134,14 @@ async function _getUSDC(isTest = false) {
     if (isTest) {
         USDC = await deployMockUSDC();
         await USDC.deployed();
+        
     } else {
         const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
         USDC = await MockUSDCFactory.attach(USDC_ADDRESS);
+        const signers = await ethers.getSigners();
+        for (const signer of signers) {
+            await USDC.mint(signer.address, ethers.utils.parseEther("100"));
+        }
     }
 
     console.log(`USDC Contract at: ${USDC.address}`);
