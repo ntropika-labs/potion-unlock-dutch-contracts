@@ -69,7 +69,7 @@ module.exports = {
                 mnemonic: "test test test test test test test test test test test junk",
                 path: "m/44'/60'/0'/0/",
                 initialIndex: 0,
-                count: 1000,
+                count: 10,
             },
         },
         ganache: {

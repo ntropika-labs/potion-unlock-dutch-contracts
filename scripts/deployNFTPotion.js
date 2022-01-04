@@ -1,9 +1,16 @@
 require("dotenv").config();
 
 const { deployPotionNFTGame } = require("./deployUtils");
+const hre = require("hardhat")
 
 async function main() {
-    await deployPotionNFTGame();
+   const isTest = hre.network.name === "localhost" ?  true : false
+   if (isTest) {
+    await deployPotionNFTGame(undefined, isTest);
+   } else {
+       await deployPotionNFTGame();
+   }
+   
 }
 
 main()

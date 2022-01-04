@@ -63,7 +63,7 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
     // mainnet one
     let USDC = deployedUSDC;
     if (USDC === undefined) {
-        USDC = await _getUSDC(true);
+        USDC = await _getUSDC(isTest);
     }
 
     // Deploy the contract
