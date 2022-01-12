@@ -1,4 +1,4 @@
-const { ethers } = require("hardhat");
+const { ethers, network } = require("hardhat");
 
 require("dotenv").config();
 
@@ -10,7 +10,7 @@ const {
     getRaritiesConfig,
     encodeRarityConfig,
 } = require("./lib/utils");
-const { NFT_NAME, NFT_SYMBOL, USDC_ADDRESS } = require("./config");
+const { NFT_NAME, NFT_SYMBOL, USDC_ADDRESSES } = require("./config");
 
 // Enable/disable console.log
 const EnableConsoleLog = console.log;
@@ -131,7 +131,15 @@ async function deployMockUSDC() {
 async function _getUSDC(isTest = false) {
     let USDC;
 
-    if (isTest) {
+    const USDC_ADDRESS = USDC_ADDRESSES[network.name];
+
+    if (network.name === "mainnet" && USDC_ADDRESS === undefined) {
+        throw new Error("USDC address is not defined for mainnet!!!");
+    }
+
+    if (isTest || USDC_ADDRESS === undefined) {
+        console.log("Deploying mock USDC");
+
         USDC = await deployMockUSDC();
         await USDC.deployed();
     } else {

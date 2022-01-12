@@ -3,7 +3,10 @@ const NFT_NAME = "Potion Unlock";
 const NFT_SYMBOL = "PUNFT";
 const NUM_NFTS = 10000;
 
-const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const USDC_ADDRESSES = {
+    mainnet: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    rinkeby: "0x4dbcdf9b62e891a7cec5a2568c3f4faf9e8abe2b",
+};
 
 const RARITIES_CONFIG = [
     {
@@ -75,7 +78,7 @@ module.exports = {
     NFT_NAME,
     NFT_SYMBOL,
     NUM_NFTS,
-    USDC_ADDRESS,
+    USDC_ADDRESSES,
     CONTRACTS_DEPLOYMENTS_FILE,
     RARITIES_CONFIG,
 };
