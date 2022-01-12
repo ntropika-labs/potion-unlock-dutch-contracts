@@ -66,6 +66,8 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
         USDC = await _getUSDC(isTest);
     }
 
+    console.log("[NFTPotion]");
+
     // Deploy the contract
     const NFTPotionFactory = await ethers.getContractFactory("NFTPotion");
     let NFTPotion = await NFTPotionFactory.deploy(
@@ -80,7 +82,7 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
 
     await NFTPotion.deployed();
 
-    console.log("Potion NFT Contract deployed to:", NFTPotion.address);
+    console.log("  - Potion NFT Contract deployed to:", NFTPotion.address);
     if (!isTest) {
         exportContract("NFTPotion", NFTPotion.address);
     }
@@ -93,6 +95,8 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
 async function deployNFTValidator(NFTContractAddress, isTest = false) {
     _configureLogs(isTest);
 
+    console.log("[NFTValidator]");
+
     // Rarities
     const raritiesConfig = getRaritiesConfig();
 
@@ -101,7 +105,6 @@ async function deployNFTValidator(NFTContractAddress, isTest = false) {
 
     // Merkle tree
     const { merkleTree } = buildMerkleTree(potionGenesis, raritiesConfig);
-    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // Deploy contract
     const NFTValidatorFactory = await ethers.getContractFactory("NFTPotionValidator");
@@ -109,7 +112,7 @@ async function deployNFTValidator(NFTContractAddress, isTest = false) {
 
     await NFTPotionValidator.deployed();
 
-    console.log(`Validator Contract deployed to: ${NFTPotionValidator.address}`);
+    console.log(`  - Validator Contract deployed to: ${NFTPotionValidator.address}`);
     if (!isTest) {
         exportContract("NFTPotionValidator", NFTPotionValidator.address);
     }
@@ -137,8 +140,10 @@ async function _getUSDC(isTest = false) {
         throw new Error("USDC address is not defined for mainnet!!!");
     }
 
+    console.log("[USDC]");
+
     if (isTest || USDC_ADDRESS === undefined) {
-        console.log("Deploying mock USDC");
+        console.log("  - Deploying mock USDC");
 
         USDC = await deployMockUSDC();
         await USDC.deployed();
@@ -147,7 +152,16 @@ async function _getUSDC(isTest = false) {
         USDC = await MockUSDCFactory.attach(USDC_ADDRESS);
     }
 
-    console.log(`USDC Contract at: ${USDC.address}`);
+    if (!isTest && network.name === "localhost") {
+        console.log(`  - Minting some USDC for the first 10 accounts`);
+
+        const signers = await ethers.getSigners();
+        for (let i = 0; i < 10; i++) {
+            await USDC.mint(signers[i].address, ethers.utils.parseEther("1000000000"));
+        }
+    }
+
+    console.log(`  - USDC Contract at: ${USDC.address}`);
 
     return USDC;
 }
