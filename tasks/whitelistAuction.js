@@ -12,6 +12,21 @@ const { task, types } = require("hardhat/config");
 
 require("dotenv").config();
 
+// Gas limits for gas estimations and batch size estimations
+const SAFE_BLOCK_GAS_LIMIT = 20000000; // Used to estimate batch size
+const HARD_BLOCK_GAS_LIMIT = 25000000; // Used to determine if the given batch size is safe
+
+// Starting batch size for batch size estimation
+const STARTING_BATCH_SIZE = 100;
+
+// Maximum number of iterations to run for estimating the batch size
+const MAX_ITERATIONS_BATCH_SIZE_ESTIMATION = 20;
+
+function ErrorAndExit(message) {
+    console.log(red(message));
+    process.exit(1);
+}
+
 async function init() {
     // Initialize storage
     await storage.init();
@@ -64,6 +79,7 @@ async function getCurrentState(args) {
     let totalCost = 0;
     let numBatches = 0;
     let totalNumberAddresses = 0;
+    let pending = false;
 
     const remainingAddresses = await storage.getItem("remainingAddresses");
 
@@ -76,15 +92,10 @@ async function getCurrentState(args) {
         totalCost = await storage.getItem("totalCost");
         numBatches = await storage.getItem("numBatches");
         totalNumberAddresses = await storage.getItem("totalNumberAddresses");
-
-        console.log(
-            red(
-                `\nDetected unfinished task. Resuming for remaining ${remainingAddresses.length} addresses. Use --reset to start over`,
-            ),
-        );
+        pending = true;
     }
 
-    return { addresses, state, totalCost, numBatches, totalNumberAddresses };
+    return { pending, addresses, state, totalCost, numBatches, totalNumberAddresses };
 }
 
 async function getPrices() {
@@ -119,29 +130,80 @@ async function getPrices() {
     return { ethPrice, gasPrice };
 }
 
+async function estimateBatchSize(contract) {
+    console.log(cyan(`\n[Estimating Batch Size]\n`));
+
+    const estimateProgressBar = new cliProgress.SingleBar(
+        {
+            format: cyan(
+                "BATCH SIZE [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Batch Size: {batchsize} | Gas Used: {gasused}",
+            ),
+        },
+        cliProgress.Presets.shades_classic,
+    );
+    estimateProgressBar.start(MAX_ITERATIONS_BATCH_SIZE_ESTIMATION, 0, { batchsize: "N/A", gasused: "N/A" });
+
+    let previousBatchSize = 0;
+    let previousGasUsed = 0;
+    let currentBatchSize = STARTING_BATCH_SIZE;
+    let currentGasUsed = 0;
+
+    for (let i = 0; i < MAX_ITERATIONS_BATCH_SIZE_ESTIMATION; i++) {
+        const addresses = new Array(currentBatchSize).fill("0x0000000000000000000000000000000000000000");
+
+        currentGasUsed = (await contract.estimateGas.setAccessAll(addresses, true)).toNumber();
+
+        // Ideal batch size may have been found
+        if (
+            (currentGasUsed > SAFE_BLOCK_GAS_LIMIT && previousGasUsed <= SAFE_BLOCK_GAS_LIMIT) ||
+            (currentGasUsed === previousGasUsed && currentBatchSize === previousBatchSize)
+        ) {
+            if (previousBatchSize === 0) {
+                ErrorAndExit(
+                    `Current starting batch size (${STARTING_BATCH_SIZE}) is already consuming all gas, please set it lower`,
+                );
+            }
+
+            estimateProgressBar.stop();
+            return previousBatchSize;
+        }
+
+        const gasPerAddress = currentGasUsed / currentBatchSize;
+
+        previousBatchSize = currentBatchSize;
+        previousGasUsed = currentGasUsed;
+
+        // Approach up to a 95% of the gas limit to allow for wiggle room
+        currentBatchSize = Math.floor((0.95 * SAFE_BLOCK_GAS_LIMIT) / gasPerAddress);
+
+        estimateProgressBar.increment(1, {
+            batchsize: previousBatchSize,
+            gasused: previousGasUsed,
+        });
+    }
+
+    estimateProgressBar.stop();
+
+    ErrorAndExit(
+        `Could not find a safe batch size after ${MAX_ITERATIONS_BATCH_SIZE_ESTIMATION} iterations. Please set it manually`,
+    );
+}
+
 async function estimateGasCost(args, contract, gasPrice, ethPrice) {
     let numBatches = 0;
     let totalCost = 0;
 
     console.log(cyan(`\n[Estimating Gas Costs]\n`));
 
-    // Estimate the gas cost for 1 batch
-    const addresses = await getAllAddresses(args);
-    const singleBatch = addresses.slice(0, args.batchsize);
-    const singleBatchGasEstimation = await contract.estimateGas.setAccessAll(singleBatch, true);
-    const singleBatchCost = (singleBatchGasEstimation.toNumber() * gasPrice * ethPrice) / 1e9;
-
-    console.log(`Gas used for 1 batch: ${singleBatchGasEstimation} gwei ($${singleBatchCost.toFixed(2)})`);
-
     // Estimate the gas costs for all transactions
+    const addresses = await getAllAddresses(args);
     const totalNumberAddresses = addresses.length;
 
     const estimateProgressBar = new cliProgress.SingleBar(
         {
             format:
-                cyan("ESTIMATING [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Total Cost: ") +
+                cyan("GAS COST [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Total Cost: ") +
                 green("${cost} "),
-            hideCursor: true,
         },
         cliProgress.Presets.shades_classic,
     );
@@ -151,15 +213,21 @@ async function estimateGasCost(args, contract, gasPrice, ethPrice) {
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
 
-        const gasEstimation = await contract.estimateGas.setAccessAll(batch, true);
-        const gasCost = (gasEstimation.toNumber() * gasPrice * ethPrice) / 1e9;
+        const gasUsed = await contract.estimateGas.setAccessAll(batch, true);
+
+        if (gasUsed > HARD_BLOCK_GAS_LIMIT) {
+            ErrorAndExit(
+                `\n\nBatch size is causing the transaction to exceed the block gas limit (Used ${gasUsed} gas of ${HARD_BLOCK_GAS_LIMIT})`,
+            );
+        }
+        const gasCost = (gasUsed.toNumber() * gasPrice * ethPrice) / 1e9;
 
         totalCost += gasCost;
         numBatches++;
 
         estimateProgressBar.increment(batch.length, {
             cost: totalCost.toFixed(2),
-            gas: gasEstimation.toNumber(),
+            gas: gasUsed.toNumber(),
         });
     }
 
@@ -169,6 +237,14 @@ async function estimateGasCost(args, contract, gasPrice, ethPrice) {
 }
 
 async function executeWhitelist(args, contract, gasPrice, ethPrice) {
+    console.log(red(`\n--------------------------------------------------------`));
+    console.log(red(`Task will be executed, this will incurr in actual costs!`));
+    console.log(red(`--------------------------------------------------------`));
+
+    if (!(await confirmAction("Do you want to continue? (y/N) "))) {
+        ErrorAndExit("Aborting task execution...");
+    }
+
     let { addresses, state, totalCost, numBatches, totalNumberAddresses } = await getCurrentState(args);
 
     if (state === "validating") {
@@ -177,26 +253,26 @@ async function executeWhitelist(args, contract, gasPrice, ethPrice) {
     }
 
     if (state !== "executing") {
-        await storage.setItem("totalNumberAddresses", addresses.length);
+        totalNumberAddresses = addresses.length;
     }
 
     console.log(yellow(`\n[Whitelisting Addresses]\n`));
 
     await storage.setItem("state", "executing");
+    await storage.setItem("totalNumberAddresses", totalNumberAddresses);
 
     const progressBar = new cliProgress.SingleBar(
         {
             format:
                 yellow("EXECUTING [{bar}] {percentage}% | ETA: {eta}s | {value}/{total} | Total Cost: ") +
                 green("${cost} "),
-            hideCursor: true,
         },
         cliProgress.Presets.shades_classic,
     );
 
     const addressesToWhitelist = addresses.slice();
 
-    progressBar.start(addresses.length, 0, { cost: "N/A", gas: "N/A" });
+    progressBar.start(addresses.length, 0, { cost: totalCost.toFixed(2), gas: "N/A" });
 
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
@@ -258,9 +334,9 @@ async function validateWhitelist(args, contract) {
 }
 
 function printStats(totalCost, numBatches, totalNumberAddresses) {
-    console.log(red(`\n[STATS]\n`));
-    console.log(bold(`Total number of whitelisted addresses: `) + bold(`${totalNumberAddresses}`));
-    console.log(bold(`Total number of batches: `) + bold(`${numBatches}`));
+    console.log(cyan(`\n[STATS]\n`));
+    console.log(bold(`Total number of whitelisted addresses: `) + `${totalNumberAddresses}`);
+    console.log(bold(`Total number of batches: `) + `${numBatches}`);
     console.log(bold(`Total cost of whitelisting: `) + green(`$${totalCost.toFixed(2)}`) + `\n`);
 
     console.log(bold(`Average cost per batch: `) + green(`$${(totalCost / numBatches).toFixed(2)}`));
@@ -271,8 +347,15 @@ function addTask() {
     task("whitelist", "Whitelist a list of addresses in the auction contract")
         .addParam("file", "File containing a list of all the address to be whitelisted", undefined, types.string, false)
         .addParam("contract", "Address of the contract to connect to", undefined, types.string, false)
-        .addParam("batchsize", "Number of addresses to be whitelisted with each TX", 100, types.int)
-        .addFlag("execute", "Disables the Dry Run and actually runs the task")
+        .addParam("mode", "Mode of execution. Can be 'estimate', 'execute' or 'validate'", "estimate", types.string)
+        .addParam(
+            "batchsize",
+            "Number of addresses to be whitelisted with each TX. Default is 'auto' for auto-estimation",
+            "auto",
+            types.string,
+        )
+        .addFlag("skipgas", "Skips the gas estimation")
+        .addFlag("skipvalidation", "Skips the whitelisting validation")
         .addFlag("reset", "Remove any pending addresses and start over")
         .setAction(async (args, hre) => {
             const network = hre.network;
@@ -284,12 +367,27 @@ function addTask() {
                 await resetStorage();
             }
 
+            let { pending, addresses, totalCost, numBatches, totalNumberAddresses } = await getCurrentState(args);
+            if (pending) {
+                console.log(
+                    red(
+                        `\nDetected unfinished task. Resuming for remaining ${addresses.length} of total ${totalNumberAddresses} addresses. Use --reset to start over`,
+                    ),
+                );
+            }
+
             const AccessList = await getContract(args, ethers);
 
-            if (args.execute) {
-                console.log(red(`\n[EXECUTING TASK]\n`));
+            if (args.mode === "execute") {
+                console.log(red(`\n[FULL EXECUTION]\n`));
+            } else if (args.mode === "estimate") {
+                console.log(yellow(`\n[ESTIMATE ONLY]]\n`));
+            } else if (args.mode === "validate") {
+                console.log(yellow(`\n[VALIDATE ONLY]\n`));
             } else {
-                console.log(yellow(`\n[DRY RUN]\n`));
+                ErrorAndExit(
+                    `Invalid 'mode' parameter passed: ${args.mode}. Only 'estimate', 'execute' and 'validate' are supported`,
+                );
             }
 
             console.log(`Getting prices from Etherscan and CoinMarketCap...\n`);
@@ -303,44 +401,52 @@ function addTask() {
             console.log(bold(`Gas price:  ${gasPrice} gwei`));
             console.log(bold(`------------------------`));
 
+            if ((args.mode === "estimate" || args.mode === "execute") && args.batchsize === "auto") {
+                args.batchsize = await estimateBatchSize(AccessList);
+
+                console.log(bold(`Auto-estimated batch size: ${args.batchsize}`));
+            }
+
+            let success = false;
+
             // Gas estimation
-            let { totalCost, numBatches, totalNumberAddresses } = await estimateGasCost(
-                args,
-                AccessList,
-                gasPrice,
-                ethPrice,
-            );
+            if (args.mode === "estimate" || (args.mode === "execute" && !args.skipgas)) {
+                ({ totalCost, numBatches, totalNumberAddresses } = await estimateGasCost(
+                    args,
+                    AccessList,
+                    gasPrice,
+                    ethPrice,
+                ));
+            }
 
-            // Execute the whitelisting if requested
-            if (args.execute) {
-                console.log(red(`\n--------------------------------------------------------`));
-                console.log(red(`Task will be executed, this will incurr in actual costs!`));
-                console.log(red(`--------------------------------------------------------`));
-
-                if (!(await confirmAction("Do you want to continue? (y/N) "))) {
-                    console.log(red("Aborting task execution..."));
-                    return;
-                }
-
+            // Whitelisting
+            if (args.mode === "execute") {
                 ({ totalCost, numBatches, totalNumberAddresses } = await executeWhitelist(
                     args,
                     AccessList,
                     gasPrice,
                     ethPrice,
                 ));
+            }
 
-                const success = await validateWhitelist(args, AccessList);
+            if ((args.mode === "validate" || args.mode === "execute") && !args.skipvalidation) {
+                success = await validateWhitelist(args, AccessList);
+            }
+
+            // Stats
+            printStats(totalCost, numBatches, totalNumberAddresses);
+
+            // Final message
+            if (args.mode === "execute") {
                 if (success) {
-                    printStats(totalCost, numBatches, totalNumberAddresses);
-
                     console.log(green(`\n[SUCCESS]`));
 
                     await resetStorage();
+                } else {
+                    console.log(red(`\n[FAILED]`));
                 }
-            } else {
-                printStats(totalCost, numBatches, totalNumberAddresses);
-
-                console.log(red("\nNow run again with the --execute flag to actually whitelist the addresses!!"));
+            } else if (args.mode === "estimate") {
+                console.log(red("\nNow run again with '--mode execute' to actually whitelist the addresses!!"));
             }
         });
 }
