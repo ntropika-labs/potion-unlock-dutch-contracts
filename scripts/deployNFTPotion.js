@@ -18,12 +18,8 @@ async function _validateIPFSConfig() {
         throw new Error("IPFS suffix must end with '/'");
     }
 
-    if (process.env.IPFS_SUFFIX.startsWith(".") === false) {
-        throw new Error("IPFS suffix must start with a '.'");
-    }
-
-    if (process.env.IPFS_SUFFIX.length <= 1) {
-        throw new Error("IPFS suffix must have a suffix after the initial dot");
+    if (process.env.IPFS_SUFFIX !== ".json") {
+        throw new Error("IPFS suffix must be '.json'");
     }
 
     // Check the CID format
@@ -34,11 +30,6 @@ async function _validateIPFSConfig() {
         console.log(red("Invalid CID in IPFS prefix, cannot parse it. Follows the full error:"));
         throw e;
     }
-
-    /*if (ciparsedCIDdHex === undefined || cidHex.length !== 32) {
-        throw new Error("IPFS prefix must be a valid CID");
-    }*/
-
     if (!(await confirmAction("\nContinue with the above configuration? (y/N) "))) {
         ErrorAndExit("\nAborting deployment...");
     }
