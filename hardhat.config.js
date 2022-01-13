@@ -7,6 +7,8 @@ require("hardhat-contract-sizer");
 
 require("dotenv").config();
 
+require("./tasks/whitelistAuction")();
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -65,6 +67,7 @@ module.exports = {
         hardhat: {
             chainId: 1337,
             gasPrice: 180000000000,
+            blockGasLimit: 30000000,
             accounts: {
                 mnemonic: "test test test test test test test test test test test junk",
                 path: "m/44'/60'/0'/0/",
@@ -77,6 +80,7 @@ module.exports = {
         },
         localhost: {
             url: "http://127.0.0.1:8545",
+            blockGasLimit: 30000000,
             gasPrice: 180000000000,
         },
     },

@@ -68,6 +68,8 @@
     "devDependencies": {
         "@openzeppelin/contracts": "^4.3.2",
         "chai-bytes": "^0.1.2",
+        "cli-progress": "^3.10.0",
+        "console-log-colors": "^0.2.2",
         "ethereumjs-util": "^7.1.2",
         "fs": "^0.0.1-security",
         "ganache-cli": "^6.12.2",
@@ -76,6 +78,8 @@
         "hardhat-gas-reporter": "^1.0.4",
         "keccak256": "^1.0.3",
         "merkletreejs": "^0.2.24",
+        "node-persist": "^3.1.0",
+        "request-promise-native": "^1.0.9",
         "seedrandom": "^3.0.5",
         "solidity-coverage": "^0.7.17",
         "tweetnacl": "^1.0.3",
