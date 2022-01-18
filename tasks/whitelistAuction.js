@@ -7,6 +7,7 @@ const cliProgress = require("cli-progress");
 const storage = require("node-persist");
 const { color } = require("console-log-colors");
 const { red, green, cyan, yellow, bold } = color;
+const { ErrorAndExit, confirmAction } = require("../scripts/lib/ui_utils");
 
 const { task, types } = require("hardhat/config");
 
@@ -21,11 +22,6 @@ const STARTING_BATCH_SIZE = 100;
 
 // Maximum number of iterations to run for estimating the batch size
 const MAX_ITERATIONS_BATCH_SIZE_ESTIMATION = 20;
-
-function ErrorAndExit(message) {
-    console.log(red(message));
-    process.exit(1);
-}
 
 async function init() {
     // Initialize storage
@@ -44,29 +40,6 @@ async function resetStorage() {
     await storage.setItem("numBatches", 0);
     await storage.setItem("totalCost", 0);
     await storage.setItem("state", undefined);
-}
-
-async function confirmAction(message) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    // Prepare readline.question for promisification
-    rl.question[util.promisify.custom] = question => {
-        return new Promise(resolve => {
-            rl.question(question, resolve);
-        });
-    };
-
-    const question = util.promisify(rl.question);
-    const answer = await question(bold(message));
-
-    if (answer === "y" || answer === "yes" || answer === "Y" || answer === "YES") {
-        return true;
-    } else {
-        return false;
-    }
 }
 
 function getAllAddresses(args) {
@@ -276,6 +249,10 @@ async function executeWhitelist(args, contract, gasPrice, ethPrice) {
 
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
+
+        const gasUsedEst = await contract.estimateGas.setAccessAll(batch, true);
+
+        console.log(`Gas used: ${gasUsedEst}`);
 
         const tx = await contract.setAccessAll(batch, true);
         const receipt = await tx.wait();

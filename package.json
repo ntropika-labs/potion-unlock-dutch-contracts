@@ -78,6 +78,7 @@
         "hardhat-gas-reporter": "^1.0.4",
         "keccak256": "^1.0.3",
         "merkletreejs": "^0.2.24",
+        "multiformats": "^9.5.8",
         "node-persist": "^3.1.0",
         "request-promise-native": "^1.0.9",
         "seedrandom": "^3.0.5",
