@@ -53,6 +53,16 @@ module.exports = {
         artifacts: "./src/artifacts",
     },
     networks: {
+        mainnet: {
+            accounts: {
+                count: 1,
+                mnemonic: process.env.DEPLOYER_MNEMONIC,
+                path: "m/44'/60'/0'/0",
+            },
+            chainId: 1,
+            gasPrice: 100000000000, // 100 Gwei
+            url: process.env.ALCHEMY_API_KEY_MAINNET,
+        },
         rinkeby: {
             accounts: {
                 count: 10,
