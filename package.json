@@ -70,6 +70,7 @@
         "chai-bytes": "^0.1.2",
         "cli-progress": "^3.10.0",
         "console-log-colors": "^0.2.2",
+        "csv-parse": "^5.0.4",
         "ethereumjs-util": "^7.1.2",
         "fs": "^0.0.1-security",
         "ganache-cli": "^6.12.2",
