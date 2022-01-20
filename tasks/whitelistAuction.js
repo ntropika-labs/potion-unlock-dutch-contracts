@@ -1,7 +1,4 @@
-const readline = require("readline");
 const { readFileSync } = require("fs");
-const util = require("util");
-
 const request = require("request-promise-native");
 const cliProgress = require("cli-progress");
 const storage = require("node-persist");
@@ -122,7 +119,7 @@ async function estimateBatchSize(contract) {
     let currentGasUsed = 0;
 
     for (let i = 0; i < MAX_ITERATIONS_BATCH_SIZE_ESTIMATION; i++) {
-        const addresses = new Array(currentBatchSize).fill("0x0000000000000000000000000000000000000000");
+        const addresses = new Array(currentBatchSize).fill("0xc892cfd3e75Cf428BDD25576e9a42D515697B2C7");
 
         currentGasUsed = (await contract.estimateGas.setAccessAll(addresses, true)).toNumber();
 
@@ -249,10 +246,6 @@ async function executeWhitelist(args, contract, gasPrice, ethPrice) {
 
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
-
-        const gasUsedEst = await contract.estimateGas.setAccessAll(batch, true);
-
-        console.log(`Gas used: ${gasUsedEst}`);
 
         const tx = await contract.setAccessAll(batch, true);
         const receipt = await tx.wait();
