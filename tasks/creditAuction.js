@@ -42,7 +42,29 @@ async function resetStorage() {
 
 function getAllCreditData(args) {
     const fileContents = readFileSync(args.file, "utf8").trim();
-    return parse(fileContents, { columns: ["address", "rarityId", "amount"], skip_empty_lines: true });
+    const creditData = parse(fileContents, { columns: ["address", "rarityId", "amount"], skip_empty_lines: true });
+
+    // Aggregate the credit if the same address appears multiple times for the
+    // same rarity ID
+    let aggregatedCredit = {};
+    for (const credit of creditData) {
+        if (!aggregatedCredit[credit.address]) {
+            aggregatedCredit[credit.address] = {};
+        }
+        if (!aggregatedCredit[credit.address][credit.rarityId]) {
+            aggregatedCredit[credit.address][credit.rarityId] = 0;
+        }
+        aggregatedCredit[credit.address][credit.rarityId] += Number(credit.amount);
+    }
+
+    // Consolidate into an array
+    const finalCreditData = [];
+    for (const address in aggregatedCredit) {
+        for (const rarityId in aggregatedCredit[address]) {
+            finalCreditData.push({ address, rarityId, amount: aggregatedCredit[address][rarityId] });
+        }
+    }
+    return finalCreditData;
 }
 
 async function getCurrentState(args) {
@@ -257,7 +279,17 @@ async function executeCrediting(args, contract, gasPrice, ethPrice) {
 
         const batchAddresses = batch.map(credit => credit.address);
         const batchRarityIds = batch.map(credit => credit.rarityId);
-        const batchAmounts = batch.map(credit => credit.amount);
+        const batchAmounts = batch.map(credit => Number(credit.amount));
+
+        // Get current credit
+        for (let i = 0; i < batchAddresses.length; i++) {
+            const currentAmount = await contract.getCredit(batchAddresses[i], batchRarityIds[i]);
+            if (currentAmount < batchAmounts[i]) {
+                batchAmounts[i] -= currentAmount;
+            } else {
+                batchAmounts[i] = 0;
+            }
+        }
 
         const tx = await contract.addCreditAll(batchAddresses, batchRarityIds, batchAmounts);
         const receipt = await tx.wait();
@@ -296,35 +328,20 @@ async function validateCreditData(args, contract) {
 
     const creditData = getAllCreditData(args);
 
-    let finalCredit = {};
+    progressBar.start(creditData.length, 0, { cost: "N/A", gas: "N/A" });
     for (const credit of creditData) {
-        if (!finalCredit[credit.address]) {
-            finalCredit[credit.address] = {};
+        const creditedAmount = await contract.getCredit(credit.address, credit.rarityId);
+
+        if (credit.amount !== Number(creditedAmount)) {
+            console.log(
+                red(
+                    `\nAddress ${credit.address} wrong credit (${creditedAmount}, should be ${credit.amount} for rarity ID ${credit.rarityId}!!)`,
+                ),
+            );
+
+            success = false;
         }
-        if (!finalCredit[credit.address][credit.rarityId]) {
-            finalCredit[credit.address][credit.rarityId] = 0;
-        }
-        finalCredit[credit.address][credit.rarityId] += Number(credit.amount);
-    }
-
-    progressBar.start(finalCredit.length, 0, { cost: "N/A", gas: "N/A" });
-
-    for (const address in finalCredit) {
-        for (const rarityId in finalCredit[address]) {
-            const amount = await contract.getCredit(address, rarityId);
-
-            if (Number(amount) !== finalCredit[address][rarityId]) {
-                console.log(
-                    red(
-                        `\nAddress ${address} wrong credit (${amount}, should be ${finalCredit[address][rarityId]} for rarity ID ${rarityId}!!`,
-                    ),
-                );
-
-                success = false;
-            }
-
-            progressBar.increment();
-        }
+        progressBar.increment();
     }
 
     progressBar.stop();
@@ -446,7 +463,7 @@ function addTask() {
                 if (success) {
                     console.log(green(`\n[SUCCESS]`));
 
-                    await resetStorage();
+                    //await resetStorage();
                 } else {
                     console.log(red(`\n[FAILED]`));
                 }
