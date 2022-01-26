@@ -3,7 +3,7 @@ const { ethers, network } = require("hardhat");
 require("dotenv").config();
 
 const {
-    encryptPassword,
+    decryptPassword,
     buildMerkleTree,
     getPotionGenesis,
     exportContract,
@@ -39,22 +39,23 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
     // Genesis
     const potionGenesis = getPotionGenesis();
 
-    // Source code password
-    const encryptedPassword = encryptPassword(process.env.PASSWORD_GENESIS);
-    const encryptedPasswordLength = Buffer.from(encryptedPassword.slice(2), "hex").length;
+    // Validate source code password
+    const encryptedPassword = Buffer.from(process.env.ENCRYPTED_PASSWORD, "hex");
+    const decryptedPasswordGenesis = decryptPassword(process.env.ENCRYPTED_PASSWORD);
+    const configPasswordGenesis = Buffer.from(process.env.PASSWORD_GENESIS, "hex");
 
-    if (encryptedPasswordLength !== potionGenesis.length) {
-        console.log(
-            `Encrypted source code password length (${encryptedPasswordLength}) is different from Potion Genesis length (${potionGenesis.length})`,
-        );
-        return;
+    if (decryptedPasswordGenesis === null || Buffer.compare(decryptedPasswordGenesis, configPasswordGenesis) !== 0) {
+        throw new Error(`Encrypted Password does not decrypt into Password Genesis using Potion Genesis!`);
     }
 
-    console.log(`\nEncrypted Password: ${encryptedPassword}\n\n`);
+    if (encryptedPassword.length !== potionGenesis.length) {
+        throw new Error(
+            `Encrypted Password length (${configPasswordGenesis.length}) is different from Potion Genesis length (${potionGenesis.length})`,
+        );
+    }
 
     // Merkle tree
     const { merkleTree } = buildMerkleTree(potionGenesis, raritiesConfig);
-    console.log(`Merkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
 
     // USDC
     //
@@ -89,7 +90,7 @@ async function deployNFTContract(deployedUSDC = undefined, isTest = false) {
 
     _restoreLogs();
 
-    return { NFTPotion, USDC, encryptedPassword };
+    return { NFTPotion, USDC, encryptedPassword, merkleTree };
 }
 
 async function deployNFTValidator(NFTContractAddress, isTest = false) {
@@ -168,10 +169,14 @@ async function _getUSDC(isTest = false) {
 
 async function deployPotionNFTGame(deployedUSDC = undefined, isTest = false) {
     // NFT contract
-    const { NFTPotion, USDC, encryptedPassword } = await deployNFTContract(deployedUSDC, isTest);
+    const { NFTPotion, USDC, encryptedPassword, merkleTree } = await deployNFTContract(deployedUSDC, isTest);
 
     // Validator contract
     const NFTValidator = await deployNFTValidator(NFTPotion.address, isTest);
+
+    if (!isTest) {
+        console.log(`\nMerkle Tree root: ${merkleTree.getHexRoot()}\n\n`);
+    }
 
     return { NFTPotion, NFTValidator, USDC, encryptedPassword };
 }

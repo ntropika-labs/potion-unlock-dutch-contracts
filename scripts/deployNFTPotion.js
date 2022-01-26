@@ -1,15 +1,12 @@
 require("dotenv").config();
 const { CID } = require("multiformats/cid");
 const { confirmAction, ErrorAndExit } = require("../scripts/lib/ui_utils");
+const { getBufferPreview } = require("../scripts/lib/utils");
 const { deployPotionNFTGame } = require("./deployUtils");
 const { color } = require("console-log-colors");
 const { red, yellow, bold } = color;
 
 async function _validateIPFSConfig() {
-    console.log(bold("Using IPFS config:"));
-    console.log(yellow(`  - Prefix: `) + `${process.env.IPFS_PREFIX}`);
-    console.log(yellow(`  - Suffix: `) + `${process.env.IPFS_SUFFIX}`);
-
     if (process.env.IPFS_PREFIX.startsWith("ipfs://") === false) {
         throw new Error("IPFS prefix must start with 'ipfs://'");
     }
@@ -30,13 +27,29 @@ async function _validateIPFSConfig() {
         console.log(red("Invalid CID in IPFS prefix, cannot parse it. Follows the full error:"));
         throw e;
     }
-    if (!(await confirmAction("\nContinue with the above configuration? (y/N) "))) {
-        ErrorAndExit("\nAborting deployment...");
-    }
 }
 
 async function main() {
     await _validateIPFSConfig();
+
+    // Show config and ask for confirmation
+    console.log(bold("[CONFIG]"));
+    console.log(yellow(`  - IPFS Prefix:        `) + `${process.env.IPFS_PREFIX}`);
+    console.log(yellow(`  - IPFS Suffix:        `) + `${process.env.IPFS_SUFFIX}`);
+    console.log(
+        yellow(`  - Potion Genesis:     `) + `${getBufferPreview(Buffer.from(process.env.POTION_GENESIS, "hex"))}`,
+    );
+    console.log(
+        yellow(`  - Password Genesis:   `) + `${getBufferPreview(Buffer.from(process.env.PASSWORD_GENESIS, "hex"))}`,
+    );
+    console.log(
+        yellow(`  - Encrypted Password: `) + `${getBufferPreview(Buffer.from(process.env.ENCRYPTED_PASSWORD, "hex"))}`,
+    );
+
+    if (!(await confirmAction("\nContinue with the above configuration? (y/N) "))) {
+        ErrorAndExit("\nAborting deployment...");
+    }
+
     await deployPotionNFTGame();
 }
 

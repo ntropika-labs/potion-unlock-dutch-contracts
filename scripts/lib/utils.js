@@ -70,12 +70,12 @@ function decryptDataSymmetric(encryptedData, key=undefined) {
  */
 
 function encryptPassword(password) {
-    const passwordBuffer = Buffer.from(password, "hex");
+    const passwordBuffer = hexToBuffer(password);
     return bufferToHex(encryptDataSymmetric(passwordBuffer));
 }
 
 function decryptPassword(encryptedPassword, key=undefined) {
-    const encryptedData = Buffer.from(encryptedPassword.slice(2), "hex");
+    const encryptedData = hexToBuffer(encryptedPassword);
     return decryptDataSymmetric(encryptedData, key);
 }
 
@@ -140,6 +140,20 @@ function exportContract(name, address, append = true) {
     deployments[name] = address;
 
     fs.writeFileSync(CONTRACTS_DEPLOYMENTS_FILE, JSON.stringify(deployments));
+}
+
+function getBufferPreview(buffer) {
+    const previewHead = buffer.slice(0, 3);
+    const previewTail = buffer.slice(-3);
+    return bufferToHex(previewHead) + "..." + bufferToHex(previewTail).slice(2);
+}
+
+function hexToBuffer(hexString)
+{
+    if (hexString.startsWith("0x") || hexString.startsWith("0X")) {
+        hexString = hexString.slice(2);
+    }
+    return Buffer.from(hexString, "hex");
 }
 
 /**
@@ -254,4 +268,6 @@ module.exports = {
     getSecretStartAndLength,
     // Misc
     exportContract,
+    getBufferPreview,
+    hexToBuffer
 };
