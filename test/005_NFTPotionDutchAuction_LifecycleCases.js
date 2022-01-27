@@ -48,9 +48,9 @@ describe("NFTPotionDutchAuction", function () {
                 let accessList = [];
                 for (let i = 0; i < 15; i++) {
                     accessList.push(signers[i].address);
-
-                    await auction.NFTPotionAccessList.setAccessAll(accessList, i % 2 === 0);
                 }
+
+                await auction.NFTPotionAccessList.setAccessAll(accessList, true);
             });
             it("Add credit", async function () {
                 for (let i = 0; i < 15; i++) {
@@ -67,9 +67,9 @@ describe("NFTPotionDutchAuction", function () {
                     buyersList.push(signers[i].address);
                     itemsIdList.push(i % raritiesConfig.length);
                     amountsList.push(i * raritiesConfig.length * 3);
-
-                    await auction.NFTPotionCredit.addCreditAll(buyersList, itemsIdList, amountsList);
                 }
+
+                await auction.NFTPotionCredit.addCreditAll(buyersList, itemsIdList, amountsList);
             });
 
             it("Transfer funds", async function () {
