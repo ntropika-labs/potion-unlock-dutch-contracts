@@ -5,6 +5,8 @@ const { getBufferPreview } = require("../scripts/lib/utils");
 const { deployPotionNFTGame } = require("./deployUtils");
 const { color } = require("console-log-colors");
 const { red, yellow, bold } = color;
+const { NFT_NAME, NFT_SYMBOL, USDC_ADDRESSES } = require("./config");
+const { network } = require("hardhat");
 
 async function _validateIPFSConfig() {
     if (process.env.IPFS_PREFIX.startsWith("ipfs://") === false) {
@@ -34,6 +36,9 @@ async function main() {
 
     // Show config and ask for confirmation
     console.log(bold("[CONFIG]"));
+    console.log(yellow(`  - NFT Name:           `) + `${NFT_NAME}`);
+    console.log(yellow(`  - NFT Symbol:         `) + `${NFT_SYMBOL}`);
+    console.log(yellow(`  - USDC Address:       `) + `${USDC_ADDRESSES[network.name]}`);
     console.log(yellow(`  - IPFS Prefix:        `) + `${process.env.IPFS_PREFIX}`);
     console.log(yellow(`  - IPFS Suffix:        `) + `${process.env.IPFS_SUFFIX}`);
     console.log(
