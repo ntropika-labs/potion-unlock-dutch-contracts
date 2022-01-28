@@ -1,0 +1,21 @@
+yarn run v1.22.17
+$ npx hardhat run scripts/deployNFTPotion.js --network rinkeby
+[CONFIG]
+  - NFT Name:           Potion Unlock
+  - NFT Symbol:         PUNFT
+  - USDC Address:       0xeb8f08a975ab53e34d8a0330e0d34de942c95926
+  - IPFS Prefix:        ipfs://QmWN2msvCSiHEhc5ByYogTD4gaWUt6RnAAJ9y68Rwm1HuA/
+  - IPFS Suffix:        .json
+  - Potion Genesis:     0xd06719...b20c59
+  - Password Genesis:   0xbcaf1f...3afb14
+  - Encrypted Password: 0x8816ff...c02614
+
+Continue with the above configuration? (y/N) y
+[USDC]
+  - USDC Contract at: 0xeb8f08a975ab53e34d8a0330e0d34de942c95926
+[NFTPotion]
+  - Potion NFT Contract deployed to: 0x384DF8319366B43C77B92aFF4f32Cb23Ba8cc099
+[NFTValidator]
+  - Validator Contract deployed to: 0x916D9aa500397152CC813341957D04C6B9Cd2D76
+
+Merkle Tree root: 0x3b18a6f4e68487a5fd8f04596a22a7bfc92eccdab54f154bbe705bb390b35049
