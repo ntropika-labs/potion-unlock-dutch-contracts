@@ -1,10 +1,10 @@
 version: "3"
 services:
   ganache:
-    image: trufflesuite/ganache-cli
+    image: trufflesuite/ganache
     ports:
       - "8545:8545"
-    command: NODE_OPTIONS=-max_old_space_size=8192 ganache-cli -b 5 -g 100000000000 -h 0.0.0.0 --gasLimit=0x1C9C380 --callGasLimit=0x1fffffffffffff -m "${GANACHE_MNEMONIC}"
+    command: --wallet.mnemonic="${GANACHE_MNEMONIC}"
     volumes:
       - ./data/ganache:/data/ganache
     networks:
