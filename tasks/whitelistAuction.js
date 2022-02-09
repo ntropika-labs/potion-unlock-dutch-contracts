@@ -100,7 +100,7 @@ async function getPrices() {
     return { ethPrice, gasPrice };
 }
 
-async function estimateBatchSize(contract) {
+async function estimateBatchSize(contract, canAccess) {
     console.log(cyan(`\n[Estimating Batch Size]\n`));
 
     const estimateProgressBar = new cliProgress.SingleBar(
@@ -121,7 +121,7 @@ async function estimateBatchSize(contract) {
     for (let i = 0; i < MAX_ITERATIONS_BATCH_SIZE_ESTIMATION; i++) {
         const addresses = new Array(currentBatchSize).fill("0xc892cfd3e75Cf428BDD25576e9a42D515697B2C7");
 
-        currentGasUsed = (await contract.estimateGas.setAccessAll(addresses, true)).toNumber();
+        currentGasUsed = (await contract.estimateGas.setAccessAll(addresses, canAccess)).toNumber();
 
         // Ideal batch size may have been found
         if (
@@ -159,7 +159,7 @@ async function estimateBatchSize(contract) {
     );
 }
 
-async function estimateGasCost(args, contract, gasPrice, ethPrice) {
+async function estimateGasCost(args, contract, canAccess, gasPrice, ethPrice) {
     let numBatches = 0;
     let totalCost = 0;
 
@@ -183,7 +183,7 @@ async function estimateGasCost(args, contract, gasPrice, ethPrice) {
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
 
-        const gasUsed = await contract.estimateGas.setAccessAll(batch, true);
+        const gasUsed = await contract.estimateGas.setAccessAll(batch, canAccess);
 
         if (gasUsed > HARD_BLOCK_GAS_LIMIT) {
             ErrorAndExit(
@@ -206,7 +206,7 @@ async function estimateGasCost(args, contract, gasPrice, ethPrice) {
     return { totalNumberAddresses, numBatches, totalCost };
 }
 
-async function executeWhitelist(args, contract, gasPrice, ethPrice) {
+async function executeWhitelist(args, contract, canAccess, gasPrice, ethPrice) {
     console.log(red(`\n--------------------------------------------------------`));
     console.log(red(`Task will be executed, this will incurr in actual costs!`));
     console.log(red(`--------------------------------------------------------`));
@@ -247,7 +247,7 @@ async function executeWhitelist(args, contract, gasPrice, ethPrice) {
     while (addressesToWhitelist.length > 0) {
         const batch = addressesToWhitelist.splice(0, args.batchsize);
 
-        const tx = await contract.setAccessAll(batch, true);
+        const tx = await contract.setAccessAll(batch, canAccess);
         const receipt = await tx.wait();
 
         const gasUsed = receipt.gasUsed.toNumber();
@@ -268,7 +268,7 @@ async function executeWhitelist(args, contract, gasPrice, ethPrice) {
     return { totalCost, numBatches, totalNumberAddresses };
 }
 
-async function validateWhitelist(args, contract) {
+async function validateWhitelist(args, contract, canAccess) {
     let success = true;
 
     console.log(green(`\n[Validating Addresses]\n`));
@@ -287,10 +287,10 @@ async function validateWhitelist(args, contract) {
     progressBar.start(addresses.length, 0, { cost: "N/A", gas: "N/A" });
 
     for (const address of addresses) {
-        const canAccess = await contract.canAccess(address);
+        const hasAccess = await contract.canAccess(address);
 
-        if (!canAccess) {
-            console.log(red(`Address ${address} does not have access!!`));
+        if (hasAccess !== canAccess) {
+            console.log(red(`Address ${address} access mismatch!!`));
 
             success = false;
         }
@@ -317,6 +317,7 @@ function addTask() {
     task("whitelist", "Whitelist a list of addresses in the auction contract")
         .addParam("file", "File containing a list of all the address to be whitelisted", undefined, types.string, false)
         .addParam("contract", "Address of the contract to connect to", undefined, types.string, false)
+        .addParam("operation", "Operation to perform: add or remove", "add", types.string)
         .addParam("mode", "Mode of execution. Can be 'estimate', 'execute' or 'validate'", "estimate", types.string)
         .addParam(
             "batchsize",
@@ -360,19 +361,32 @@ function addTask() {
                 );
             }
 
+            let canAccess;
+            if (args.operation === "add") {
+                canAccess = true;
+            } else if (args.operation === "remove") {
+                canAccess = false;
+            } else {
+                ErrorAndExit(
+                    `Invalid 'operation' parameter passed: ${args.mode}. Only 'add' or 'remove' are supported`,
+                );
+            }
+
             console.log(`Getting prices from Etherscan and CoinMarketCap...\n`);
             const { ethPrice, gasPrice } = await getPrices();
 
             console.log(bold(`-------- CONFIG --------`));
             console.log(bold(`Network:    ${network.name}`));
             console.log(bold(`Contract:   ${args.contract}`));
+            console.log(bold(`Mode:       ${args.mode}`));
+            console.log(bold(`Operation:  ${canAccess ? "add" : "remove"}`));
             console.log(bold(`Batch size: ${args.batchsize}`));
             console.log(bold(`ETH price:  $${ethPrice}`));
             console.log(bold(`Gas price:  ${gasPrice} gwei`));
             console.log(bold(`------------------------`));
 
             if ((args.mode === "estimate" || args.mode === "execute") && args.batchsize === "auto") {
-                args.batchsize = await estimateBatchSize(AccessList);
+                args.batchsize = await estimateBatchSize(AccessList, canAccess);
 
                 console.log(bold(`Auto-estimated batch size: ${args.batchsize}`));
             }
@@ -394,13 +408,14 @@ function addTask() {
                 ({ totalCost, numBatches, totalNumberAddresses } = await executeWhitelist(
                     args,
                     AccessList,
+                    canAccess,
                     gasPrice,
                     ethPrice,
                 ));
             }
 
             if ((args.mode === "validate" || args.mode === "execute") && !args.skipvalidation) {
-                success = await validateWhitelist(args, AccessList);
+                success = await validateWhitelist(args, AccessList, canAccess);
             }
 
             // Stats
