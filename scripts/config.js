@@ -1,6 +1,6 @@
 // Config
-const NFT_NAME = "Potion Unlock";
-const NFT_SYMBOL = "PUNFT";
+const NFT_NAME = "Potion Unlock 22";
+const NFT_SYMBOL = "PULCK";
 const NUM_NFTS = 10000;
 
 const USDC_ADDRESSES = {
