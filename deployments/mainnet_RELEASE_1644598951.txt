@@ -1,0 +1,21 @@
+yarn run v1.22.17
+$ npx hardhat run scripts/deployNFTPotion.js --network mainnet
+[CONFIG]
+  - NFT Name:           Potion Unlock 22
+  - NFT Symbol:         PULCK
+  - USDC Address:       0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+  - IPFS Prefix:        ipfs://QmQ1w9Ss6zk4XqM3Pxgfxhw2X48Pj8VUt1Tj3iqStJUzyd/
+  - IPFS Suffix:        .json
+  - Potion Genesis:     0xc730a1...1900ad
+  - Password Genesis:   0xe6566b...e10845
+  - Encrypted Password: 0x4e056c...2e55bc
+
+Continue with the above configuration? (y/N) y
+[USDC]
+  - USDC Contract at: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+[NFTPotion]
+  - Potion NFT Contract deployed to: 0xEDAC702337b70f176423175d2f30fDf9c7a613A4
+[NFTValidator]
+  - Validator Contract deployed to: 0x5E0847C844534e0183e065fcA2e638E34ff8b09c
+
+Merkle Tree root: 0x587aed1a789dc55b7b7ac30b7794373c5600df4e8861b425ef4a3a802a2a1dc5
