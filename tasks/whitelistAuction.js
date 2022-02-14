@@ -352,7 +352,7 @@ function addTask() {
             if (args.mode === "execute") {
                 console.log(red(`\n[FULL EXECUTION]\n`));
             } else if (args.mode === "estimate") {
-                console.log(yellow(`\n[ESTIMATE ONLY]]\n`));
+                console.log(yellow(`\n[ESTIMATE ONLY]\n`));
             } else if (args.mode === "validate") {
                 console.log(yellow(`\n[VALIDATE ONLY]\n`));
             } else {
@@ -398,6 +398,7 @@ function addTask() {
                 ({ totalCost, numBatches, totalNumberAddresses } = await estimateGasCost(
                     args,
                     AccessList,
+                    canAccess,
                     gasPrice,
                     ethPrice,
                 ));
