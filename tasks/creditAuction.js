@@ -281,16 +281,6 @@ async function executeCrediting(args, contract, gasPrice, ethPrice) {
         const batchRarityIds = batch.map(credit => credit.rarityId);
         const batchAmounts = batch.map(credit => Number(credit.amount));
 
-        // Get current credit
-        for (let i = 0; i < batchAddresses.length; i++) {
-            const currentAmount = await contract.getCredit(batchAddresses[i], batchRarityIds[i]);
-            if (currentAmount < batchAmounts[i]) {
-                batchAmounts[i] -= currentAmount;
-            } else {
-                batchAmounts[i] = 0;
-            }
-        }
-
         const tx = await contract.addCreditAll(batchAddresses, batchRarityIds, batchAmounts);
         const receipt = await tx.wait();
 
@@ -331,6 +321,8 @@ async function validateCreditData(args, contract) {
     progressBar.start(creditData.length, 0, { cost: "N/A", gas: "N/A" });
     for (const credit of creditData) {
         const creditedAmount = await contract.getCredit(credit.address, credit.rarityId);
+
+        console.log(`Address: ${credit.address} | Rarity: ${credit.rarityId} | Amount: ${creditedAmount}`);
 
         if (credit.amount !== Number(creditedAmount)) {
             console.log(
@@ -403,7 +395,7 @@ function addTask() {
             if (args.mode === "execute") {
                 console.log(red(`\n[FULL EXECUTION]\n`));
             } else if (args.mode === "estimate") {
-                console.log(yellow(`\n[ESTIMATE ONLY]]\n`));
+                console.log(yellow(`\n[ESTIMATE ONLY]\n`));
             } else if (args.mode === "validate") {
                 console.log(yellow(`\n[VALIDATE ONLY]\n`));
             } else {
@@ -451,9 +443,12 @@ function addTask() {
                 ));
             }
 
-            if ((args.mode === "validate" || args.mode === "execute") && !args.skipvalidation) {
+            /**
+             * Validate cannot work when crediting as the user may purchase in between and reduce the credit
+             */
+            /*if ((args.mode === "validate" || args.mode === "execute") && !args.skipvalidation) {
                 success = await validateCreditData(args, AccessList);
-            }
+            }*/
 
             // Stats
             printStats(totalCost, numBatches, totalNumberAddresses);
@@ -463,7 +458,7 @@ function addTask() {
                 if (success) {
                     console.log(green(`\n[SUCCESS]`));
 
-                    //await resetStorage();
+                    await resetStorage();
                 } else {
                     console.log(red(`\n[FAILED]`));
                 }
