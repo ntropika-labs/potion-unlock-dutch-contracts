@@ -52,7 +52,7 @@ module.exports = {
         },
     },
     paths: {
-        artifacts: "./src/artifacts",
+        artifacts: "./artifacts",
     },
     networks: {
         mainnet: {
