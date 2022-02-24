@@ -9,3 +9,5 @@ Batch 5 [FIX] was executed on 17/02/2022 - 13:06 UTC+1
 Batch 6 was executed on 17/02/2022 - 18:05 UTC+1
 Batch 7 was executed on 21/02/2022 - 13:53 UTC+1
 Batch 7 [FIX] was executed on 21/02/2022 - 19:22 UTC+1
+Batch 7 [FIX2] was executed on 24/02/2022 - 15:30 UTC+1
+Batch 7 [FIX3] was executed on 24/02/2022 - 16:39 UTC+1
