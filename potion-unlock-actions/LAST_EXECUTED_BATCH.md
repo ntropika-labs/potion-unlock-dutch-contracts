@@ -11,3 +11,4 @@ Batch 7 Pass 0 was executed on 21/02/2022 - 13:53 UTC+1
 Batch 7 Pass 1 was executed on 21/02/2022 - 19:22 UTC+1
 Batch 7 Pass 2 was executed on 24/02/2022 - 15:30 UTC+1
 Batch 7 Pass 3 was executed on 25/02/2022 - 09:30 UTC+1
+Batch 8 Pass 0 was executed on 25/02/2022 - 10:41 UTC+1
