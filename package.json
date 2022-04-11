@@ -14,7 +14,8 @@
         "eject": "react-scripts eject",
         "contracts-test": "npx hardhat test",
         "contracts-coverage": "npx hardhat coverage",
-        "contracts-size": "npx hardhat compile; npx hardhat size-contracts"
+        "contracts-size": "npx hardhat compile; npx hardhat size-contracts",
+        "verify-validator": "npx hardhat run scripts/verifyValidator.js"
     },
     "repository": {
         "type": "git",
@@ -67,6 +68,7 @@
         ]
     },
     "devDependencies": {
+        "@nomiclabs/hardhat-etherscan": "^3.0.3",
         "@openzeppelin/contracts": "^4.3.2",
         "chai-bytes": "^0.1.2",
         "cli-progress": "^3.10.0",

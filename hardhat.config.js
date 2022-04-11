@@ -4,6 +4,7 @@ require("hardhat-abi-exporter");
 require("hardhat-gas-reporter");
 require("solidity-coverage");
 require("hardhat-contract-sizer");
+require("@nomiclabs/hardhat-etherscan");
 
 require("dotenv").config();
 
@@ -111,5 +112,10 @@ module.exports = {
     },
     mocha: {
         timeout: 100000,
+    },
+    etherscan: {
+        // Your API key for Etherscan
+        // Obtain one at https://etherscan.io/
+        apiKey: process.env.ETHERSCAN_API_KEY,
     },
 };

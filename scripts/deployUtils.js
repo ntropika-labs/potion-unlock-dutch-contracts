@@ -1,4 +1,5 @@
 const { ethers, network } = require("hardhat");
+const hre = require("hardhat");
 
 require("dotenv").config();
 
@@ -123,6 +124,30 @@ async function deployNFTValidator(NFTContractAddress, isTest = false) {
     return NFTPotionValidator;
 }
 
+async function verifyNFTValidator(NFTValidatorContractAddress, NFTContractAddress) {
+    // Rarities
+    const raritiesConfig = getRaritiesConfig();
+
+    // Genesis
+    const potionGenesis = getPotionGenesis();
+
+    // Merkle tree
+    const { merkleTree } = buildMerkleTree(potionGenesis, raritiesConfig);
+
+    // Deploy contract
+    try {
+        await hre.run("verify:verify", {
+            address: NFTValidatorContractAddress,
+            constructorArguments: [NFTContractAddress, merkleTree.getHexRoot()],
+        });
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+
+    return true;
+}
+
 async function deployMockUSDC() {
     const MockUSDCFactory = await ethers.getContractFactory("MockUSDC");
     let MockUSDC = await MockUSDCFactory.deploy();
@@ -181,4 +206,4 @@ async function deployPotionNFTGame(deployedUSDC = undefined, isTest = false) {
     return { NFTPotion, NFTValidator, USDC, encryptedPassword };
 }
 
-module.exports = { deployNFTContract, deployNFTValidator, deployPotionNFTGame, deployMockUSDC };
+module.exports = { deployNFTContract, deployNFTValidator, deployPotionNFTGame, deployMockUSDC, verifyNFTValidator };
